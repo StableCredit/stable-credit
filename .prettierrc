@@ -1,0 +1,21 @@
+{
+  "semi": false,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "arrowParens": "always",
+  "overrides": [
+    {
+      "files": "*.sol",
+      "options": {
+        "tabWidth": 4
+      }
+    },
+    {
+      "files": ["*.yml", "*.yaml"],
+      "options": {
+        "bracketSpacing": false
+      }
+    }
+  ]
+}
