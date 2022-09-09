@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
-import { StableCreditContracts, stableCreditFactory } from "./stableCreditFactory"
+import { NetworkContracts, stableCreditFactory, DemurrageContracts } from "./stableCreditFactory"
 import {
   stableCreditsToString,
   stringToStableCredits,
@@ -14,7 +14,7 @@ import {
 chai.use(solidity)
 
 describe("Stable Credit Demurrage Tests", function () {
-  let contracts: StableCreditContracts
+  let contracts: DemurrageContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
   let memberC: SignerWithAddress
@@ -31,7 +31,7 @@ describe("Stable Credit Demurrage Tests", function () {
     memberE = accounts[5]
     memberF = accounts[6]
 
-    contracts = await stableCreditFactory.deployWithSupply()
+    contracts = await stableCreditFactory.deployDemurrageWithSupply()
     await ethers.provider.send("evm_increaseTime", [10])
     await ethers.provider.send("evm_mine", [])
   })

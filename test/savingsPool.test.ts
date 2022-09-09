@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
-import { StableCreditContracts, stableCreditFactory } from "./stableCreditFactory"
+import { DemurrageContracts, stableCreditFactory } from "./stableCreditFactory"
 import {
   ethToString,
   stableCreditsToString,
@@ -14,7 +14,7 @@ import {
 chai.use(solidity)
 
 describe("Savings Pool Tests", function () {
-  let contracts: StableCreditContracts
+  let contracts: DemurrageContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
   let memberC: SignerWithAddress
@@ -31,7 +31,7 @@ describe("Savings Pool Tests", function () {
     memberE = accounts[5]
     memberF = accounts[6]
 
-    contracts = await stableCreditFactory.deployWithSavings()
+    contracts = await stableCreditFactory.deployDemurrageWithSavings()
   })
 
   it("default with sufficient saved tokens burns debt", async function () {
@@ -111,6 +111,45 @@ describe("Savings Pool Tests", function () {
     expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
       "8.0"
     )
+  })
+
+  it("default with partialy sufficient saved tokens burns debt using savings and stable credit public debt", async function () {
+    let contractsPublicDebt = await stableCreditFactory.deployPublicDebtWithSavings()
+
+    // withdraw tokens
+    await expect(
+      contractsPublicDebt.savingsPool.connect(memberD).withdraw(stringToStableCredits("5"))
+    ).to.not.be.reverted
+    await expect(
+      contractsPublicDebt.savingsPool.connect(memberF).withdraw(stringToStableCredits("5"))
+    ).to.not.be.reverted
+
+    // check balances
+    expect(stableCreditsToString(await contractsPublicDebt.savingsPool.totalSavings())).to.equal(
+      "5.0"
+    )
+    expect(stableCreditsToString(await contractsPublicDebt.stableCredit.publicDebt())).to.equal(
+      "0.0"
+    )
+    expect(
+      stableCreditsToString(await contractsPublicDebt.savingsPool.balanceOf(memberB.address))
+    ).to.equal("5.0")
+
+    // default Credit Line A
+    await ethers.provider.send("evm_increaseTime", [100])
+    await ethers.provider.send("evm_mine", [])
+    await expect(contractsPublicDebt.stableCredit.validateCreditLine(memberA.address)).to.not.be
+      .reverted
+
+    expect(stableCreditsToString(await contractsPublicDebt.savingsPool.totalSavings())).to.equal(
+      "5.0"
+    )
+    expect(stableCreditsToString(await contractsPublicDebt.stableCredit.publicDebt())).to.equal(
+      "5.0"
+    )
+    expect(
+      stableCreditsToString(await contractsPublicDebt.savingsPool.balanceOf(memberB.address))
+    ).to.equal("0.0")
   })
 
   it("fully demurraged savings empties savings balance but not total savings", async function () {
@@ -438,5 +477,9 @@ describe("Savings Pool Tests", function () {
     expect(ethToString(await contracts.savingsPool.earnedReimbursement(memberD.address))).to.equal(
       "8.333333"
     )
+  })
+
+  it("Only undemurraged tokens receive rewards", async function () {
+    // TODO: gain tx fees
   })
 })

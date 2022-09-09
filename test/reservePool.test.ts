@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
-import { StableCreditContracts, stableCreditFactory } from "./stableCreditFactory"
+import { DemurrageContracts, stableCreditFactory } from "./stableCreditFactory"
 import {
   stableCreditsToString,
   stringToStableCredits,
@@ -14,7 +14,7 @@ import {
 chai.use(solidity)
 
 describe("Reserve Pool Tests", function () {
-  let contracts: StableCreditContracts
+  let contracts: DemurrageContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
   let memberC: SignerWithAddress
@@ -31,7 +31,7 @@ describe("Reserve Pool Tests", function () {
     memberE = accounts[5]
     memberF = accounts[6]
 
-    contracts = await stableCreditFactory.deployWithSupply()
+    contracts = await stableCreditFactory.deployDemurrageWithSupply()
     await ethers.provider.send("evm_increaseTime", [10])
     await ethers.provider.send("evm_mine", [])
   })
@@ -74,7 +74,7 @@ describe("Reserve Pool Tests", function () {
     expect(ethToString(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal("3.0")
   })
   it("Savings demurraged tokens fully reimburse savers", async function () {
-    contracts = await stableCreditFactory.deployWithSavings()
+    contracts = await stableCreditFactory.deployDemurrageWithSavings()
 
     await expect(contracts.reservePool.depositCollateral(stringToEth("100000"))).to.not.be.reverted
 

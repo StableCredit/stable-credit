@@ -3,18 +3,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
-import { StableCreditContracts, stableCreditFactory } from "./stableCreditFactory"
-import {
-  stableCreditsToString,
-  stringToStableCredits,
-  stringToEth,
-  ethToString,
-} from "../utils/utils"
+import { DemurrageContracts, stableCreditFactory } from "./stableCreditFactory"
+import { stringToStableCredits, stringToEth, ethToString } from "../utils/utils"
 
 chai.use(solidity)
 
 describe("Fee Manager Tests", function () {
-  let contracts: StableCreditContracts
+  let contracts: DemurrageContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
   let memberC: SignerWithAddress
@@ -29,7 +24,7 @@ describe("Fee Manager Tests", function () {
     memberD = accounts[4]
     memberE = accounts[5]
 
-    contracts = await stableCreditFactory.deployWithSupply()
+    contracts = await stableCreditFactory.deployDemurrageWithSupply()
 
     await expect(
       contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
