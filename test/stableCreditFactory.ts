@@ -31,30 +31,6 @@ export const stableCreditFactory = {
     const memberB = accounts[2]
     const memberD = accounts[4]
     const memberF = accounts[6]
-
-    // approve
-    await (
-      await contracts.stableCredit
-        .connect(memberB)
-        .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
-    ).wait()
-    await (
-      await contracts.stableCredit
-        .connect(memberD)
-        .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
-    ).wait()
-    await (
-      await contracts.stableCredit
-        .connect(memberF)
-        .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
-    ).wait()
-    await (
-      await contracts.mockFeeToken.approve(
-        contracts.reservePool.address,
-        ethers.constants.MaxUint256
-      )
-    ).wait()
-
     // fill reserve
     await (await contracts.reservePool.depositCollateral(stringToEth("100"))).wait()
 
@@ -82,6 +58,26 @@ const deployContractsWithSupply = async () => {
   await (await contracts.accessManager.grantMember(memberB.address)).wait()
   await (await contracts.accessManager.grantMember(memberD.address)).wait()
   await (await contracts.accessManager.grantMember(memberF.address)).wait()
+
+  // approve
+  await (
+    await contracts.stableCredit
+      .connect(memberB)
+      .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
+  ).wait()
+  await (
+    await contracts.stableCredit
+      .connect(memberD)
+      .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
+  ).wait()
+  await (
+    await contracts.stableCredit
+      .connect(memberF)
+      .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
+  ).wait()
+  await (
+    await contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
+  ).wait()
 
   // Initialize A and B
   await (
@@ -154,7 +150,7 @@ const deployContracts = async () => {
     sourceToken.address,
     "0xe592427a0aece92de3edee1f18e0157c05861564",
     500000,
-    500000,
+    0,
   ]
   contracts.reservePool = (await upgrades.deployProxy(reservePoolFactory, args, {
     initializer: "__ReservePool_init",
@@ -167,6 +163,7 @@ const deployContracts = async () => {
     contracts.savingsPool.address,
     contracts.reservePool.address,
     200000,
+    500000,
   ]
   contracts.feeManager = (await upgrades.deployProxy(feeManagerFactory, args)) as FeeManager
 

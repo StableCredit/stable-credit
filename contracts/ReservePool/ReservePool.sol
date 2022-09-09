@@ -11,8 +11,13 @@ import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "../interface/IReservePool.sol";
 import "../interface/ISavingsPool.sol";
 import "../interface/IStableCredit.sol";
-import "hardhat/console.sol";
 
+/// @title ReservePool
+/// @author ReSource
+/// @notice Stores, converts, and transfers collected fee tokens according to reserve
+/// configuration set by network operators.
+/// @dev This contract interacts with the Uniswap protocol. Ensure the targeted pool
+/// has enough liquidity.
 contract ReservePool is
     IReservePool,
     OwnableUpgradeable,
@@ -32,9 +37,9 @@ contract ReservePool is
     ISavingsPool public savingsPool;
     ISwapRouter public swapRouter;
     address internal source;
-    uint256 internal collateral;
-    uint256 internal sourceSync;
-    uint256 internal operatorBalance;
+    uint256 public collateral;
+    uint256 public sourceSync;
+    uint256 public operatorBalance;
     uint256 public sourceSyncPercent;
     uint256 public operatorPercent;
     uint256 public collateralPercent;
@@ -79,14 +84,11 @@ contract ReservePool is
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function depositOperator(uint256 amount) public nonReentrant onlyAuthorized {
-        require(amount > 0, "ReservePool: Cannot stake 0");
-        collateral += amount;
-        feeToken.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
+    /// @dev Called by FeeManager when collected fees are distributed. Will
+    /// split deposited fees among the configured components including the collateral
+    /// and operator balances. Will also convert fee token to SOURCE if configured.
     function depositFees(uint256 amount) public override nonReentrant onlyAuthorized {
-        require(amount > 0, "ReservePool: Cannot stake 0");
+        require(amount > 0, "ReservePool: Cannot deposit 0");
         uint256 sourceSyncAmount = convertFeeToSource((sourceSyncPercent * amount) / MAX_PPM);
         uint256 operatorAmount = (operatorPercent * amount) / MAX_PPM;
         uint256 collateralAmount = (collateralPercent * amount) / MAX_PPM;
@@ -103,24 +105,31 @@ contract ReservePool is
         feeToken.safeTransfer(msg.sender, amount);
     }
 
-    function reimburseMember(address account, uint256 amount) external override {
+    /// @dev Called by StableCredit when network demurraged tokens are burned.
+    function reimburseMember(address account, uint256 credits)
+        external
+        override
+        onlyAuthorized
+        nonReentrant
+    {
         if (collateral == 0) return;
-        if (amount < collateral) {
-            collateral -= amount;
-            feeToken.transfer(account, amount);
+        if (credits < collateral) {
+            collateral -= credits;
+            feeToken.transfer(account, credits);
         } else {
-            collateral = 0;
             feeToken.transfer(account, collateral);
+            collateral = 0;
         }
     }
 
-    function reimburseSavings(uint256 amount) external override {
+    function reimburseSavings(uint256 credits) external override onlyAuthorized {
         if (collateral == 0) return;
-        if (amount < collateral) {
-            savingsPool.reimburse(stableCredit.convertCreditToFeeToken(amount));
-            collateral -= amount;
+        uint256 reimbursement = stableCredit.convertCreditToFeeToken(credits);
+        if (reimbursement < collateral) {
+            savingsPool.reimburse(reimbursement);
+            collateral -= reimbursement;
         } else {
-            savingsPool.reimburse(stableCredit.convertCreditToFeeToken(collateral));
+            savingsPool.reimburse(collateral);
             collateral = 0;
         }
     }

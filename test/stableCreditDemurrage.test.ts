@@ -333,7 +333,7 @@ describe("Stable Credit Demurrage Tests", function () {
       contracts.stableCredit.connect(memberB).transfer(memberA.address, stringToStableCredits("10"))
     ).to.not.be.reverted
 
-    await ethers.provider.send("evm_increaseTime", [100])
+    await ethers.provider.send("evm_increaseTime", [90])
     await ethers.provider.send("evm_mine", [])
 
     // use member A line (renewing credit line)

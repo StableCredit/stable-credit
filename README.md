@@ -9,15 +9,15 @@
 
 # 𐄷 Stable Credits
 
-A stable credit is a complementary currencies in an on-chain mutual credit network. The most fundamental property of mutual credit is its endogenous supply, in which the total supply of the currency is equal to the total amount of outstanding debt on the network.
+A stable credit is a complementary currency in an on-chain mutual credit network. The most fundamental property of mutual credit is its endogenous supply, in which the total supply of the currency is equal to the total amount of outstanding debt on the network.
 
 ## Protocol Overview
 
 ---
 
-Network members are granted access to credit by network operators. Operators are also responsible for managing network configurations in order to promote healthy network activity.
+Network members are granted access to credit by network operators via the `AccessManager`. Operators are also responsible for managing network configurations in order to promote healthy network activity.
 
-Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, transaction fees are collected by the `FeeManager` and dispursed to either the `ReservePool` or the `SavingsPool`.
+Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, fees are collected by the `FeeManager` and dispursed to either the `ReservePool` or the `SavingsPool`.
 
 The `ReservePool` is most responsible for securing credit lines using collateral supplied by transaction fees. The reserve has three major components: Credit collateral used to reimburse network credit defaults, a withdrawable operator balance, and a SOURCE sync used as a medium for future cross network credit swaps.
 

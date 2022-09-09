@@ -4,7 +4,9 @@ pragma solidity ^0.8.0;
 interface IStableCredit {
     function isAuthorized(address account) external view returns (bool);
 
-    function getRoles() external view returns (address);
+    function getAccess() external view returns (address);
+
+    function getReservePool() external view returns (address);
 
     function getFeeToken() external view returns (address);
 

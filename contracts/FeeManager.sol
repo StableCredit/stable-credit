@@ -10,6 +10,10 @@ import "./interface/IAccessManager.sol";
 import "./interface/IFeeManager.sol";
 import "./interface/ISavingsPool.sol";
 
+/// @title FeeManager
+/// @author ReSource
+/// @notice Collects fees from network members and distributes collected fees to the
+/// reserve and savings pools.
 contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -26,6 +30,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     IReservePool public reservePool;
     uint256 public savingsFeePercent;
     uint256 public rserveFeePercent;
+    uint256 public totalFeePercent;
     uint256 public collectedFees;
 
     /* ========== INITIALIZER ========== */
@@ -35,9 +40,11 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         address _stableCredit,
         address _savingsPool,
         address _reservePool,
+        uint256 _totalFeePercent,
         uint256 _savingsFeePercent
     ) external virtual initializer {
-        require(_savingsFeePercent <= MAX_PPM, "FeeManager: fees must be less than 100%");
+        require(_savingsFeePercent <= MAX_PPM, "FeeManager: sub fees must be less than 100%");
+        require(_totalFeePercent <= MAX_PPM, "FeeManager: total fees must be less than 100%");
         __Ownable_init();
         __Pausable_init();
         _pause();
@@ -46,29 +53,36 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         feeToken = IERC20Upgradeable(stableCredit.getFeeToken());
         savingsPool = ISavingsPool(_savingsPool);
         reservePool = IReservePool(_reservePool);
+        feeToken.approve(_savingsPool, type(uint256).max);
+        feeToken.approve(_reservePool, type(uint256).max);
         savingsFeePercent = _savingsFeePercent;
+        totalFeePercent = _totalFeePercent;
         rserveFeePercent = MAX_PPM - savingsFeePercent;
     }
 
-    /* ========== PUBLIC FUNCTIONS ========== */
-
-    function collectFees(
-        address sender,
-        address receiver,
-        uint256 amount
-    ) external override {
-        if (paused()) return;
-        uint256 totalFee = stableCredit.convertCreditToFeeToken(amount);
-        feeToken.safeTransferFrom(sender, address(this), totalFee);
-        collectedFees += totalFee;
-        emit FeesCollected(sender, totalFee);
-    }
+    /* ========== MUTATIVE FUNCTIONS ========== */
 
     function distributeFees() external {
         uint256 savingsFee = (savingsFeePercent * collectedFees) / MAX_PPM;
         uint256 reserveFee = (rserveFeePercent * collectedFees) / MAX_PPM;
         savingsPool.notifyRewardAmount(savingsFee);
         reservePool.depositFees(reserveFee);
+    }
+
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function collectFees(
+        address sender,
+        address receiver,
+        uint256 amount
+    ) external override onlyOperator {
+        if (paused()) return;
+        uint256 totalFee = stableCredit.convertCreditToFeeToken(
+            (totalFeePercent * amount) / MAX_PPM
+        );
+        feeToken.safeTransferFrom(sender, address(this), totalFee);
+        collectedFees += totalFee;
+        emit FeesCollected(sender, totalFee);
     }
 
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOperator {

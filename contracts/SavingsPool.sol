@@ -7,10 +7,14 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./interface/ISavingsPool.sol";
+import "./interface/IReservePool.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/IAccessManager.sol";
-import "hardhat/console.sol";
 
+/// @title SavingsPool
+/// @author ReSource
+/// @notice Allows users to stake credits in return for rewards supplied by transaction fees.
+/// All staked credits are subject to demurrage and reimbursment from the reserve.
 contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISavingsPool {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -19,20 +23,17 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
     IStableCredit public stableCredit;
     IAccessManager public access;
     IERC20Upgradeable public feeToken;
-
     uint256 public rewardsDuration;
     uint256 public periodFinish;
     uint256 public rewardRate;
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
     uint256 public totalSavings;
-
     uint256 public demurrageIndex;
     uint256 public conversionRate;
     uint256 public demurraged;
     uint256 public reimbursements;
     mapping(address => uint256) private demurrageIndexOf;
-
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
     mapping(address => uint256) internal _balances;
@@ -49,6 +50,7 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
     }
 
     /* ========== VIEWS ========== */
+
     function balanceOf(address _member) public view returns (uint256) {
         uint256 burnable = demurragedBalanceOf(_member);
         if (burnable == 0) return _balances[_member];
@@ -80,7 +82,10 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
     }
 
     function earnedReimbursement(address account) public view returns (uint256) {
-        return stableCredit.convertCreditToFeeToken(demurragedBalanceOf(account));
+        return
+            (stableCredit.convertCreditToFeeToken(demurragedBalanceOf(account)) *
+                ((reimbursements * 1e18) / stableCredit.convertCreditToFeeToken(demurraged))) /
+            1e18;
     }
 
     function getRewardForDuration() external view returns (uint256) {
@@ -150,29 +155,6 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         claimReward();
     }
 
-    /* ========== RESTRICTED FUNCTIONS ========== */
-
-    function demurrage(address account, uint256 amount)
-        external
-        onlyNetworkOperator
-        returns (uint256)
-    {
-        demurrageIndex++;
-        uint256 totalDemurraged = amount;
-        if (amount > totalSavings - demurraged) totalDemurraged = totalSavings;
-        if (totalDemurraged > 0) {
-            demurraged += totalDemurraged;
-            updateConversionRate();
-            IERC20Upgradeable(address(stableCredit)).transfer(account, totalDemurraged);
-        }
-        return amount - totalDemurraged;
-    }
-
-    function updateConversionRate() private {
-        if (demurraged == 0 || totalSavings == 0) return;
-        conversionRate = 1e18 - ((demurraged * 1e18) / totalSavings);
-    }
-
     function notifyRewardAmount(uint256 reward) external override updateReward(address(0)) {
         require(stableCredit.isAuthorized(msg.sender), "SavingsPool: unauthorized caller");
         require(reward != 0, "SavingsPool: reward must be greater than zero");
@@ -193,40 +175,40 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         emit RewardAdded(reward);
     }
 
-    function setRewardsDuration(address _rewardsToken, uint256 _rewardsDuration) external {
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function demurrage(address account, uint256 amount)
+        external
+        onlyNetworkOperator
+        returns (uint256)
+    {
+        demurrageIndex++;
+        uint256 totalDemurraged = amount;
+        if (amount > totalSavings - demurraged) totalDemurraged = totalSavings;
+        if (totalDemurraged > 0) {
+            demurraged += totalDemurraged;
+            updateConversionRate();
+            // brun away defaulted account's debt
+            IERC20Upgradeable(address(stableCredit)).transfer(account, totalDemurraged);
+            // reimburse savers
+            IReservePool(stableCredit.getReservePool()).reimburseSavings(totalDemurraged);
+        }
+        return amount - totalDemurraged;
+    }
+
+    function setRewardsDuration(address _rewardsToken, uint256 _rewardsDuration)
+        external
+        onlyNetworkOperator
+    {
         require(block.timestamp > periodFinish, "Reward period still active");
         require(_rewardsDuration > 0, "Reward duration must be non-zero");
         rewardsDuration = _rewardsDuration;
         emit RewardsDurationUpdated(_rewardsToken, rewardsDuration);
     }
 
-    function updateActiveRewardsDuration(address _rewardsToken, uint256 _rewardsDuration)
-        external
-        updateReward(address(0))
-        onlyNetworkOperator
-    {
-        require(block.timestamp < periodFinish, "SavingsPool: Reward period not active");
-        require(_rewardsDuration > 0, "SavingsPool: Reward duration must be non-zero");
-
-        uint256 currentDuration = rewardsDuration;
-
-        uint256 oldRemaining = periodFinish - block.timestamp;
-
-        if (_rewardsDuration > currentDuration) {
-            periodFinish += _rewardsDuration - currentDuration;
-        } else {
-            periodFinish -= currentDuration - _rewardsDuration;
-        }
-
-        require(periodFinish > block.timestamp, "SavingsPool: new reward duration is expired");
-
-        uint256 leftover = oldRemaining * rewardRate;
-        uint256 newRemaining = periodFinish - block.timestamp;
-        rewardRate = leftover / newRemaining;
-
-        rewardsDuration = _rewardsDuration;
-
-        emit RewardsDurationUpdated(_rewardsToken, rewardsDuration);
+    function updateConversionRate() private {
+        if (demurraged == 0 || totalSavings == 0) return;
+        conversionRate = 1e18 - ((demurraged * 1e18) / totalSavings);
     }
 
     /* ========== MODIFIERS ========== */
