@@ -70,14 +70,20 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
 
     function rewardPerToken() public view returns (uint256) {
         if (totalSavings == 0) return rewardPerTokenStored;
+        uint256 total = totalSavings;
+        // if all savings have not been demurraged
+        if (demurraged < totalSavings) total = totalSavings - demurraged;
         return
             rewardPerTokenStored +
-            (((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / totalSavings);
+            (((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / total);
     }
 
     function earnedRewards(address account) public view returns (uint256) {
+        uint256 balance = _balances[account];
+        // if all savings have not been demurraged
+        if (demurraged < totalSavings) balance = balanceOf(account);
         return
-            ((_balances[account] * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18) +
+            ((balance * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18) +
             rewards[account];
     }
 
@@ -100,8 +106,9 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
             stableCredit.balanceOf(msg.sender) >= amount,
             "SavingsPool: Insufficient positive balance"
         );
-        _balances[msg.sender] = balanceOf(msg.sender) + amount;
-        demurrageIndexOf[msg.sender] = demurrageIndex;
+        require(stableCredit.networkDebt() == 0, "SavingsPool: Outstanding public debt");
+        claimReimbursement();
+        _balances[msg.sender] += amount;
         totalSavings += amount;
         IERC20Upgradeable(address(stableCredit)).transferFrom(msg.sender, address(this), amount);
         emit Staked(msg.sender, amount);
@@ -132,8 +139,8 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
             demurrageIndexOf[msg.sender] = demurrageIndex;
             feeToken.safeTransfer(msg.sender, stableCredit.convertCreditToFeeToken(reimbursement));
             reimbursements -= stableCredit.convertCreditToFeeToken(reimbursement);
-            totalSavings -= reimbursement;
             demurraged -= reimbursement;
+            totalSavings -= reimbursement;
         }
     }
 
@@ -144,15 +151,14 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function claim() external {
+    function claim() public {
         claimReimbursement();
         claimReward();
     }
 
     function exit() external {
+        claim();
         withdraw(balanceOf(msg.sender));
-        claimReimbursement();
-        claimReward();
     }
 
     function notifyRewardAmount(uint256 reward) external override updateReward(address(0)) {
@@ -184,7 +190,7 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
     {
         demurrageIndex++;
         uint256 totalDemurraged = amount;
-        if (amount > totalSavings - demurraged) totalDemurraged = totalSavings;
+        if (amount + demurraged > totalSavings) totalDemurraged = totalSavings - demurraged;
         if (totalDemurraged > 0) {
             demurraged += totalDemurraged;
             updateConversionRate();
@@ -193,6 +199,7 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
             // reimburse savers
             IReservePool(stableCredit.getReservePool()).reimburseSavings(totalDemurraged);
         }
+        _updateReward(address(0));
         return amount - totalDemurraged;
     }
 
@@ -207,19 +214,23 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
     }
 
     function updateConversionRate() private {
-        if (demurraged == 0 || totalSavings == 0) return;
-        conversionRate = 1e18 - ((demurraged * 1e18) / totalSavings);
+        if (demurraged >= totalSavings) conversionRate = 0;
+        else conversionRate = 1e18 - ((demurraged * 1e18) / (totalSavings));
     }
 
-    /* ========== MODIFIERS ========== */
-
-    modifier updateReward(address account) {
+    function _updateReward(address account) private {
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
         if (account != address(0)) {
             rewards[account] = earnedRewards(account);
             userRewardPerTokenPaid[account] = rewardPerTokenStored;
         }
+    }
+
+    /* ========== MODIFIERS ========== */
+
+    modifier updateReward(address account) {
+        _updateReward(account);
         _;
     }
 

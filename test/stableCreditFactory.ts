@@ -6,58 +6,27 @@ import {
   ReservePool,
   AccessManager,
   MockERC20,
-  StableCreditPublicDebt,
-  StableCreditDemurrage,
+  StableCredit,
 } from "../types"
 
 export interface NetworkContracts {
   mockFeeToken: MockERC20
   accessManager: AccessManager
-  stableCredit: any
+  stableCredit: StableCredit
   feeManager: FeeManager
   savingsPool: SavingsPool
   reservePool: ReservePool
 }
 
-export interface DemurrageContracts extends NetworkContracts {
-  stableCredit: StableCreditDemurrage
-}
-
-export interface PublicDebtContracts extends NetworkContracts {
-  stableCredit: StableCreditPublicDebt
-}
-
 export const stableCreditFactory = {
-  deployDemurrageDefault: async (): Promise<DemurrageContracts> => {
-    return await deployContracts("StableCreditDemurrage")
+  deployDefault: async (): Promise<NetworkContracts> => {
+    return await deployContracts()
   },
-  deployDemurrageWithSupply: async (): Promise<DemurrageContracts> => {
-    return await deployContractsWithSupply("StableCreditDemurrage")
+  deployWithSupply: async (): Promise<NetworkContracts> => {
+    return await deployContractsWithSupply()
   },
-  deployDemurrageWithSavings: async (): Promise<DemurrageContracts> => {
-    const contracts = await deployContractsWithSupply("StableCreditDemurrage")
-    const accounts = await ethers.getSigners()
-    const memberB = accounts[2]
-    const memberD = accounts[4]
-    const memberF = accounts[6]
-    // fill reserve
-    await (await contracts.reservePool.depositCollateral(stringToEth("100"))).wait()
-
-    // stake savings
-    await (await contracts.savingsPool.connect(memberB).stake(stringToStableCredits("5"))).wait()
-    await (await contracts.savingsPool.connect(memberD).stake(stringToStableCredits("5"))).wait()
-    await (await contracts.savingsPool.connect(memberF).stake(stringToStableCredits("5"))).wait()
-
-    return contracts
-  },
-  deployPublicDebtDefault: async (): Promise<PublicDebtContracts> => {
-    return await deployContracts("StableCreditPublicDebt")
-  },
-  deployPublicDebtWithSupply: async (): Promise<PublicDebtContracts> => {
-    return await deployContractsWithSupply("StableCreditPublicDebt")
-  },
-  deployPublicDebtWithSavings: async (): Promise<PublicDebtContracts> => {
-    const contracts = await deployContractsWithSupply("StableCreditPublicDebt")
+  deployWithSavings: async (): Promise<NetworkContracts> => {
+    const contracts = await deployContractsWithSupply()
     const accounts = await ethers.getSigners()
     const memberB = accounts[2]
     const memberD = accounts[4]
@@ -74,8 +43,8 @@ export const stableCreditFactory = {
   },
 }
 
-const deployContractsWithSupply = async (stableCreditType: string) => {
-  const contracts = await deployContracts(stableCreditType)
+const deployContractsWithSupply = async () => {
+  const contracts = await deployContracts()
   const accounts = await ethers.getSigners()
   const memberA = accounts[1]
   const memberB = accounts[2]
@@ -112,7 +81,7 @@ const deployContractsWithSupply = async (stableCreditType: string) => {
 
   // Initialize A and B
   await (
-    await contracts.stableCredit.createCreditLine(memberA.address, stringToStableCredits("100"))
+    await contracts.stableCredit.createCreditLine(memberA.address, stringToStableCredits("100"), 0)
   ).wait()
   await (
     await contracts.stableCredit
@@ -125,7 +94,7 @@ const deployContractsWithSupply = async (stableCreditType: string) => {
 
   // Initialize C and D
   await (
-    await contracts.stableCredit.createCreditLine(memberC.address, stringToStableCredits("100"))
+    await contracts.stableCredit.createCreditLine(memberC.address, stringToStableCredits("100"), 0)
   ).wait()
   await (
     await contracts.stableCredit
@@ -136,7 +105,7 @@ const deployContractsWithSupply = async (stableCreditType: string) => {
   await ethers.provider.send("evm_mine", [])
   // Initialize E and F
   await (
-    await contracts.stableCredit.createCreditLine(memberE.address, stringToStableCredits("100"))
+    await contracts.stableCredit.createCreditLine(memberE.address, stringToStableCredits("100"), 0)
   ).wait()
   await (
     await contracts.stableCredit
@@ -148,7 +117,7 @@ const deployContractsWithSupply = async (stableCreditType: string) => {
   return contracts
 }
 
-const deployContracts = async (stableCreditType: string) => {
+const deployContracts = async () => {
   var contracts = {} as NetworkContracts
   // deploy source
   const sourceTokenFactory = await ethers.getContractFactory("MockERC20")
@@ -162,10 +131,10 @@ const deployContracts = async (stableCreditType: string) => {
     [],
   ])) as AccessManager
   // // deploy StableCredit
-  const stableCreditFactory = await ethers.getContractFactory(stableCreditType)
+  const stableCreditFactory = await ethers.getContractFactory("StableCredit")
   let args = <any>[]
   args = [contracts.accessManager.address, contracts.mockFeeToken.address, "RSD", "RSD"]
-  contracts.stableCredit = await upgrades.deployProxy(stableCreditFactory, args)
+  contracts.stableCredit = (await upgrades.deployProxy(stableCreditFactory, args)) as StableCredit
   // // deploy savingsPool
   const savingsPoolFactory = await ethers.getContractFactory("SavingsPool")
   args = [contracts.stableCredit.address, contracts.accessManager.address]

@@ -14,6 +14,8 @@ interface IStableCredit {
 
     function balanceOf(address _member) external view returns (uint256);
 
+    function networkDebt() external view returns (uint256);
+
     event CreditLineCreated(address member, uint256 creditLimit, uint256 timestamp);
 
     event CreditLineLimitUpdated(address member, uint256 creditLimit);

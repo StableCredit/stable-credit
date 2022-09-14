@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
-import { DemurrageContracts, stableCreditFactory } from "./stableCreditFactory"
+import { NetworkContracts, stableCreditFactory } from "./stableCreditFactory"
 import {
   stableCreditsToString,
   stringToStableCredits,
@@ -14,7 +14,7 @@ import {
 chai.use(solidity)
 
 describe("Reserve Pool Tests", function () {
-  let contracts: DemurrageContracts
+  let contracts: NetworkContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
   let memberC: SignerWithAddress
@@ -31,7 +31,7 @@ describe("Reserve Pool Tests", function () {
     memberE = accounts[5]
     memberF = accounts[6]
 
-    contracts = await stableCreditFactory.deployDemurrageWithSupply()
+    contracts = await stableCreditFactory.deployWithSupply()
     await ethers.provider.send("evm_increaseTime", [10])
     await ethers.provider.send("evm_mine", [])
   })
@@ -42,6 +42,9 @@ describe("Reserve Pool Tests", function () {
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
+
+    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10.0"))).to.not.be
+      .reverted
 
     expect(ethToString(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal("0.0")
 
@@ -62,6 +65,8 @@ describe("Reserve Pool Tests", function () {
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10.0"))).to.not.be
+      .reverted
 
     expect(ethToString(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal("0.0")
 
@@ -74,14 +79,15 @@ describe("Reserve Pool Tests", function () {
     expect(ethToString(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal("3.0")
   })
   it("Savings demurraged tokens fully reimburse savers", async function () {
-    contracts = await stableCreditFactory.deployDemurrageWithSavings()
+    contracts = await stableCreditFactory.deployWithSavings()
 
     await expect(contracts.reservePool.depositCollateral(stringToEth("100000"))).to.not.be.reverted
 
     // default Credit Line A
-    await ethers.provider.send("evm_increaseTime", [100])
+    await ethers.provider.send("evm_increaseTime", [110])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
+    // await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
+    await (await contracts.stableCredit.validateCreditLine(memberA.address)).wait()
 
     expect(stableCreditsToString(await contracts.savingsPool.balanceOf(memberB.address))).to.equal(
       "1.666666"

@@ -3,13 +3,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
-import { DemurrageContracts, stableCreditFactory } from "./stableCreditFactory"
+import { NetworkContracts, stableCreditFactory } from "./stableCreditFactory"
 import { stringToStableCredits, stringToEth, ethToString } from "../utils/utils"
 
 chai.use(solidity)
 
 describe("Fee Manager Tests", function () {
-  let contracts: DemurrageContracts
+  let contracts: NetworkContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
   let memberC: SignerWithAddress
@@ -24,7 +24,7 @@ describe("Fee Manager Tests", function () {
     memberD = accounts[4]
     memberE = accounts[5]
 
-    contracts = await stableCreditFactory.deployDemurrageWithSupply()
+    contracts = await stableCreditFactory.deployWithSupply()
 
     await expect(
       contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
@@ -73,5 +73,19 @@ describe("Fee Manager Tests", function () {
     expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("0.0")
 
     expect(ethToString(await contracts.savingsPool.rewardRate())).to.equal("2.0")
+  })
+
+  it("Updating savings fee percents updates savingsFeePercent and reserveFeePercent", async function () {
+    expect(await (await contracts.feeManager.savingsFeePercent()).toNumber()).to.equal(500000)
+    expect(await (await contracts.feeManager.reserveFeePercent()).toNumber()).to.equal(500000)
+    await expect(contracts.feeManager.updateSavingFeePercents(200000)).to.not.be.reverted
+    expect(await (await contracts.feeManager.savingsFeePercent()).toNumber()).to.equal(200000)
+    expect(await (await contracts.feeManager.reserveFeePercent()).toNumber()).to.equal(800000)
+  })
+
+  it("Pausing fees stops fee collection on tranasfer of stable credits", async function () {
+    expect(await contracts.feeManager.paused()).to.equal(false)
+    await expect(contracts.feeManager.pauseFees()).to.not.have.reverted
+    expect(await contracts.feeManager.paused()).to.equal(true)
   })
 })

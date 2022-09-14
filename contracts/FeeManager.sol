@@ -29,7 +29,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     ISavingsPool public savingsPool;
     IReservePool public reservePool;
     uint256 public savingsFeePercent;
-    uint256 public rserveFeePercent;
+    uint256 public reserveFeePercent;
     uint256 public totalFeePercent;
     uint256 public collectedFees;
 
@@ -57,14 +57,14 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         feeToken.approve(_reservePool, type(uint256).max);
         savingsFeePercent = _savingsFeePercent;
         totalFeePercent = _totalFeePercent;
-        rserveFeePercent = MAX_PPM - savingsFeePercent;
+        reserveFeePercent = MAX_PPM - savingsFeePercent;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     function distributeFees() external {
         uint256 savingsFee = (savingsFeePercent * collectedFees) / MAX_PPM;
-        uint256 reserveFee = (rserveFeePercent * collectedFees) / MAX_PPM;
+        uint256 reserveFee = (reserveFeePercent * collectedFees) / MAX_PPM;
         savingsPool.notifyRewardAmount(savingsFee);
         reservePool.depositFees(reserveFee);
     }
@@ -89,10 +89,15 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         IERC20Upgradeable(tokenAddress).safeTransfer(msg.sender, tokenAmount);
     }
 
-    function updateFeePercents(uint256 _savingsFeePercent) external onlyOperator {
+    function updateSavingFeePercents(uint256 _savingsFeePercent) external onlyOperator {
         require(_savingsFeePercent <= MAX_PPM, "FeeManager: saving fee must be less than 100%");
         savingsFeePercent = _savingsFeePercent;
-        rserveFeePercent = MAX_PPM - savingsFeePercent;
+        reserveFeePercent = MAX_PPM - savingsFeePercent;
+    }
+
+    function updateTotalFeePercents(uint256 _totalFeePercent) external onlyOperator {
+        require(_totalFeePercent <= MAX_PPM, "FeeManager: total fee must be less than 100%");
+        totalFeePercent = _totalFeePercent;
     }
 
     function pauseFees() public onlyOperator {

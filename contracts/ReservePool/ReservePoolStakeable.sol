@@ -186,44 +186,6 @@ contract ReservePoolStakeable is PausableUpgradeable, ReservePool {
         emit RewardsDurationUpdated(_rewardsToken, rewardData[_rewardsToken].rewardsDuration);
     }
 
-    function updateActiveRewardsDuration(address _rewardsToken, uint256 _rewardsDuration)
-        external
-        updateReward(address(0))
-    {
-        require(
-            rewardData[_rewardsToken].rewardsDistributor == msg.sender,
-            "ReservePool: caller is not rewards distributor"
-        );
-        require(
-            block.timestamp < rewardData[_rewardsToken].periodFinish,
-            "ReservePool: Reward period not active"
-        );
-        require(_rewardsDuration > 0, "ReservePool: Reward duration must be non-zero");
-
-        uint256 currentDuration = rewardData[_rewardsToken].rewardsDuration;
-
-        uint256 oldRemaining = rewardData[_rewardsToken].periodFinish - block.timestamp;
-
-        if (_rewardsDuration > currentDuration) {
-            rewardData[_rewardsToken].periodFinish += _rewardsDuration - currentDuration;
-        } else {
-            rewardData[_rewardsToken].periodFinish -= currentDuration - _rewardsDuration;
-        }
-
-        require(
-            rewardData[_rewardsToken].periodFinish > block.timestamp,
-            "ReservePool: new reward duration is expired"
-        );
-
-        uint256 leftover = oldRemaining * rewardData[_rewardsToken].rewardRate;
-        uint256 newRemaining = rewardData[_rewardsToken].periodFinish - block.timestamp;
-        rewardData[_rewardsToken].rewardRate = leftover / newRemaining;
-
-        rewardData[_rewardsToken].rewardsDuration = _rewardsDuration;
-
-        emit RewardsDurationUpdated(_rewardsToken, rewardData[_rewardsToken].rewardsDuration);
-    }
-
     /* ========== MODIFIERS ========== */
 
     modifier updateReward(address account) {

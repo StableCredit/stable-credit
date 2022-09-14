@@ -57,7 +57,7 @@
     "test": "yarn hardhat test --network hardhat",
     "postcompile": "yarn typechain",
     "compile": "yarn hardhat compile",
-    "coverage": "yarn hardhat coverage --testfiles 'test/**/*.ts' --network ganache",
+    "coverage": "yarn hardhat coverage --testfiles 'test/*.ts' --network hardhat",
     "typechain": "yarn hardhat typechain",
     "deploy": "yarn hardhat deploy",
     "postdeploy": "yarn hardhat run scripts/publish.ts && yarn hardhat run scripts/setup-local.ts",

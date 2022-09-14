@@ -80,13 +80,6 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       timeout: 100000000,
     },
-    ganache: {
-      url: "http://localhost:8545",
-      chainId: chainIds.ganache,
-      saveDeployments: true,
-      tags: ["local", "testing"],
-      timeout: 100000000,
-    },
   },
   solidity: {
     compilers: [
