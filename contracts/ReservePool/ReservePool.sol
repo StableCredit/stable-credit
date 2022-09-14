@@ -146,7 +146,7 @@ contract ReservePool is
         source = _sourceAddress;
     }
 
-    function setPoofFee(uint24 _poolFee) external onlyAuthorized {
+    function setPoolFee(uint24 _poolFee) external onlyAuthorized {
         poolFee = _poolFee;
     }
 

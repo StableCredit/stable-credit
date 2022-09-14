@@ -123,7 +123,7 @@ describe("Reserve Pool Tests", function () {
     expect(await (await contracts.reservePool.sourceSyncPercent()).toNumber()).to.equal(500000)
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(0)
 
-    await expect(contracts.reservePool.updatePercents(200000, 200000))
+    await expect(contracts.reservePool.updatePercents(200000, 200000)).to.not.be.reverted
 
     expect(await (await contracts.reservePool.collateralPercent()).toNumber()).to.equal(600000)
     expect(await (await contracts.reservePool.sourceSyncPercent()).toNumber()).to.equal(200000)
@@ -144,5 +144,12 @@ describe("Reserve Pool Tests", function () {
       .be.reverted
     expect(ethToString(await contracts.mockFeeToken.balanceOf(memberF.address))).to.equal("20.0")
     expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("0.0")
+  })
+  it("Updating uniswap pool fee updats fee configuration", async function () {
+    expect(await contracts.reservePool.poolFee()).to.equal(3000)
+
+    await expect(contracts.reservePool.setPoolFee(300)).to.not.be.reverted
+
+    expect(await contracts.reservePool.poolFee()).to.equal(300)
   })
 })
