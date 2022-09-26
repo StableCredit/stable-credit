@@ -15,8 +15,7 @@ import "./interface/IReservePool.sol";
 /// @author ReSource
 /// @notice Extends the ERC20 standard to include mutual credit functionality where users
 /// can mint tokens into existence by utilizing their lines of credit. Credit defaults result
-/// in either a savings pool demurrage or a network level demurrage on all positive credit
-/// balances.
+/// in either a savings pool demurrage or a transfer of credit to the network debt balance.
 /// @dev Restricted functions are only callable by network operators.
 
 contract StableCredit is CIP36Upgradeable, IStableCredit {
@@ -102,10 +101,6 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         return block.timestamp >= issueDate + pastDueExpiration && !inDefault(_member);
     }
 
-    function getAccess() external view override returns (address) {
-        return address(access);
-    }
-
     function getReservePool() external view override returns (address) {
         return address(reservePool);
     }
@@ -151,6 +146,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         _burn(msg.sender, _amount);
         networkDebt -= _amount;
         reservePool.reimburseMember(msg.sender, convertCreditToFeeToken(_amount));
+        emit NetworkDebtBurned(msg.sender, _amount);
     }
 
     function burnDemurraged(address _member) public {
@@ -162,13 +158,14 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         reservePool.reimburseMember(_member, convertCreditToFeeToken(burnAmount));
     }
 
-    function repayCreditBalance(uint32 _amount) external {
+    function repayCreditBalance(uint128 _amount) external {
         uint256 balance = creditBalanceOf(msg.sender);
         require(_amount <= balance, "StableCredit: invalid amount");
         feeToken.transferFrom(msg.sender, address(reservePool), _amount);
         uint256 leftover = savingsPool.demurrage(msg.sender, creditBalanceOf(msg.sender));
         if (leftover != 0) networkDebt += leftover;
         _members[msg.sender].creditBalance -= _amount;
+        emit CreditBalanceRepayed(_amount);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
@@ -180,7 +177,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         _members[_member].creditBalance = 0;
         _members[_member].creditLimit = 0;
         delete creditIssuance[_member];
-        emit CreditLineDefault(_member);
+        emit CreditDefault(_member);
     }
 
     function updateConversionRate() private {
@@ -214,7 +211,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         uint256 curCreditLimit = creditLimitOf(_member);
         require(curCreditLimit < _creditLimit, "invalid credit limit");
         setCreditLimit(_member, _creditLimit);
-        emit CreditLineLimitUpdated(_member, _creditLimit);
+        emit CreditLimitExtended(_member, _creditLimit);
     }
 
     function demurrageMembers(uint256 _amount) external onlyAuthorized {
@@ -222,6 +219,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         demurraged += _amount;
         updateConversionRate();
         demurrageIndex++;
+        emit MembersDemurraged(_amount);
     }
 
     function setSavingsPool(address _savingsPool) external onlyAuthorized {
@@ -238,12 +236,14 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
 
     function setCreditExpiration(uint256 _seconds) external onlyAuthorized {
         require(_seconds > 0, "expiration must be greater than 0 seconds");
-        creditExpiration = _seconds * 1;
+        creditExpiration = _seconds;
+        emit CreditExpirationUpdated(creditExpiration);
     }
 
     function setPastDueExpiration(uint256 _seconds) external onlyAuthorized {
         require(_seconds > 0, "expiration must be greater than 0 seconds");
-        pastDueExpiration = _seconds * 1;
+        pastDueExpiration = _seconds;
+        emit PastDueExpirationUpdated(pastDueExpiration);
     }
 
     /* ========== MODIFIERS ========== */

@@ -105,8 +105,10 @@ contract ReservePool is
         feeToken.safeTransfer(msg.sender, amount);
     }
 
-    /// @dev Called by StableCredit when network demurraged tokens are burned.
-    function reimburseMember(address account, uint256 credits)
+    /// @notice called by the stable credit contract when members burn away bad credits
+    /// @param member member to reimburse
+    /// @param credits amount of credits to reimburse in fee tokens
+    function reimburseMember(address member, uint256 credits)
         external
         override
         onlyAuthorized
@@ -115,21 +117,23 @@ contract ReservePool is
         if (collateral == 0) return;
         if (credits < collateral) {
             collateral -= credits;
-            feeToken.transfer(account, credits);
+            feeToken.transfer(member, credits);
         } else {
-            feeToken.transfer(account, collateral);
+            feeToken.transfer(member, collateral);
             collateral = 0;
         }
     }
 
+    /// @dev called by the savings pool on credit demurrage
+    /// @param credits amount of credits to reimburse in fee tokens
     function reimburseSavings(uint256 credits) external override onlyAuthorized {
         if (collateral == 0) return;
         uint256 reimbursement = stableCredit.convertCreditToFeeToken(credits);
         if (reimbursement < collateral) {
-            savingsPool.reimburse(reimbursement);
+            savingsPool.reimburseSavers(reimbursement);
             collateral -= reimbursement;
         } else {
-            savingsPool.reimburse(collateral);
+            savingsPool.reimburseSavers(collateral);
             collateral = 0;
         }
     }

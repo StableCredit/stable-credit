@@ -33,14 +33,22 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         external
         operatorDoesNotExist(_operator)
         notNull(_operator)
-        onlyAdmin
+        onlyOperator
     {
         grantRole("OPERATOR", _operator);
+        emit OperatorAdded(_operator);
     }
 
-    function revokeOperator(address _operator) external onlyAdmin {
+    function revokeOperator(address _operator) external onlyOperator {
         require(_operator != owner(), "can't remove owner operator");
         revokeRole("OPERATOR", _operator);
+        emit OperatorRemoved(_operator);
+    }
+
+    function revokeMember(address _member) external onlyOperator {
+        require(_member != owner(), "can't remove owner");
+        revokeRole("MEMBER", _member);
+        emit MemberRemoved(_member);
     }
 
     /* ========== VIEWS ========== */
@@ -70,7 +78,7 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _;
     }
 
-    modifier onlyAdmin() {
+    modifier onlyOperator() {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "AccessManager: Only admin can call");
         _;
     }

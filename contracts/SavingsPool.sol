@@ -57,6 +57,8 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         return (_balances[_member] * conversionRate) / 1e18;
     }
 
+    /// @param _member member with demurraged balance
+    /// @return demurragedBalance the total amount of credits that have been demurraged from member
     function demurragedBalanceOf(address _member) public view returns (uint256) {
         if (demurrageIndexOf[_member] == demurrageIndex || _balances[_member] == 0) return 0;
         uint256 balance = (_balances[_member] * conversionRate) / 1e18;
@@ -78,18 +80,18 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
             (((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / total);
     }
 
-    function earnedRewards(address account) public view returns (uint256) {
-        uint256 balance = _balances[account];
+    function earnedRewards(address member) public view returns (uint256) {
+        uint256 balance = _balances[member];
         // if all savings have not been demurraged
-        if (demurraged < totalSavings) balance = balanceOf(account);
+        if (demurraged < totalSavings) balance = balanceOf(member);
         return
-            ((balance * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18) +
-            rewards[account];
+            ((balance * (rewardPerToken() - userRewardPerTokenPaid[member])) / 1e18) +
+            rewards[member];
     }
 
-    function earnedReimbursement(address account) public view returns (uint256) {
+    function earnedReimbursement(address member) public view returns (uint256) {
         return
-            (stableCredit.convertCreditToFeeToken(demurragedBalanceOf(account)) *
+            (stableCredit.convertCreditToFeeToken(demurragedBalanceOf(member)) *
                 ((reimbursements * 1e18) / stableCredit.convertCreditToFeeToken(demurraged))) /
             1e18;
     }
@@ -132,6 +134,9 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         }
     }
 
+    /// @notice Called by members to be reimbursed from the reserve for all demurraged credits in
+    /// fee tokens.
+    /// @dev Updates reward state for caller.
     function claimReimbursement() public updateReward(msg.sender) {
         uint256 reimbursement = demurragedBalanceOf(msg.sender);
         if (reimbursement > 0 && reimbursement <= reimbursements) {
@@ -141,10 +146,13 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
             reimbursements -= stableCredit.convertCreditToFeeToken(reimbursement);
             demurraged -= reimbursement;
             totalSavings -= reimbursement;
+            emit DemurrageReimbursed(msg.sender, reimbursement);
         }
     }
 
-    function reimburse(uint256 amount) public override nonReentrant {
+    /// @notice called by the reserve pool to transfer fee tokens for savers to claim reimbursements.
+    /// @param amount amount of fee tokens to transfer from caller
+    function reimburseSavers(uint256 amount) public override nonReentrant {
         require(stableCredit.isAuthorized(msg.sender), "SavingsPool: unauthorized caller");
         require(amount != 0, "SavingsPool: amount must be greater than zero");
         reimbursements += amount;
@@ -183,7 +191,12 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function demurrage(address account, uint256 amount)
+    /// @notice updates the total amount of demurraged credits
+    /// @dev called by the stable credit contract on credit default
+    /// @param member that has defaulted
+    /// @param amount of defaulted credits
+    /// @return leftover credits from the amount that the savings pool could not demurrage.
+    function demurrage(address member, uint256 amount)
         external
         onlyNetworkOperator
         returns (uint256)
@@ -194,10 +207,11 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         if (totalDemurraged > 0) {
             demurraged += totalDemurraged;
             updateConversionRate();
-            // brun away defaulted account's debt
-            IERC20Upgradeable(address(stableCredit)).transfer(account, totalDemurraged);
+            // brun away defaulted member's debt
+            IERC20Upgradeable(address(stableCredit)).transfer(member, totalDemurraged);
             // reimburse savers
             IReservePool(stableCredit.getReservePool()).reimburseSavings(totalDemurraged);
+            emit PoolDemurraged(totalDemurraged);
         }
         _updateReward(address(0));
         return amount - totalDemurraged;
@@ -218,19 +232,19 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         else conversionRate = 1e18 - ((demurraged * 1e18) / (totalSavings));
     }
 
-    function _updateReward(address account) private {
+    function _updateReward(address member) private {
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
-        if (account != address(0)) {
-            rewards[account] = earnedRewards(account);
-            userRewardPerTokenPaid[account] = rewardPerTokenStored;
+        if (member != address(0)) {
+            rewards[member] = earnedRewards(member);
+            userRewardPerTokenPaid[member] = rewardPerTokenStored;
         }
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier updateReward(address account) {
-        _updateReward(account);
+    modifier updateReward(address member) {
+        _updateReward(member);
         _;
     }
 
@@ -238,13 +252,4 @@ contract SavingsPool is PausableUpgradeable, ReentrancyGuardUpgradeable, ISaving
         require(access.isNetworkOperator(msg.sender), "Caller is not network operator");
         _;
     }
-
-    /* ========== EVENTS ========== */
-
-    event RewardAdded(uint256 reward);
-    event RewardPaid(address indexed user, uint256 reward);
-    event RewardsDurationUpdated(address token, uint256 newDuration);
-    event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
-    event Recovered(address token, uint256 amount);
 }

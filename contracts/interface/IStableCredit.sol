@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 interface IStableCredit {
     function isAuthorized(address account) external view returns (bool);
 
-    function getAccess() external view returns (address);
-
     function getReservePool() external view returns (address);
 
     function getFeeToken() external view returns (address);
@@ -18,7 +16,17 @@ interface IStableCredit {
 
     event CreditLineCreated(address member, uint256 creditLimit, uint256 timestamp);
 
-    event CreditLineLimitUpdated(address member, uint256 creditLimit);
+    event CreditLimitExtended(address member, uint256 creditLimit);
 
-    event CreditLineDefault(address member);
+    event CreditDefault(address member);
+
+    event MembersDemurraged(uint256 amount);
+
+    event CreditExpirationUpdated(uint256 expiration);
+
+    event PastDueExpirationUpdated(uint256 expiration);
+
+    event CreditBalanceRepayed(uint128 expiration);
+
+    event NetworkDebtBurned(address member, uint256 amount);
 }

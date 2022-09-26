@@ -62,15 +62,28 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
+    /// @notice Distributes collected fees to the savings pool and the reserve pool.
+    /// @dev If the savings pool is empty, fees held for savers are not distributed.
     function distributeFees() external {
         uint256 savingsFee = (savingsFeePercent * collectedFees) / MAX_PPM;
         uint256 reserveFee = (reserveFeePercent * collectedFees) / MAX_PPM;
-        savingsPool.notifyRewardAmount(savingsFee);
+        if (savingsPool.totalSavings() > 0) {
+            savingsPool.notifyRewardAmount(savingsFee);
+            collectedFees -= savingsFee;
+        }
         reservePool.depositFees(reserveFee);
+        collectedFees -= reserveFee;
+        emit FeesDistributed(savingsFee + reserveFee);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
+    /// @notice Called by the StableCredit contract to collect fees from the credit sender
+    /// @dev the sender must approve the feeManager to spend fee tokens on their behalf before
+    /// fees can be collected.
+    /// @param sender stable credit sender address
+    /// @param receiver stable credit receiver address
+    /// @param amount stable credit amount
     function collectFees(
         address sender,
         address receiver,

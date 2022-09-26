@@ -17,7 +17,7 @@ A stable credit is a complementary currency in an on-chain mutual credit network
 
 Network members are granted access to credit by network operators via the `AccessManager`. Operators are also responsible for managing network configurations in order to promote healthy network activity.
 
-Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, fees are collected by the `FeeManager` and dispursed to either the `ReservePool` or the `SavingsPool`.
+Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, fees are collected by the `FeeManager` and disbursed to either the `ReservePool` or the `SavingsPool`.
 
 The `ReservePool` is most responsible for securing credit lines using collateral supplied by transaction fees. The reserve has three major components: Credit collateral used to reimburse network credit defaults, a withdrawable operator balance, and a SOURCE sync used as a medium for future cross network credit swaps.
 
