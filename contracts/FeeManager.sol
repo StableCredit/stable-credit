@@ -89,7 +89,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         address receiver,
         uint256 amount
     ) external override onlyOperator {
-        if (paused()) return;
+        if (paused() || receiver == address(savingsPool)) return;
         uint256 totalFee = stableCredit.convertCreditToFeeToken(
             (totalFeePercent * amount) / MAX_PPM
         );

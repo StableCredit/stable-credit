@@ -64,6 +64,15 @@ describe("Fee Manager Tests", function () {
       contracts.stableCredit.connect(memberA).transfer(memberB.address, stringToStableCredits("20"))
     ).to.not.be.reverted
 
+    await expect(
+      contracts.stableCredit
+        .connect(memberB)
+        .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
+    ).to.not.be.reverted
+
+    await expect(contracts.savingsPool.connect(memberB).stake(stringToStableCredits("5"))).to.not.be
+      .reverted
+
     expect(ethToString(await contracts.reservePool.collateral())).to.equal("100000.0")
 
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
