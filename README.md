@@ -19,7 +19,7 @@ Network members are granted access to credit by network operators via the `Acces
 
 Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, fees are collected by the `FeeManager` and disbursed to either the `ReservePool` or the `SavingsPool`.
 
-The `ReservePool` is most responsible for securing credit lines using collateral supplied by transaction fees. The reserve has three major components: Credit collateral used to reimburse network credit defaults, a withdrawable operator balance, and a SOURCE sync used as a medium for future cross network credit swaps.
+The `ReservePool` is most responsible for securing credit lines using collateral supplied by transaction fees. The reserve has three major components: Credit collateral used to reimburse network credit defaults, a withdrawable operator balance, and a SOURCE sink used as a medium for future cross network credit swaps.
 
 The `SavingsPool` is responsible for providing members the opportunity to participate in removing credits from circulation in order to burn away bad debt and preserve the endogenous supply. Savers are rewarded for participating in "voluntary demurrage" via a cut of network transaction fees.
 

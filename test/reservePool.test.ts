@@ -120,13 +120,13 @@ describe("Reserve Pool Tests", function () {
   })
   it("Reserve configuration updatees fee percents", async function () {
     expect(await (await contracts.reservePool.collateralPercent()).toNumber()).to.equal(500000)
-    expect(await (await contracts.reservePool.sourceSyncPercent()).toNumber()).to.equal(500000)
+    expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(500000)
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(0)
 
     await expect(contracts.reservePool.updatePercents(200000, 200000)).to.not.be.reverted
 
     expect(await (await contracts.reservePool.collateralPercent()).toNumber()).to.equal(600000)
-    expect(await (await contracts.reservePool.sourceSyncPercent()).toNumber()).to.equal(200000)
+    expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(200000)
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(200000)
   })
   it("Withdrawing operator balance transfers and updates operator balance", async function () {

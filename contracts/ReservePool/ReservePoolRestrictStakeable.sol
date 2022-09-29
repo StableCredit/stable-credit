@@ -16,7 +16,7 @@ contract ReservePoolRestrictStakeable is ReservePoolStakeable {
         address _savingsPool,
         address _sourceAddress,
         address _swapRouter,
-        uint256 _sourceSyncPercent,
+        uint256 _sourceSinkPercent,
         uint256 _operatorPercent
     ) public initializer {
         __ReservePoolStakeable_init(
@@ -24,7 +24,7 @@ contract ReservePoolRestrictStakeable is ReservePoolStakeable {
             _savingsPool,
             _sourceAddress,
             _swapRouter,
-            _sourceSyncPercent,
+            _sourceSinkPercent,
             _operatorPercent
         );
     }

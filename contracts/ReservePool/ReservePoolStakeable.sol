@@ -35,7 +35,7 @@ contract ReservePoolStakeable is PausableUpgradeable, ReservePool {
         address _savingsPool,
         address _sourceAddress,
         address _swapRouter,
-        uint256 _sourceSyncPercent,
+        uint256 _sourceSinkPercent,
         uint256 _operatorPercent
     ) public virtual initializer {
         __Pausable_init();
@@ -44,7 +44,7 @@ contract ReservePoolStakeable is PausableUpgradeable, ReservePool {
             _savingsPool,
             _sourceAddress,
             _swapRouter,
-            _sourceSyncPercent,
+            _sourceSinkPercent,
             _operatorPercent
         );
     }
