@@ -55,25 +55,30 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         reservePool = IReservePool(_reservePool);
         feeToken.approve(_savingsPool, type(uint256).max);
         feeToken.approve(_reservePool, type(uint256).max);
-        savingsFeePercent = _savingsFeePercent;
         totalFeePercent = _totalFeePercent;
+        savingsFeePercent = _savingsFeePercent;
         reserveFeePercent = MAX_PPM - savingsFeePercent;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /// @notice Distributes collected fees to the savings pool and the reserve pool.
-    /// @dev If the savings pool is empty, fees held for savers are not distributed.
+    /// @dev If the savings pool is empty, fees for savers are sent to reserve.
     function distributeFees() external {
-        uint256 savingsFee = (savingsFeePercent * collectedFees) / MAX_PPM;
-        uint256 reserveFee = (reserveFeePercent * collectedFees) / MAX_PPM;
-        if (savingsPool.totalSavings() > 0) {
-            savingsPool.notifyRewardAmount(savingsFee);
-            collectedFees -= savingsFee;
+        if (savingsPool.totalSavings() == 0) {
+            reservePool.depositFees(collectedFees);
+            collectedFees = 0;
+            emit FeesDistributed(collectedFees);
+            return;
         }
+        // calculate and distribute to savings pool
+        uint256 savingsFee = (savingsFeePercent * collectedFees) / MAX_PPM;
+        savingsPool.notifyRewardAmount(savingsFee);
+        // calculate and distribute to reserve pool
+        uint256 reserveFee = (reserveFeePercent * collectedFees) / MAX_PPM;
         reservePool.depositFees(reserveFee);
-        collectedFees -= reserveFee;
-        emit FeesDistributed(savingsFee + reserveFee);
+        collectedFees = 0;
+        emit FeesDistributed(collectedFees);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

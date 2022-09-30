@@ -8,9 +8,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-import "../interface/IReservePool.sol";
-import "../interface/ISavingsPool.sol";
-import "../interface/IStableCredit.sol";
+import "./interface/IReservePool.sol";
+import "./interface/ISavingsPool.sol";
+import "./interface/IStableCredit.sol";
 
 /// @title ReservePool
 /// @author ReSource
@@ -42,7 +42,7 @@ contract ReservePool is
     uint256 public operatorBalance;
     uint256 public swapSinkPercent;
     uint256 public operatorPercent;
-    uint256 public collateralPercent;
+    uint256 public minLTV;
     uint24 public poolFee;
 
     /* ========== INITIALIZER ========== */
@@ -52,13 +52,14 @@ contract ReservePool is
         address _savingsPool,
         address _sourceAddress,
         address _swapRouter,
-        uint256 _swapSinkPercent,
+        uint256 _minLTV,
         uint256 _operatorPercent
     ) public initializer {
         require(
-            _swapSinkPercent + _operatorPercent <= MAX_PPM,
-            "ReservePool: swap sink must be less than 100%"
+            _operatorPercent <= MAX_PPM,
+            "ReservePool: operator percent must be less than 100%"
         );
+        require(_minLTV < MAX_PPM);
         __ReentrancyGuard_init();
         __Pausable_init();
         __Ownable_init();
@@ -71,9 +72,9 @@ contract ReservePool is
         feeToken.approve(_swapRouter, type(uint256).max);
         poolFee = 3000;
         source = _sourceAddress;
-        swapSinkPercent = _swapSinkPercent;
         operatorPercent = _operatorPercent;
-        collateralPercent = MAX_PPM - (swapSinkPercent + operatorPercent);
+        swapSinkPercent = MAX_PPM - _operatorPercent;
+        minLTV = _minLTV;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -89,13 +90,15 @@ contract ReservePool is
     /// and operator balances. Will also convert fee token to SOURCE if configured.
     function depositFees(uint256 amount) public override nonReentrant onlyAuthorized {
         require(amount > 0, "ReservePool: Cannot deposit 0");
-        uint256 swapSinkAmount = convertFeeToSource((swapSinkPercent * amount) / MAX_PPM);
-        uint256 operatorAmount = (operatorPercent * amount) / MAX_PPM;
-        uint256 collateralAmount = (collateralPercent * amount) / MAX_PPM;
-        swapSink += swapSinkAmount;
-        operatorBalance += operatorAmount;
-        collateral += collateralAmount;
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 neededCollateral = getNeededCollateral();
+        if (neededCollateral > amount) {
+            collateral += amount;
+            return;
+        }
+        collateral += neededCollateral;
+        swapSink += convertFeeToSource((swapSinkPercent * (amount - neededCollateral)) / MAX_PPM);
+        operatorBalance += (operatorPercent * (amount - neededCollateral)) / MAX_PPM;
     }
 
     function withdrawOperator(uint256 amount) public nonReentrant onlyAuthorized {
@@ -154,17 +157,18 @@ contract ReservePool is
         poolFee = _poolFee;
     }
 
-    function updatePercents(uint256 _swapSinkPercent, uint256 _operatorPercent)
-        external
-        onlyAuthorized
-    {
+    function updateOperatorPercent(uint256 _operatorPercent) external onlyAuthorized {
         require(
-            _swapSinkPercent + _operatorPercent <= MAX_PPM,
-            "ReservePool: percents must be less than 100%"
+            _operatorPercent <= MAX_PPM,
+            "ReservePool: operator percent must be less than 100%"
         );
-        swapSinkPercent = _swapSinkPercent;
         operatorPercent = _operatorPercent;
-        collateralPercent = MAX_PPM - (_swapSinkPercent + _operatorPercent);
+        swapSinkPercent = MAX_PPM - _operatorPercent;
+    }
+
+    function updateMinLTV(uint256 _minLTV) external onlyAuthorized {
+        require(_minLTV <= MAX_PPM, "ReservePool: LTV must be less than 100%");
+        minLTV = _minLTV;
     }
 
     function convertFeeToSource(uint256 amount) private onlyAuthorized returns (uint256) {
@@ -183,21 +187,22 @@ contract ReservePool is
         return swapRouter.exactInputSingle(params);
     }
 
-    function liquidateSwapSink() private onlyAuthorized {
-        if (swapSink == 0) return;
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: source,
-            tokenOut: address(feeToken),
-            fee: poolFee,
-            recipient: msg.sender,
-            deadline: block.timestamp,
-            amountIn: swapSink,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-        });
+    function LTV() public view returns (uint256) {
+        return
+            (collateral * MAX_PPM) /
+            stableCredit.convertCreditToFeeToken(
+                IERC20Upgradeable(address(stableCredit)).totalSupply()
+            );
+    }
 
-        swapRouter.exactInputSingle(params);
-        return;
+    function getNeededCollateral() public view returns (uint256) {
+        uint256 currentLTV = LTV();
+        if (currentLTV >= minLTV) return 0;
+        return
+            ((minLTV - currentLTV) *
+                stableCredit.convertCreditToFeeToken(
+                    IERC20Upgradeable(address(stableCredit)).totalSupply()
+                )) / MAX_PPM;
     }
 
     /* ========== MODIFIERS ========== */

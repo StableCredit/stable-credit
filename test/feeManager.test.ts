@@ -75,11 +75,13 @@ describe("Fee Manager Tests", function () {
 
     expect(ethToString(await contracts.reservePool.collateral())).to.equal("100000.0")
 
+    expect(ethToString(await contracts.feeManager.collectedFees())).to.equal("4.0")
+
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
-    expect(ethToString(await contracts.reservePool.collateral())).to.equal("100001.0")
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("100000.0")
     expect(ethToString(await contracts.reservePool.swapSink())).to.equal("1.0")
-    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("0.0")
+    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("1.0")
 
     expect(ethToString(await contracts.savingsPool.rewardRate())).to.equal("2.0")
   })

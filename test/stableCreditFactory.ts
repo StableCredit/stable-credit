@@ -146,8 +146,8 @@ const deployContracts = async () => {
     contracts.savingsPool.address,
     sourceToken.address,
     "0xe592427a0aece92de3edee1f18e0157c05861564",
+    200000,
     500000,
-    0,
   ]
   contracts.reservePool = (await upgrades.deployProxy(reservePoolFactory, args, {
     initializer: "__ReservePool_init",

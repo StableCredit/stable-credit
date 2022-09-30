@@ -118,38 +118,127 @@ describe("Reserve Pool Tests", function () {
       "1.0000002"
     )
   })
-  it("Reserve configuration updatees fee percents", async function () {
-    expect(await (await contracts.reservePool.collateralPercent()).toNumber()).to.equal(500000)
+  it("Configuring operator percent updates swapSink percent", async function () {
     expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(500000)
-    expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(0)
+    expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(500000)
 
-    await expect(contracts.reservePool.updatePercents(200000, 200000)).to.not.be.reverted
+    await expect(contracts.reservePool.updateOperatorPercent(200000)).to.not.be.reverted
 
-    expect(await (await contracts.reservePool.collateralPercent()).toNumber()).to.equal(600000)
-    expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(200000)
+    expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(800000)
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(200000)
   })
+
+  it("depositing collateral updates reserve LTV", async function () {
+    await expect(contracts.reservePool.depositCollateral(stringToEth("15.0"))).to.not.be.reverted
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("15.0")
+    // LTV should be 50%
+    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(500000)
+    await expect(contracts.reservePool.depositCollateral(stringToEth("15.0"))).to.not.be.reverted
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("30.0")
+    // LTV should be 100%
+    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(1000000)
+  })
+
+  it("needed collateral is updated when LTV changes", async function () {
+    expect(await (await contracts.reservePool.minLTV()).toNumber()).to.equal(200000)
+    expect(ethToString(await contracts.reservePool.getNeededCollateral())).to.equal("6.0")
+    await expect(contracts.reservePool.depositCollateral(stringToEth("5.0"))).to.not.be.reverted
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("5.0")
+    // LTV should be 16%
+    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(166666)
+    // needed is really 1.0 but results in 1.00002 from rounding
+    expect(ethToString(await contracts.reservePool.getNeededCollateral())).to.equal("1.00002")
+    await expect(contracts.reservePool.depositCollateral(stringToEth("1.0"))).to.not.be.reverted
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("6.0")
+    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(200000)
+  })
+
+  it("Expanding stable credit supply updates reserve LTV", async function () {
+    await expect(contracts.reservePool.depositCollateral(stringToEth("15.0"))).to.not.be.reverted
+    // 30 / 15 = 50%
+    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(500000)
+    // expand supply
+    await expect(
+      contracts.stableCredit
+        .connect(memberA)
+        .transfer(memberB.address, stringToStableCredits("10.0"))
+    ).to.not.be.reverted
+    // 40 / 15 = 37.5%
+    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(375000)
+  })
+
+  it("Distributing fees to reserve with fully insufficient collateral adds only to collateral", async function () {
+    // unpuase fee collection
+    await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
+
+    await expect(
+      contracts.mockFeeToken
+        .connect(memberA)
+        .approve(contracts.feeManager.address, ethers.constants.MaxUint256)
+    ).to.not.be.reverted
+
+    await expect(contracts.mockFeeToken.transfer(memberA.address, stringToEth("20"))).to.not.be
+      .reverted
+
+    await expect(
+      contracts.stableCredit.connect(memberA).transfer(memberB.address, stringToStableCredits("20"))
+    ).to.not.be.reverted
+
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("0.0")
+
+    // because savings pool is empty, all fees will go to reserve
+    await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
+
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("4.0")
+    expect(ethToString(await contracts.reservePool.swapSink())).to.equal("0.0")
+    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("0.0")
+  })
+
+  it("Distributing fees to reserve with partially sufficient collateral adds to collateral first", async function () {
+    await expect(contracts.reservePool.depositCollateral(stringToEth("7"))).to.not.be.reverted
+    // unpuase fee collection
+    await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
+
+    await expect(
+      contracts.mockFeeToken
+        .connect(memberA)
+        .approve(contracts.feeManager.address, ethers.constants.MaxUint256)
+    ).to.not.be.reverted
+
+    await expect(contracts.mockFeeToken.transfer(memberA.address, stringToEth("20"))).to.not.be
+      .reverted
+
+    await expect(
+      contracts.stableCredit.connect(memberA).transfer(memberB.address, stringToStableCredits("10"))
+    ).to.not.be.reverted
+
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("7.0")
+    expect(ethToString(await contracts.reservePool.swapSink())).to.equal("0.0")
+    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("0.0")
+
+    await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
+
+    // min LTV is 20% (8 collateral is 20% of totalSupply 40)
+    expect(ethToString(await contracts.reservePool.collateral())).to.equal("8.0")
+    expect(ethToString(await contracts.reservePool.swapSink())).to.equal("0.5")
+    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("0.5")
+  })
+
   it("Withdrawing operator balance transfers and updates operator balance", async function () {
-    await expect(contracts.reservePool.updatePercents(200000, 200000)).to.not.be.reverted
     await expect(contracts.accessManager.grantOperator(memberF.address)).to.not.be.reverted
     await expect(
       contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
+    await expect(contracts.reservePool.depositCollateral(stringToEth("1000"))).to.not.be.reverted
+
     await expect(contracts.reservePool.depositFees(stringToEth("100"))).to.not.be.reverted
 
-    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("20.0")
+    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("50.0")
 
     expect(ethToString(await contracts.mockFeeToken.balanceOf(memberF.address))).to.equal("0.0")
-    await expect(contracts.reservePool.connect(memberF).withdrawOperator(stringToEth("20"))).to.not
+    await expect(contracts.reservePool.connect(memberF).withdrawOperator(stringToEth("50"))).to.not
       .be.reverted
-    expect(ethToString(await contracts.mockFeeToken.balanceOf(memberF.address))).to.equal("20.0")
+    expect(ethToString(await contracts.mockFeeToken.balanceOf(memberF.address))).to.equal("50.0")
     expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("0.0")
-  })
-  it("Updating uniswap pool fee updats fee configuration", async function () {
-    expect(await contracts.reservePool.poolFee()).to.equal(3000)
-
-    await expect(contracts.reservePool.setPoolFee(300)).to.not.be.reverted
-
-    expect(await contracts.reservePool.poolFee()).to.equal(300)
   })
 })
