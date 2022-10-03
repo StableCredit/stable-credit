@@ -159,10 +159,10 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     }
 
     function repayCreditBalance(uint128 _amount) external {
-        uint256 balance = creditBalanceOf(msg.sender);
-        require(_amount <= balance, "StableCredit: invalid amount");
+        uint256 creditBalance = creditBalanceOf(msg.sender);
+        require(_amount <= creditBalance, "StableCredit: invalid amount");
         feeToken.transferFrom(msg.sender, address(reservePool), _amount);
-        uint256 leftover = savingsPool.demurrage(msg.sender, creditBalanceOf(msg.sender));
+        uint256 leftover = savingsPool.demurrage(msg.sender, creditBalance);
         if (leftover != 0) networkDebt += leftover;
         _members[msg.sender].creditBalance -= _amount;
         emit CreditBalanceRepayed(_amount);
