@@ -60,7 +60,6 @@
     "coverage": "yarn hardhat coverage --testfiles 'test/*.ts' --network hardhat",
     "typechain": "yarn hardhat typechain",
     "deploy": "yarn hardhat deploy",
-    "postdeploy": "yarn hardhat run scripts/publish.ts && yarn hardhat run scripts/setup-local.ts",
     "setup-local": "yarn hardhat run scripts/setup-local.ts",
     "watch": "yarn node scripts/watch.js",
     "accounts": "yarn hardhat accounts",

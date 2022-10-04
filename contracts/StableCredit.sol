@@ -8,14 +8,13 @@ import "./CIP36Upgradeable.sol";
 import "./interface/IAccessManager.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/IFeeManager.sol";
-import "./interface/ISavingsPool.sol";
 import "./interface/IReservePool.sol";
 
 /// @title StableCreditDemurrage contract
 /// @author ReSource
 /// @notice Extends the ERC20 standard to include mutual credit functionality where users
 /// can mint tokens into existence by utilizing their lines of credit. Credit defaults result
-/// in either a savings pool demurrage or a transfer of credit to the network debt balance.
+/// in the transfer of the outstanding credit balance to the network debt balance.
 /// @dev Restricted functions are only callable by network operators.
 
 contract StableCredit is CIP36Upgradeable, IStableCredit {
@@ -33,20 +32,23 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     mapping(address => uint256) public creditIssuance;
     IAccessManager public access;
     IFeeManager public feeManager;
-    ISavingsPool public savingsPool;
     IReservePool public reservePool;
     IERC20Upgradeable public feeToken;
 
     /* ========== INITIALIZER ========== */
 
     function initialize(
-        address _accessManager,
         address _feeToken,
+        address _accessManager,
+        address _feeManager,
+        address _reservePool,
         string memory name_,
         string memory symbol_
     ) external virtual initializer {
         access = IAccessManager(_accessManager);
         feeToken = IERC20Upgradeable(_feeToken);
+        feeManager = IFeeManager(_feeManager);
+        reservePool = IReservePool(_reservePool);
         __CIP36_init(name_, symbol_);
         demurrageIndex = 1;
         conversionRate = 1e18;
@@ -145,7 +147,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         burnDemurraged(msg.sender);
         _burn(msg.sender, _amount);
         networkDebt -= _amount;
-        reservePool.reimburseMember(msg.sender, convertCreditToFeeToken(_amount));
+        reservePool.reimburseMember(address(this), msg.sender, convertCreditToFeeToken(_amount));
         emit NetworkDebtBurned(msg.sender, _amount);
     }
 
@@ -155,15 +157,14 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         if (burnAmount == 0) return;
         _burn(_member, burnAmount);
         demurraged -= burnAmount;
-        reservePool.reimburseMember(_member, convertCreditToFeeToken(burnAmount));
+        reservePool.reimburseMember(address(this), _member, convertCreditToFeeToken(burnAmount));
     }
 
     function repayCreditBalance(uint128 _amount) external {
         uint256 creditBalance = creditBalanceOf(msg.sender);
         require(_amount <= creditBalance, "StableCredit: invalid amount");
         feeToken.transferFrom(msg.sender, address(reservePool), _amount);
-        uint256 leftover = savingsPool.demurrage(msg.sender, creditBalance);
-        if (leftover != 0) networkDebt += leftover;
+        networkDebt += creditBalance;
         _members[msg.sender].creditBalance -= _amount;
         emit CreditBalanceRepayed(_amount);
     }
@@ -172,8 +173,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
 
     function defaultCreditLine(address _member) internal virtual {
         uint256 creditBalance = creditBalanceOf(_member);
-        uint256 leftover = savingsPool.demurrage(_member, creditBalance);
-        if (leftover != 0) networkDebt += leftover;
+        networkDebt += creditBalance;
         _members[_member].creditBalance = 0;
         _members[_member].creditLimit = 0;
         delete creditIssuance[_member];
@@ -220,18 +220,6 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         updateConversionRate();
         demurrageIndex++;
         emit MembersDemurraged(_amount);
-    }
-
-    function setSavingsPool(address _savingsPool) external onlyAuthorized {
-        savingsPool = ISavingsPool(_savingsPool);
-    }
-
-    function setReservePool(address _reservePool) external onlyAuthorized {
-        reservePool = IReservePool(_reservePool);
-    }
-
-    function setFeeManager(address _feeManager) external onlyAuthorized {
-        feeManager = IFeeManager(_feeManager);
     }
 
     function setCreditExpiration(uint256 _seconds) external onlyAuthorized {

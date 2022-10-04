@@ -8,12 +8,11 @@ import "./interface/IReservePool.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/IAccessManager.sol";
 import "./interface/IFeeManager.sol";
-import "./interface/ISavingsPool.sol";
 
 /// @title FeeManager
 /// @author ReSource
 /// @notice Collects fees from network members and distributes collected fees to the
-/// reserve and savings pools.
+/// reserve pool.
 contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -23,67 +22,29 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== STATE VARIABLES ========== */
 
-    IERC20Upgradeable public feeToken;
-    IAccessManager public access;
-    IStableCredit public stableCredit;
-    ISavingsPool public savingsPool;
     IReservePool public reservePool;
-    uint256 public savingsFeePercent;
-    uint256 public reserveFeePercent;
-    uint256 public totalFeePercent;
-    uint256 public collectedFees;
+    mapping(address => uint256) public feePercent;
+    mapping(address => uint256) public collectedFees;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(
-        address _accessManager,
-        address _stableCredit,
-        address _savingsPool,
-        address _reservePool,
-        uint256 _totalFeePercent,
-        uint256 _savingsFeePercent
-    ) external virtual initializer {
-        require(_savingsFeePercent <= MAX_PPM, "FeeManager: sub fees must be less than 100%");
-        require(_totalFeePercent <= MAX_PPM, "FeeManager: total fees must be less than 100%");
+    function initialize(address _reservePool) external virtual initializer {
         __Ownable_init();
         __Pausable_init();
         _pause();
-        access = IAccessManager(_accessManager);
-        stableCredit = IStableCredit(_stableCredit);
-        feeToken = IERC20Upgradeable(stableCredit.getFeeToken());
-        savingsPool = ISavingsPool(_savingsPool);
         reservePool = IReservePool(_reservePool);
-        feeToken.approve(_savingsPool, type(uint256).max);
-        feeToken.approve(_reservePool, type(uint256).max);
-        totalFeePercent = _totalFeePercent;
-        savingsFeePercent = _savingsFeePercent;
-        reserveFeePercent = MAX_PPM - savingsFeePercent;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    /// @notice Distributes collected fees to the savings pool and the reserve pool.
-    /// @dev If the savings pool is empty, fees for savers are sent to reserve.
-    function distributeFees() external {
-        if (savingsPool.totalSavings() == 0) {
-            reservePool.depositFees(collectedFees);
-            collectedFees = 0;
-            emit FeesDistributed(collectedFees);
-            return;
-        }
-        // calculate and distribute to savings pool
-        uint256 savingsFee = (savingsFeePercent * collectedFees) / MAX_PPM;
-        savingsPool.notifyRewardAmount(savingsFee);
-        // calculate and distribute to reserve pool
-        uint256 reserveFee = (reserveFeePercent * collectedFees) / MAX_PPM;
-        reservePool.depositFees(reserveFee);
-        collectedFees = 0;
-        emit FeesDistributed(collectedFees);
+    /// @notice Distributes collected fees to the reserve pool.
+    function distributeFees(address network) external {
+        reservePool.depositFees(network, collectedFees[network]);
+        emit FeesDistributed(network, collectedFees[network]);
+        collectedFees[network] = 0;
     }
 
-    /* ========== RESTRICTED FUNCTIONS ========== */
-
-    /// @notice Called by the StableCredit contract to collect fees from the credit sender
+    /// @notice Called by a StableCredit instance to collect fees from the credit sender
     /// @dev the sender must approve the feeManager to spend fee tokens on their behalf before
     /// fees can be collected.
     /// @param sender stable credit sender address
@@ -93,43 +54,70 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         address sender,
         address receiver,
         uint256 amount
-    ) external override onlyOperator {
-        if (paused() || receiver == address(savingsPool)) return;
+    ) external override {
+        if (paused()) return;
+        IStableCredit stableCredit = IStableCredit(msg.sender);
         uint256 totalFee = stableCredit.convertCreditToFeeToken(
-            (totalFeePercent * amount) / MAX_PPM
+            (feePercent[msg.sender] * amount) / MAX_PPM
         );
-        feeToken.safeTransferFrom(sender, address(this), totalFee);
-        collectedFees += totalFee;
-        emit FeesCollected(sender, totalFee);
+        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
+            sender,
+            address(this),
+            totalFee
+        );
+        collectedFees[msg.sender] += totalFee;
+        emit FeesCollected(msg.sender, sender, totalFee);
     }
 
-    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOperator {
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function setNetworkFeePercent(address network, uint256 _feePercent)
+        external
+        onlyNetworkOperator(network)
+    {
+        require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
+
+        // if fee token allowance for reserve has not been set, set max approval
+        if (
+            IERC20Upgradeable(IStableCredit(network).getFeeToken()).allowance(
+                address(this),
+                address(reservePool)
+            ) == 0
+        )
+            IERC20Upgradeable(IStableCredit(network).getFeeToken()).approve(
+                address(reservePool),
+                type(uint256).max
+            );
+        feePercent[network] = _feePercent;
+    }
+
+    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
         IERC20Upgradeable(tokenAddress).safeTransfer(msg.sender, tokenAmount);
     }
 
-    function updateSavingFeePercents(uint256 _savingsFeePercent) external onlyOperator {
-        require(_savingsFeePercent <= MAX_PPM, "FeeManager: saving fee must be less than 100%");
-        savingsFeePercent = _savingsFeePercent;
-        reserveFeePercent = MAX_PPM - savingsFeePercent;
-    }
-
-    function updateTotalFeePercents(uint256 _totalFeePercent) external onlyOperator {
+    function updateTotalFeePercents(address network, uint256 _totalFeePercent)
+        external
+        onlyNetworkOperator(network)
+    {
         require(_totalFeePercent <= MAX_PPM, "FeeManager: total fee must be less than 100%");
-        totalFeePercent = _totalFeePercent;
+        feePercent[network] = _totalFeePercent;
     }
 
-    function pauseFees() public onlyOperator {
+    function pauseFees() public onlyOwner {
         _pause();
     }
 
-    function unpauseFees() public onlyOperator {
+    function unpauseFees() public onlyOwner {
         _unpause();
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyOperator() {
-        require(access.isNetworkOperator(msg.sender), "FeeManager: Caller is not credit operator");
+    modifier onlyNetworkOperator(address network) {
+        require(
+            IStableCredit(network).isAuthorized(msg.sender) || msg.sender == owner(),
+            "FeeManager: Unauthorized caller"
+        );
         _;
     }
 }

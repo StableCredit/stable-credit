@@ -17,21 +17,18 @@ A stable credit is a complementary currency in an on-chain mutual credit network
 
 Network members are granted access to credit by network operators via the `AccessManager`. Operators are also responsible for managing network configurations in order to promote healthy network activity.
 
-Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, fees are collected by the `FeeManager` and disbursed to either the `ReservePool` or the `SavingsPool`.
+Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, fees are collected by the `FeeManager` and disbursed to the `ReservePool`.
 
-The `ReservePool` is most responsible for securing credit lines using collateral supplied by transaction fees. The reserve has three major components: Credit collateral used to reimburse network credit defaults, a withdrawable operator balance, and a SOURCE sink used as a medium for future cross network credit swaps.
-
-The `SavingsPool` is responsible for providing members the opportunity to participate in removing credits from circulation in order to burn away bad debt and preserve the endogenous supply. Savers are rewarded for participating in "voluntary demurrage" via a cut of network transaction fees.
+The `ReservePool` is most responsible for securing credit lines accross networks using collateral supplied by transaction fees. The reserve has three major components: Credit collateral used to reimburse network credit defaults, a withdrawable operator balance, and a SOURCE sink used as a medium for future cross network credit swaps.
 
 ---
 
 ## Contracts:
 
 - `StableCredit`: An ERC20 extension that includes logic for credit lines and default managment.
-- `FeeManager`: Collects and routes fees to the configured pools.
-- `SavingsPool`: Removes credits from circulation in exchange for fee tokens to account for credit defaults.
-- `ReservePool`: Responsible for storing, converting, and transfering network transaction fees according to configuration.
 - `AccessManager`: An extension of the Open Zeppelin "AccessControl" contract, responsible for granting and revoking network member and operator addresses.
+- `FeeManager`: Collects and routes fees to the configured pools.
+- `ReservePool`: Responsible for storing, converting, and transfering network transaction fees according to configuration.
 
 # 🏄‍♂️ Quick Start
 

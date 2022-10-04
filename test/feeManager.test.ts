@@ -30,7 +30,9 @@ describe("Fee Manager Tests", function () {
       contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
 
-    await expect(contracts.reservePool.depositCollateral(stringToEth("100000"))).to.not.be.reverted
+    await expect(
+      contracts.reservePool.depositCollateral(contracts.stableCredit.address, stringToEth("100000"))
+    ).to.not.be.reverted
 
     // unpause fees
     await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
@@ -59,39 +61,42 @@ describe("Fee Manager Tests", function () {
       ethToString(await contracts.mockFeeToken.balanceOf(contracts.feeManager.address))
     ).to.equal("4.0")
   })
-  it("distributing fees updates savings pool and reserve pool", async function () {
+  it("distributing fees updates reserve pool", async function () {
     await expect(
       contracts.stableCredit.connect(memberA).transfer(memberB.address, stringToStableCredits("20"))
     ).to.not.be.reverted
 
-    await expect(
-      contracts.stableCredit
-        .connect(memberB)
-        .approve(contracts.savingsPool.address, ethers.constants.MaxUint256)
-    ).to.not.be.reverted
+    expect(
+      ethToString(await contracts.reservePool.collateral(contracts.stableCredit.address))
+    ).to.equal("100000.0")
 
-    await expect(contracts.savingsPool.connect(memberB).stake(stringToStableCredits("5"))).to.not.be
+    expect(
+      ethToString(await contracts.feeManager.collectedFees(contracts.stableCredit.address))
+    ).to.equal("4.0")
+
+    await expect(contracts.feeManager.distributeFees(contracts.stableCredit.address)).to.not.be
       .reverted
 
-    expect(ethToString(await contracts.reservePool.collateral())).to.equal("100000.0")
-
-    expect(ethToString(await contracts.feeManager.collectedFees())).to.equal("4.0")
-
-    await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
-
-    expect(ethToString(await contracts.reservePool.collateral())).to.equal("100000.0")
-    expect(ethToString(await contracts.reservePool.swapSink())).to.equal("1.0")
-    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("1.0")
-
-    expect(ethToString(await contracts.savingsPool.rewardRate())).to.equal("2.0")
+    expect(
+      ethToString(await contracts.reservePool.collateral(contracts.stableCredit.address))
+    ).to.equal("100000.0")
+    expect(
+      ethToString(await contracts.reservePool.swapSink(contracts.stableCredit.address))
+    ).to.equal("1.0")
+    expect(
+      ethToString(await contracts.reservePool.operatorBalance(contracts.stableCredit.address))
+    ).to.equal("3.0")
   })
 
-  it("Updating savings fee percents updates savingsFeePercent and reserveFeePercent", async function () {
-    expect(await (await contracts.feeManager.savingsFeePercent()).toNumber()).to.equal(500000)
-    expect(await (await contracts.feeManager.reserveFeePercent()).toNumber()).to.equal(500000)
-    await expect(contracts.feeManager.updateSavingFeePercents(200000)).to.not.be.reverted
-    expect(await (await contracts.feeManager.savingsFeePercent()).toNumber()).to.equal(200000)
-    expect(await (await contracts.feeManager.reserveFeePercent()).toNumber()).to.equal(800000)
+  it("setFeePercent updates network's feePercent", async function () {
+    expect(
+      await (await contracts.feeManager.feePercent(contracts.stableCredit.address)).toNumber()
+    ).to.equal(200000)
+    await expect(contracts.feeManager.setNetworkFeePercent(contracts.stableCredit.address, 100000))
+      .to.not.be.reverted
+    expect(
+      await (await contracts.feeManager.feePercent(contracts.stableCredit.address)).toNumber()
+    ).to.equal(100000)
   })
 
   it("Pausing fees stops fee collection on tranasfer of stable credits", async function () {
