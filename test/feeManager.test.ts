@@ -12,6 +12,9 @@ describe("Fee Manager Tests", function () {
   let contracts: NetworkContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
+  let memberC: SignerWithAddress
+  let memberD: SignerWithAddress
+  let memberE: SignerWithAddress
 
   this.beforeEach(async function () {
     const accounts = await ethers.getSigners()

@@ -82,12 +82,12 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function setMemberFeePercent(address member, uint256 _feePercent) external onlyOperator {
+    function setMemberFeePercent(address member, uint256 _feePercent) external onlyUnderwriter {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
         memberFeePercent[member] = _feePercent;
     }
 
-    function setDefaultFeePercent(uint256 _feePercent) external onlyOperator {
+    function setDefaultFeePercent(uint256 _feePercent) external onlyUnderwriter {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
         defaultFeePercent = _feePercent;
     }
@@ -107,6 +107,14 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /* ========== MODIFIERS ========== */
 
     modifier onlyOperator() {
+        require(
+            stableCredit.isAuthorized(msg.sender) || msg.sender == owner(),
+            "FeeManager: Caller is not credit operator"
+        );
+        _;
+    }
+
+    modifier onlyUnderwriter() {
         require(
             stableCredit.isAuthorized(msg.sender) || msg.sender == owner(),
             "FeeManager: Caller is not credit operator"
