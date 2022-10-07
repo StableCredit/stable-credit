@@ -14,11 +14,14 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole("OPERATOR", msg.sender);
         _setupRole("MEMBER", msg.sender);
+        _setupRole("UNDERWRITER", msg.sender);
+        _setRoleAdmin("UNDERWRITER", "OPERATOR");
         _setRoleAdmin("MEMBER", "OPERATOR");
 
         for (uint256 j = 0; j < _operators.length; j++) {
             require(_operators[j] != address(0), "AccessManager: invalid operator supplied");
             grantRole("OPERATOR", _operators[j]);
+            grantRole("UNDERWRITER", _operators[j]);
         }
     }
 
@@ -29,23 +32,34 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit MemberAdded(_member);
     }
 
+    function grantUnderwriter(address _underwriter) external onlyNetworkOperator {
+        grantRole("UNDERWRITER", _underwriter);
+        emit UnderwriterAdded(_underwriter);
+    }
+
     function grantOperator(address _operator)
         external
         operatorDoesNotExist(_operator)
         notNull(_operator)
-        onlyOperator
+        onlyNetworkOperator
     {
         grantRole("OPERATOR", _operator);
         emit OperatorAdded(_operator);
     }
 
-    function revokeOperator(address _operator) external onlyOperator {
+    function revokeOperator(address _operator) external onlyNetworkOperator {
         require(_operator != owner(), "can't remove owner operator");
         revokeRole("OPERATOR", _operator);
         emit OperatorRemoved(_operator);
     }
 
-    function revokeMember(address _member) external onlyOperator {
+    function revokeUnderwriter(address _underwriter) external onlyNetworkOperator {
+        require(_underwriter != owner(), "can't remove owner");
+        revokeRole("UNDERWRITER", _underwriter);
+        emit UnderwriterRemoved(_underwriter);
+    }
+
+    function revokeMember(address _member) external onlyNetworkOperator {
         require(_member != owner(), "can't remove owner");
         revokeRole("MEMBER", _member);
         emit MemberRemoved(_member);
@@ -57,8 +71,12 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         return hasRole("MEMBER", _member);
     }
 
-    function isNetworkOperator(address _operator) public view override returns (bool) {
+    function isOperator(address _operator) public view override returns (bool) {
         return hasRole("OPERATOR", _operator);
+    }
+
+    function isUnderwriter(address _underwriter) external view override returns (bool) {
+        return hasRole("UNDERWRITER", _underwriter);
     }
 
     /* ========== MODIFIERS ========== */
@@ -78,7 +96,7 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _;
     }
 
-    modifier onlyOperator() {
+    modifier onlyAdmin() {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "AccessManager: Only admin can call");
         _;
     }

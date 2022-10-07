@@ -23,25 +23,36 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /* ========== STATE VARIABLES ========== */
 
     IReservePool public reservePool;
-    mapping(address => uint256) public feePercent;
-    mapping(address => uint256) public collectedFees;
+    IAccessManager public access;
+    IStableCredit public stableCredit;
+    mapping(address => uint256) public memberFeePercent;
+    uint256 public defaultFeePercent;
+    uint256 public collectedFees;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(address _reservePool) external virtual initializer {
+    function initialize(
+        address _stableCredit,
+        address _reservePool,
+        uint256 _defaultFeePercent
+    ) external virtual initializer {
         __Ownable_init();
         __Pausable_init();
         _pause();
         reservePool = IReservePool(_reservePool);
+        stableCredit = IStableCredit(_stableCredit);
+
+        IERC20Upgradeable(stableCredit.getFeeToken()).approve(_reservePool, type(uint256).max);
+        defaultFeePercent = _defaultFeePercent;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /// @notice Distributes collected fees to the reserve pool.
-    function distributeFees(address network) external {
-        reservePool.depositFees(network, collectedFees[network]);
-        emit FeesDistributed(network, collectedFees[network]);
-        collectedFees[network] = 0;
+    function distributeFees() external {
+        reservePool.depositFees(collectedFees);
+        emit FeesDistributed(collectedFees);
+        collectedFees = 0;
     }
 
     /// @notice Called by a StableCredit instance to collect fees from the credit sender
@@ -56,51 +67,33 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         uint256 amount
     ) external override {
         if (paused()) return;
-        IStableCredit stableCredit = IStableCredit(msg.sender);
-        uint256 totalFee = stableCredit.convertCreditToFeeToken(
-            (feePercent[msg.sender] * amount) / MAX_PPM
-        );
+        uint256 feePercent = memberFeePercent[sender] == 0
+            ? defaultFeePercent
+            : memberFeePercent[sender];
+        uint256 totalFee = stableCredit.convertCreditToFeeToken((feePercent * amount) / MAX_PPM);
         IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
             sender,
             address(this),
             totalFee
         );
-        collectedFees[msg.sender] += totalFee;
-        emit FeesCollected(msg.sender, sender, totalFee);
+        collectedFees += totalFee;
+        emit FeesCollected(sender, totalFee);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function setNetworkFeePercent(address network, uint256 _feePercent)
-        external
-        onlyNetworkOperator(network)
-    {
+    function setMemberFeePercent(address member, uint256 _feePercent) external onlyOperator {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
+        memberFeePercent[member] = _feePercent;
+    }
 
-        // if fee token allowance for reserve has not been set, set max approval
-        if (
-            IERC20Upgradeable(IStableCredit(network).getFeeToken()).allowance(
-                address(this),
-                address(reservePool)
-            ) == 0
-        )
-            IERC20Upgradeable(IStableCredit(network).getFeeToken()).approve(
-                address(reservePool),
-                type(uint256).max
-            );
-        feePercent[network] = _feePercent;
+    function setDefaultFeePercent(uint256 _feePercent) external onlyOperator {
+        require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
+        defaultFeePercent = _feePercent;
     }
 
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
         IERC20Upgradeable(tokenAddress).safeTransfer(msg.sender, tokenAmount);
-    }
-
-    function updateTotalFeePercents(address network, uint256 _totalFeePercent)
-        external
-        onlyNetworkOperator(network)
-    {
-        require(_totalFeePercent <= MAX_PPM, "FeeManager: total fee must be less than 100%");
-        feePercent[network] = _totalFeePercent;
     }
 
     function pauseFees() public onlyOwner {
@@ -113,10 +106,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyNetworkOperator(address network) {
+    modifier onlyOperator() {
         require(
-            IStableCredit(network).isAuthorized(msg.sender) || msg.sender == owner(),
-            "FeeManager: Unauthorized caller"
+            stableCredit.isAuthorized(msg.sender) || msg.sender == owner(),
+            "FeeManager: Caller is not credit operator"
         );
         _;
     }

@@ -16,7 +16,7 @@ import "./interface/IStableCredit.sol";
 /// @notice Stores, converts, and transfers collected fee tokens according to reserve
 /// configuration set by network operators.
 /// @dev This contract interacts with the Uniswap protocol. Ensure the targeted pool
-/// has enough liquidity.
+/// has sufficient liquidity.
 contract ReservePool is
     IReservePool,
     OwnableUpgradeable,
@@ -32,35 +32,45 @@ contract ReservePool is
     /* ========== STATE VARIABLES ========== */
 
     ISwapRouter public swapRouter;
+    IStableCredit public stableCredit;
     address internal source;
     uint24 public poolFee;
 
-    mapping(address => uint256) public collateral;
-    mapping(address => uint256) public swapSink;
-    mapping(address => uint256) public operatorBalance;
+    uint256 public collateral;
+    uint256 public swapSink;
+    uint256 public operatorBalance;
 
-    mapping(address => uint256) public operatorPercent;
-    mapping(address => uint256) public swapSinkPercent;
-    mapping(address => uint256) public minLTV;
+    uint256 public operatorPercent;
+    uint256 public swapSinkPercent;
+    uint256 public minLTV;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(address _sourceAddress, address _swapRouter) public initializer {
+    function initialize(
+        address _stableCredit,
+        address _sourceAddress,
+        address _swapRouter
+    ) public initializer {
         __ReentrancyGuard_init();
         __Pausable_init();
         __Ownable_init();
         _pause();
+        stableCredit = IStableCredit(_stableCredit);
         swapRouter = ISwapRouter(_swapRouter);
         poolFee = 3000;
         source = _sourceAddress;
+        IERC20Upgradeable(stableCredit.getFeeToken()).approve(
+            address(swapRouter),
+            type(uint256).max
+        );
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function depositCollateral(address network, uint256 amount) public nonReentrant {
+    function depositCollateral(uint256 amount) public nonReentrant {
         require(amount > 0, "ReservePool: Cannot stake 0");
-        collateral[network] += amount;
-        IERC20Upgradeable(IStableCredit(network).getFeeToken()).safeTransferFrom(
+        collateral += amount;
+        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
             msg.sender,
             address(this),
             amount
@@ -70,57 +80,51 @@ contract ReservePool is
     /// @dev Called by FeeManager when collected fees are distributed. Will
     /// split deposited fees among the configured components including the collateral
     /// and operator balances. Will also convert fee token to SOURCE if configured.
-    function depositFees(address network, uint256 amount) public override nonReentrant {
+    function depositFees(uint256 amount) public override nonReentrant {
         require(amount > 0, "ReservePool: Cannot deposit 0");
-        IERC20Upgradeable(IStableCredit(network).getFeeToken()).safeTransferFrom(
+        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
             msg.sender,
             address(this),
             amount
         );
-        uint256 neededCollateral = getNeededCollateral(network);
+        uint256 neededCollateral = getNeededCollateral();
         if (neededCollateral > amount) {
-            collateral[network] += amount;
+            collateral += amount;
             return;
         }
-        collateral[network] += neededCollateral;
-        swapSink[network] += convertNetworkFeeToSource(
-            network,
-            (swapSinkPercent[network] * (amount - neededCollateral)) / MAX_PPM
+        collateral += neededCollateral;
+        swapSink += convertNetworkFeeToSource(
+            (swapSinkPercent * (amount - neededCollateral)) / MAX_PPM
         );
-        operatorBalance[network] +=
-            (operatorPercent[network] * (amount - neededCollateral)) /
-            MAX_PPM;
+        operatorBalance += (operatorPercent * (amount - neededCollateral)) / MAX_PPM;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function withdrawOperator(address network, uint256 amount)
-        public
-        nonReentrant
-        onlyNetworkOperator(network)
-    {
+    function withdrawOperator(uint256 amount) public nonReentrant onlyNetworkOperator {
         require(amount > 0, "ReservePool: Cannot withdraw 0");
-        require(amount <= operatorBalance[network], "ReservePool: Insufficient operator balance");
-        operatorBalance[network] -= amount;
-        IERC20Upgradeable(IStableCredit(network).getFeeToken()).safeTransfer(msg.sender, amount);
+        require(amount <= operatorBalance, "ReservePool: Insufficient operator balance");
+        operatorBalance -= amount;
+        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransfer(msg.sender, amount);
     }
 
     /// @notice called by the stable credit contract when members burn away bad credits
     /// @param member member to reimburse
     /// @param credits amount of credits to reimburse in fee tokens
-    function reimburseMember(
-        address network,
-        address member,
-        uint256 credits
-    ) external override onlyNetworkOperator(network) nonReentrant {
-        if (collateral[network] == 0) return;
-        IERC20Upgradeable feeToken = IERC20Upgradeable(IStableCredit(network).getFeeToken());
-        if (credits < collateral[network]) {
-            collateral[network] -= credits;
+    function reimburseMember(address member, uint256 credits)
+        external
+        override
+        onlyNetworkOperator
+        nonReentrant
+    {
+        if (collateral == 0) return;
+        IERC20Upgradeable feeToken = IERC20Upgradeable(stableCredit.getFeeToken());
+        if (credits < collateral) {
+            collateral -= credits;
             feeToken.transfer(member, credits);
         } else {
-            feeToken.transfer(member, collateral[network]);
-            collateral[network] = 0;
+            feeToken.transfer(member, collateral);
+            collateral = 0;
         }
     }
 
@@ -137,39 +141,24 @@ contract ReservePool is
         poolFee = _poolFee;
     }
 
-    function setOperatorPercent(address network, uint256 _operatorPercent)
-        external
-        onlyNetworkOperator(network)
-    {
+    function setOperatorPercent(uint256 _operatorPercent) external onlyNetworkOperator {
         require(
             _operatorPercent <= MAX_PPM,
             "ReservePool: operator percent must be less than 100%"
         );
-        // if fee token allowance for uniswap has not been set, set max approval
-        if (
-            IERC20Upgradeable(IStableCredit(network).getFeeToken()).allowance(
-                address(this),
-                address(swapRouter)
-            ) == 0
-        )
-            IERC20Upgradeable(IStableCredit(network).getFeeToken()).approve(
-                address(swapRouter),
-                type(uint256).max
-            );
-
-        operatorPercent[network] = _operatorPercent;
-        swapSinkPercent[network] = MAX_PPM - _operatorPercent;
+        operatorPercent = _operatorPercent;
+        swapSinkPercent = MAX_PPM - _operatorPercent;
     }
 
-    function setMinLTV(address network, uint256 _minLTV) external onlyNetworkOperator(network) {
+    function setMinLTV(uint256 _minLTV) external onlyNetworkOperator {
         require(_minLTV <= MAX_PPM, "ReservePool: LTV must be less than 100%");
-        minLTV[network] = _minLTV;
+        minLTV = _minLTV;
     }
 
-    function convertNetworkFeeToSource(address network, uint256 amount) private returns (uint256) {
+    function convertNetworkFeeToSource(uint256 amount) private returns (uint256) {
         if (paused()) return amount;
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: IStableCredit(network).getFeeToken(),
+            tokenIn: stableCredit.getFeeToken(),
             tokenOut: source,
             fee: poolFee,
             recipient: msg.sender,
@@ -182,29 +171,29 @@ contract ReservePool is
         return swapRouter.exactInputSingle(params);
     }
 
-    function LTV(address network) public view returns (uint256) {
+    function LTV() public view returns (uint256) {
         return
-            (collateral[network] * MAX_PPM) /
-            IStableCredit(network).convertCreditToFeeToken(
-                IERC20Upgradeable(network).totalSupply()
+            (collateral * MAX_PPM) /
+            stableCredit.convertCreditToFeeToken(
+                IERC20Upgradeable(address(stableCredit)).totalSupply()
             );
     }
 
-    function getNeededCollateral(address network) public view returns (uint256) {
-        uint256 currentLTV = LTV(network);
-        if (currentLTV >= minLTV[network]) return 0;
+    function getNeededCollateral() public view returns (uint256) {
+        uint256 currentLTV = LTV();
+        if (currentLTV >= minLTV) return 0;
         return
-            ((minLTV[network] - currentLTV) *
-                IStableCredit(network).convertCreditToFeeToken(
-                    IERC20Upgradeable(network).totalSupply()
+            ((minLTV - currentLTV) *
+                stableCredit.convertCreditToFeeToken(
+                    IERC20Upgradeable(address(stableCredit)).totalSupply()
                 )) / MAX_PPM;
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyNetworkOperator(address network) {
+    modifier onlyNetworkOperator() {
         require(
-            IStableCredit(network).isAuthorized(msg.sender) || msg.sender == owner(),
+            stableCredit.isAuthorized(msg.sender) || msg.sender == owner(),
             "FeeManager: Unauthorized caller"
         );
         _;

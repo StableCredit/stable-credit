@@ -81,47 +81,53 @@ const deployContractsWithSupply = async () => {
 const deployContracts = async () => {
   var contracts = {} as NetworkContracts
 
-  // SECURITIZATION DEPLOY
   // deploy source
   const sourceTokenFactory = await ethers.getContractFactory("MockERC20")
   const sourceToken = (await sourceTokenFactory.deploy(stringToEth("100000000"))) as MockERC20
-  // deploy reservePool
-  const reservePoolFactory = await ethers.getContractFactory("ReservePool")
-  let args = [sourceToken.address, "0xe592427a0aece92de3edee1f18e0157c05861564"]
-  contracts.reservePool = (await upgrades.deployProxy(reservePoolFactory, args)) as ReservePool
-  // deploy feeManager
-  const feeManagerFactory = await ethers.getContractFactory("FeeManager")
-  args = [contracts.reservePool.address]
-  contracts.feeManager = (await upgrades.deployProxy(feeManagerFactory, args)) as FeeManager
-
-  // NETWORK DEPLOY
+  // deploy feeToken
   const mockERC20Factory = await ethers.getContractFactory("MockERC20")
   contracts.mockFeeToken = (await mockERC20Factory.deploy(stringToEth("100000000"))) as MockERC20
+
   // deploy accessManager
   const accessManagerFactory = await ethers.getContractFactory("AccessManager")
   contracts.accessManager = (await upgrades.deployProxy(accessManagerFactory, [
     [],
   ])) as AccessManager
+
   // deploy StableCredit
   const stableCreditFactory = await ethers.getContractFactory("StableCredit")
-  args = <any>[]
+  let args = <any>[]
   args = [
     contracts.mockFeeToken.address,
     contracts.accessManager.address,
-    contracts.feeManager.address,
-    contracts.reservePool.address,
-    "RSD",
+    "ReSource Dollars",
     "RSD",
   ]
   contracts.stableCredit = (await upgrades.deployProxy(stableCreditFactory, args)) as StableCredit
 
+  // deploy reservePool
+  const reservePoolFactory = await ethers.getContractFactory("ReservePool")
+  args = [
+    contracts.stableCredit.address,
+    sourceToken.address,
+    "0xe592427a0aece92de3edee1f18e0157c05861564",
+  ]
+  contracts.reservePool = (await upgrades.deployProxy(reservePoolFactory, args)) as ReservePool
+
+  // deploy feeManager
+  const feeManagerFactory = await ethers.getContractFactory("FeeManager")
+  args = [contracts.stableCredit.address, contracts.reservePool.address, 100000]
+  contracts.feeManager = (await upgrades.deployProxy(feeManagerFactory, args)) as FeeManager
+
+  await (await contracts.stableCredit.setFeeManager(contracts.feeManager.address)).wait()
+  await (await contracts.stableCredit.setReservePool(contracts.reservePool.address)).wait()
   await (await contracts.accessManager.grantOperator(contracts.feeManager.address)).wait()
   await (await contracts.accessManager.grantOperator(contracts.reservePool.address)).wait()
   await (await contracts.accessManager.grantOperator(contracts.stableCredit.address)).wait()
   await (await contracts.stableCredit.setCreditExpiration(10)).wait()
   await (await contracts.stableCredit.setPastDueExpiration(10)).wait()
-  await await contracts.feeManager.setNetworkFeePercent(contracts.stableCredit.address, 200000)
-  await await contracts.reservePool.setOperatorPercent(contracts.stableCredit.address, 750000)
-  await await contracts.reservePool.setMinLTV(contracts.stableCredit.address, 200000)
+  await await contracts.feeManager.setDefaultFeePercent(200000)
+  await await contracts.reservePool.setOperatorPercent(750000)
+  await await contracts.reservePool.setMinLTV(200000)
   return contracts
 }

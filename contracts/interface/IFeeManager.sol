@@ -8,7 +8,7 @@ interface IFeeManager {
         uint256 amount
     ) external;
 
-    event FeesCollected(address network, address member, uint256 totalFee);
+    event FeesCollected(address member, uint256 totalFee);
 
-    event FeesDistributed(address network, uint256 totalFee);
+    event FeesDistributed(uint256 totalFee);
 }

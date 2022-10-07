@@ -40,15 +40,11 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     function initialize(
         address _feeToken,
         address _accessManager,
-        address _feeManager,
-        address _reservePool,
         string memory name_,
         string memory symbol_
     ) external virtual initializer {
         access = IAccessManager(_accessManager);
         feeToken = IERC20Upgradeable(_feeToken);
-        feeManager = IFeeManager(_feeManager);
-        reservePool = IReservePool(_reservePool);
         __CIP36_init(name_, symbol_);
         demurrageIndex = 1;
         conversionRate = 1e18;
@@ -90,7 +86,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     }
 
     function isAuthorized(address _member) public view override returns (bool) {
-        return access.isNetworkOperator(_member) || _member == owner();
+        return access.isOperator(_member) || _member == owner();
     }
 
     function inDefault(address _member) public view returns (bool) {
@@ -147,7 +143,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         burnDemurraged(msg.sender);
         _burn(msg.sender, _amount);
         networkDebt -= _amount;
-        reservePool.reimburseMember(address(this), msg.sender, convertCreditToFeeToken(_amount));
+        reservePool.reimburseMember(msg.sender, convertCreditToFeeToken(_amount));
         emit NetworkDebtBurned(msg.sender, _amount);
     }
 
@@ -157,7 +153,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         if (burnAmount == 0) return;
         _burn(_member, burnAmount);
         demurraged -= burnAmount;
-        reservePool.reimburseMember(address(this), _member, convertCreditToFeeToken(burnAmount));
+        reservePool.reimburseMember(_member, convertCreditToFeeToken(burnAmount));
     }
 
     function repayCreditBalance(uint128 _amount) external {
@@ -234,17 +230,19 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         emit PastDueExpirationUpdated(pastDueExpiration);
     }
 
+    function setReservePool(address _reservePool) external onlyAuthorized {
+        reservePool = IReservePool(_reservePool);
+    }
+
+    function setFeeManager(address _feeManager) external onlyAuthorized {
+        feeManager = IFeeManager(_feeManager);
+    }
+
     /* ========== MODIFIERS ========== */
 
     modifier onlyMembers(address _from, address _to) {
-        require(
-            access.isMember(_from) || access.isNetworkOperator(_from),
-            "Sender is not network member"
-        );
-        require(
-            access.isMember(_to) || access.isNetworkOperator(_to),
-            "Recipient is not network member"
-        );
+        require(access.isMember(_from) || access.isOperator(_from), "Sender is not network member");
+        require(access.isMember(_to) || access.isOperator(_to), "Recipient is not network member");
         _;
     }
 

@@ -16,6 +16,7 @@ describe("Access Manager Tests", function () {
   let memberC: SignerWithAddress
   let memberD: SignerWithAddress
   let memberE: SignerWithAddress
+  let memberZ: SignerWithAddress
 
   this.beforeEach(async function () {
     const accounts = await ethers.getSigners()
@@ -24,6 +25,7 @@ describe("Access Manager Tests", function () {
     memberC = accounts[3]
     memberD = accounts[4]
     memberE = accounts[5]
+    memberZ = accounts[10]
 
     contracts = await stableCreditFactory.deployWithSupply()
   })
@@ -33,13 +35,27 @@ describe("Access Manager Tests", function () {
       [memberA.address, memberB.address, memberC.address, memberD.address, memberE.address],
     ])) as AccessManager
 
-    expect(await manager.isNetworkOperator(memberA.address)).to.be.true
+    expect(await manager.isOperator(memberA.address)).to.be.true
   })
 
   it("Revoking operator address removes role", async function () {
     await expect(contracts.accessManager.grantOperator(memberA.address)).to.not.be.reverted
-    expect(await contracts.accessManager.isNetworkOperator(memberA.address)).to.be.true
+    expect(await contracts.accessManager.isOperator(memberA.address)).to.be.true
     await expect(contracts.accessManager.revokeOperator(memberA.address)).to.not.be.reverted
-    expect(await contracts.accessManager.isNetworkOperator(memberA.address)).to.be.false
+    expect(await contracts.accessManager.isOperator(memberA.address)).to.be.false
+  })
+
+  it("Revoking underwriter address adds role", async function () {
+    await expect(contracts.accessManager.grantUnderwriter(memberA.address)).to.not.be.reverted
+    expect(await contracts.accessManager.isUnderwriter(memberA.address)).to.be.true
+    await expect(contracts.accessManager.revokeUnderwriter(memberA.address)).to.not.be.reverted
+    expect(await contracts.accessManager.isUnderwriter(memberA.address)).to.be.false
+  })
+
+  it("Revoking member address removes role", async function () {
+    await expect(contracts.accessManager.grantMember(memberZ.address)).to.not.be.reverted
+    expect(await contracts.accessManager.isMember(memberZ.address)).to.be.true
+    await expect(contracts.accessManager.revokeMember(memberZ.address)).to.not.be.reverted
+    expect(await contracts.accessManager.isMember(memberZ.address)).to.be.false
   })
 })
