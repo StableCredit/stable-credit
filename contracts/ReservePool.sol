@@ -172,6 +172,7 @@ contract ReservePool is
     }
 
     function LTV() public view returns (uint256) {
+        if (collateral == 0) return collateral;
         return
             (collateral * MAX_PPM) /
             stableCredit.convertCreditToFeeToken(

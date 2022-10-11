@@ -76,6 +76,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         override
         returns (uint256 conversion)
     {
+        if (amount == 0) return amount;
         uint256 feeDecimals = IERC20Metadata(address(feeToken)).decimals();
         uint256 creditDecimals = decimals();
         creditDecimals < feeDecimals
