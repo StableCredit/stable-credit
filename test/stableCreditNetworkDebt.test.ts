@@ -126,6 +126,8 @@ describe("Stable Credit Network Debt Tests", function () {
     await expect(
       contracts.stableCredit.createCreditLine(
         memberB.address,
+        1000,
+        1010,
         stringToStableCredits("100"),
         stringToStableCredits("10")
       )

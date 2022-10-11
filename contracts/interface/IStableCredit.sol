@@ -2,6 +2,12 @@
 pragma solidity ^0.8.0;
 
 interface IStableCredit {
+    struct CreditTerms {
+        uint256 issueDate;
+        uint256 defaultDate;
+        uint256 pastDueDate;
+    }
+
     function isAuthorized(address account) external view returns (bool);
 
     function getReservePool() external view returns (address);

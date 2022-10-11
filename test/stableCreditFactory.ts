@@ -29,8 +29,6 @@ const deployContractsWithSupply = async () => {
   const memberD = accounts[4]
   const memberE = accounts[5]
   const memberF = accounts[6]
-  // set past due
-  await (await contracts.stableCredit.setPastDueExpiration(1000)).wait()
   // create creditlines and grant members
   await (await contracts.accessManager.grantMember(memberB.address)).wait()
   await (await contracts.accessManager.grantMember(memberD.address)).wait()
@@ -42,7 +40,13 @@ const deployContractsWithSupply = async () => {
 
   // Initialize A and B
   await (
-    await contracts.stableCredit.createCreditLine(memberA.address, stringToStableCredits("100"), 0)
+    await contracts.stableCredit.createCreditLine(
+      memberA.address,
+      stringToStableCredits("100"),
+      1000,
+      1010,
+      0
+    )
   ).wait()
   await (
     await contracts.stableCredit
@@ -55,7 +59,13 @@ const deployContractsWithSupply = async () => {
 
   // Initialize C and D
   await (
-    await contracts.stableCredit.createCreditLine(memberC.address, stringToStableCredits("100"), 0)
+    await contracts.stableCredit.createCreditLine(
+      memberC.address,
+      stringToStableCredits("100"),
+      1000,
+      1010,
+      0
+    )
   ).wait()
   await (
     await contracts.stableCredit
@@ -66,7 +76,13 @@ const deployContractsWithSupply = async () => {
   await ethers.provider.send("evm_mine", [])
   // Initialize E and F
   await (
-    await contracts.stableCredit.createCreditLine(memberE.address, stringToStableCredits("100"), 0)
+    await contracts.stableCredit.createCreditLine(
+      memberE.address,
+      stringToStableCredits("100"),
+      1000,
+      1010,
+      0
+    )
   ).wait()
   await (
     await contracts.stableCredit
@@ -83,10 +99,19 @@ const deployContracts = async () => {
 
   // deploy source
   const sourceTokenFactory = await ethers.getContractFactory("MockERC20")
-  const sourceToken = (await sourceTokenFactory.deploy(stringToEth("100000000"))) as MockERC20
+  const sourceToken = (await sourceTokenFactory.deploy(
+    stringToEth("100000000"),
+    "SOURCE",
+    "SOURCE"
+  )) as MockERC20
+
   // deploy feeToken
   const mockERC20Factory = await ethers.getContractFactory("MockERC20")
-  contracts.mockFeeToken = (await mockERC20Factory.deploy(stringToEth("100000000"))) as MockERC20
+  contracts.mockFeeToken = (await mockERC20Factory.deploy(
+    stringToEth("100000000"),
+    "USD Coin",
+    "USDC"
+  )) as MockERC20
 
   // deploy accessManager
   const accessManagerFactory = await ethers.getContractFactory("AccessManager")
@@ -124,8 +149,6 @@ const deployContracts = async () => {
   await (await contracts.accessManager.grantOperator(contracts.feeManager.address)).wait()
   await (await contracts.accessManager.grantOperator(contracts.reservePool.address)).wait()
   await (await contracts.accessManager.grantOperator(contracts.stableCredit.address)).wait()
-  await (await contracts.stableCredit.setCreditExpiration(10)).wait()
-  await (await contracts.stableCredit.setPastDueExpiration(10)).wait()
   await await contracts.feeManager.setDefaultFeePercent(200000)
   await await contracts.reservePool.setOperatorPercent(750000)
   await await contracts.reservePool.setMinLTV(200000)

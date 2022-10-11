@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 
-contract CIP36Upgradeable is OwnableUpgradeable, ERC20BurnableUpgradeable {
+contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
     using ExtraMath for *;
 
     struct Member {
@@ -13,11 +13,15 @@ contract CIP36Upgradeable is OwnableUpgradeable, ERC20BurnableUpgradeable {
         uint128 creditLimit;
     }
 
-    mapping(address => Member) internal _members;
+    mapping(address => Member) internal members;
 
     event CreditLimitUpdate(address member, uint256 limit);
 
-    function __CIP36_init(string memory name_, string memory symbol_) public virtual initializer {
+    function __MutualCredit_init(string memory name_, string memory symbol_)
+        public
+        virtual
+        initializer
+    {
         __ERC20_init(name_, symbol_);
         __Ownable_init();
     }
@@ -32,15 +36,15 @@ contract CIP36Upgradeable is OwnableUpgradeable, ERC20BurnableUpgradeable {
     }
 
     function creditBalanceOf(address _member) public view returns (uint256) {
-        return _members[_member].creditBalance;
+        return members[_member].creditBalance;
     }
 
     function creditLimitOf(address _member) public view returns (uint256) {
-        return _members[_member].creditLimit;
+        return members[_member].creditLimit;
     }
 
     function creditLimitLeftOf(address _member) public view returns (uint256) {
-        Member memory _localMember = _members[_member];
+        Member memory _localMember = members[_member];
         if (_localMember.creditBalance >= _localMember.creditLimit) {
             return 0;
         }
@@ -48,7 +52,7 @@ contract CIP36Upgradeable is OwnableUpgradeable, ERC20BurnableUpgradeable {
     }
 
     function setCreditLimit(address _member, uint256 _limit) public virtual onlyAuthorized {
-        _members[_member].creditLimit = _limit.toUInt128();
+        members[_member].creditLimit = _limit.toUInt128();
         emit CreditLimitUpdate(_member, _limit);
     }
 
@@ -68,21 +72,21 @@ contract CIP36Upgradeable is OwnableUpgradeable, ERC20BurnableUpgradeable {
             return;
         }
 
-        Member memory _memberFrom = _members[_from];
+        Member memory _memberFrom = members[_from];
         uint256 _missingBalance = _amount - _balanceFrom;
         uint256 _creditLeft = creditLimitLeftOf(_from);
         require(_creditLeft >= _missingBalance, "Insufficient credit");
-        _members[_from].creditBalance = (_memberFrom.creditBalance + _missingBalance).toUInt128();
+        members[_from].creditBalance = (_memberFrom.creditBalance + _missingBalance).toUInt128();
         _mint(_from, _missingBalance);
     }
 
     function _afterTransfer(address _to, uint256 _amount) private {
-        Member memory _memberTo = _members[_to];
+        Member memory _memberTo = members[_to];
         uint256 _repay = Math.min(_memberTo.creditBalance, _amount);
         if (_repay == 0) {
             return;
         }
-        _members[_to].creditBalance = (_memberTo.creditBalance - _repay).toUInt128();
+        members[_to].creditBalance = (_memberTo.creditBalance - _repay).toUInt128();
         _burn(_to, _repay);
     }
 }

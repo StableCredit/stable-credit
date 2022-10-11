@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./CIP36Upgradeable.sol";
+import "./MutualCredit.sol";
 import "./interface/IAccessManager.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/IFeeManager.sol";
@@ -17,19 +17,17 @@ import "./interface/IReservePool.sol";
 /// in the transfer of the outstanding credit balance to the network debt balance.
 /// @dev Restricted functions are only callable by network operators.
 
-contract StableCredit is CIP36Upgradeable, IStableCredit {
+contract StableCredit is MutualCredit, IStableCredit {
     /* ========== CONSTANTS ========== */
     uint32 private constant MIN_PPT = 1000;
 
     /* ========== STATE VARIABLES ========== */
-    uint256 public creditExpiration;
-    uint256 public pastDueExpiration;
     uint256 public conversionRate;
     uint256 public demurraged;
     uint256 public demurrageIndex;
     uint256 public networkDebt;
     mapping(address => uint256) private demurrageIndexOf;
-    mapping(address => uint256) public creditIssuance;
+    mapping(address => CreditTerms) public creditTerms;
     IAccessManager public access;
     IFeeManager public feeManager;
     IReservePool public reservePool;
@@ -45,7 +43,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     ) external virtual initializer {
         access = IAccessManager(_accessManager);
         feeToken = IERC20Upgradeable(_feeToken);
-        __CIP36_init(name_, symbol_);
+        __MutualCredit_init(name_, symbol_);
         demurrageIndex = 1;
         conversionRate = 1e18;
     }
@@ -90,13 +88,11 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     }
 
     function inDefault(address _member) public view returns (bool) {
-        uint256 issueDate = creditIssuance[_member];
-        return block.timestamp >= issueDate + creditExpiration + pastDueExpiration;
+        return block.timestamp >= creditTerms[_member].defaultDate;
     }
 
     function isPastDue(address _member) public view returns (bool) {
-        uint256 issueDate = creditIssuance[_member];
-        return block.timestamp >= issueDate + pastDueExpiration && !inDefault(_member);
+        return block.timestamp >= creditTerms[_member].pastDueDate && !inDefault(_member);
     }
 
     function getReservePool() external view override returns (address) {
@@ -125,7 +121,12 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         require(creditLimitOf(_member) > 0, "StableCredit: member does not have a credit line");
         // renew if using creditline while past due and outstanding debt is zero
         if (creditBalanceOf(_member) == 0 && isPastDue(_member)) {
-            creditIssuance[_member] = block.timestamp;
+            CreditTerms memory terms = creditTerms[_member];
+            creditTerms[_member] = CreditTerms({
+                pastDueDate: block.timestamp + (terms.pastDueDate - terms.issueDate),
+                defaultDate: block.timestamp + (terms.defaultDate - terms.issueDate),
+                issueDate: block.timestamp
+            });
             return true;
         }
         require(!isPastDue(_member), "StableCredit: Credit line is past due");
@@ -161,7 +162,7 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         require(_amount <= creditBalance, "StableCredit: invalid amount");
         feeToken.transferFrom(msg.sender, address(reservePool), _amount);
         networkDebt += creditBalance;
-        _members[msg.sender].creditBalance -= _amount;
+        members[msg.sender].creditBalance -= _amount;
         emit CreditBalanceRepayed(_amount);
     }
 
@@ -170,9 +171,8 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     function defaultCreditLine(address _member) internal virtual {
         uint256 creditBalance = creditBalanceOf(_member);
         networkDebt += creditBalance;
-        _members[_member].creditBalance = 0;
-        _members[_member].creditLimit = 0;
-        delete creditIssuance[_member];
+        delete members[_member];
+        delete creditTerms[_member];
         emit CreditDefault(_member);
     }
 
@@ -185,14 +185,22 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     function createCreditLine(
         address _member,
         uint256 _creditLimit,
+        uint256 _pastDue,
+        uint256 _default,
         uint256 _balance
     ) external onlyAuthorized {
         require(
-            creditIssuance[_member] == 0,
+            creditTerms[_member].issueDate == 0,
             "StableCredit: Credit line already exists for member"
         );
+        require(_pastDue > 0, "StableCredit: past due time must be greater than 0");
+        require(_default > _pastDue, "StableCredit: default time must be greater than past due");
         if (!access.isMember(_member)) access.grantMember(_member);
-        creditIssuance[_member] = block.timestamp;
+        creditTerms[_member] = CreditTerms({
+            issueDate: block.timestamp,
+            pastDueDate: block.timestamp + _pastDue,
+            defaultDate: block.timestamp + _default
+        });
         setCreditLimit(_member, _creditLimit);
         demurrageIndexOf[_member] = demurrageIndex;
         if (_balance > 0) {
@@ -203,7 +211,10 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
     }
 
     function extendCreditLine(address _member, uint256 _creditLimit) external onlyAuthorized {
-        require(creditIssuance[_member] > 0, "StableCredit: Credit line does not exist for member");
+        require(
+            creditTerms[_member].issueDate > 0,
+            "StableCredit: Credit line does not exist for member"
+        );
         uint256 curCreditLimit = creditLimitOf(_member);
         require(curCreditLimit < _creditLimit, "invalid credit limit");
         setCreditLimit(_member, _creditLimit);
@@ -216,18 +227,6 @@ contract StableCredit is CIP36Upgradeable, IStableCredit {
         updateConversionRate();
         demurrageIndex++;
         emit MembersDemurraged(_amount);
-    }
-
-    function setCreditExpiration(uint256 _seconds) external onlyAuthorized {
-        require(_seconds > 0, "expiration must be greater than 0 seconds");
-        creditExpiration = _seconds;
-        emit CreditExpirationUpdated(creditExpiration);
-    }
-
-    function setPastDueExpiration(uint256 _seconds) external onlyAuthorized {
-        require(_seconds > 0, "expiration must be greater than 0 seconds");
-        pastDueExpiration = _seconds;
-        emit PastDueExpirationUpdated(pastDueExpiration);
     }
 
     function setReservePool(address _reservePool) external onlyAuthorized {

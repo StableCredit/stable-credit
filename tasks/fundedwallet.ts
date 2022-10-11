@@ -5,7 +5,7 @@ const fs = require("fs")
 
 import { TASK_FUNDEDWALLET } from "./task-names"
 
-task(TASK_FUNDEDWALLET, "Create a wallet (pk) link and fund it with deployer?")
+task(TASK_FUNDEDWALLET, "Create a wallet (pk) link and fund it with deployer")
   .addOptionalParam("amount", "Amount of ETH to send to wallet after generating")
   .addParam("address", "Address to fund")
   .addOptionalParam("url", "URL to add pk to")

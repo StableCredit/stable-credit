@@ -60,6 +60,7 @@ describe("Stable Credit Tests", function () {
     expect(await contracts.stableCredit.inDefault(memberA.address)).to.be.true
 
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
+
     // check credit limit after default
     expect(
       stableCreditsToString(await contracts.stableCredit.creditLimitOf(memberA.address))
@@ -114,7 +115,13 @@ describe("Stable Credit Tests", function () {
     expect(await contracts.accessManager.isMember(memberG.address)).to.equal(false)
 
     await expect(
-      contracts.stableCredit.createCreditLine(memberG.address, stringToStableCredits("100"), 0)
+      contracts.stableCredit.createCreditLine(
+        memberG.address,
+        stringToStableCredits("100"),
+        1000,
+        1010,
+        0
+      )
     ).to.not.be.reverted
 
     expect(await contracts.accessManager.isMember(memberG.address)).to.equal(true)
@@ -125,6 +132,8 @@ describe("Stable Credit Tests", function () {
       contracts.stableCredit.createCreditLine(
         memberG.address,
         stringToStableCredits("100"),
+        1000,
+        1010,
         stringToStableCredits("100")
       )
     ).to.not.be.reverted
@@ -134,18 +143,6 @@ describe("Stable Credit Tests", function () {
     )
 
     expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("100.0")
-  })
-
-  it("setting credit expiration updates credit expiration", async function () {
-    expect(await (await contracts.stableCredit.creditExpiration()).toNumber()).to.equal(10)
-    await expect(contracts.stableCredit.setCreditExpiration(42)).to.not.be.reverted
-    expect(await (await contracts.stableCredit.creditExpiration()).toNumber()).to.equal(42)
-  })
-
-  it("setting past due expiration updates past due expiration", async function () {
-    expect(await (await contracts.stableCredit.pastDueExpiration()).toNumber()).to.equal(1000)
-    await expect(contracts.stableCredit.setPastDueExpiration(42)).to.not.be.reverted
-    expect(await (await contracts.stableCredit.pastDueExpiration()).toNumber()).to.equal(42)
   })
 
   it("credit fee conversion returns eth denominated amount", async function () {
