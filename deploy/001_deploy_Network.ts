@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { DeployFunction } from "hardhat-deploy/types"
-import { deployProxyAndSave, stringToEth } from "../utils/utils"
+import { deployProxyAndSave } from "../utils/utils"
 import { AccessManager__factory } from "../types/factories/AccessManager__factory"
 import { ethers, network } from "hardhat"
 import { AccessManager } from "../types/AccessManager"
@@ -8,6 +8,7 @@ import { StableCredit__factory } from "../types/factories/StableCredit__factory"
 import { ERC20 } from "../types"
 import { FeeManager__factory } from "../types/factories/FeeManager__factory"
 import { ReservePool__factory } from "../types/factories/ReservePool__factory"
+import { parseEther } from "ethers/lib/utils"
 
 let feeTokenAddress = "<<Insert feeToken address>>"
 let sourceAddress = "<<Insert SOURCE address>>"
@@ -24,7 +25,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     const mockERc20Abi = (await hardhat.artifacts.readArtifact("MockERC20")).abi
 
     const feeToken = (await erc20Factory.deploy(
-      stringToEth("100000000"),
+      parseEther("100000000"),
       "USD Coin",
       "USDC"
     )) as ERC20
@@ -38,7 +39,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     hardhat.deployments.save("FeeToken", contractDeployment)
 
     const sourceToken = (await erc20Factory.deploy(
-      stringToEth("100000000"),
+      parseEther("100000000"),
       "SOURCE",
       "SOURCE"
     )) as ERC20
