@@ -67,10 +67,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         uint256 amount
     ) external override {
         if (paused()) return;
-        uint256 feePercent = memberFeePercent[sender] == 0
-            ? defaultFeePercent
-            : memberFeePercent[sender];
-        uint256 totalFee = stableCredit.convertCreditToFeeToken((feePercent * amount) / MAX_PPM);
+        uint256 totalFee = calculateMemberFee(sender, amount);
         IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
             sender,
             address(this),
@@ -78,6 +75,14 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         );
         collectedFees += totalFee;
         emit FeesCollected(sender, totalFee);
+    }
+
+    function calculateMemberFee(address _member, uint256 _amount) public view returns (uint256) {
+        if (paused()) return 0;
+        uint256 feePercent = memberFeePercent[_member] == 0
+            ? defaultFeePercent
+            : memberFeePercent[_member];
+        return stableCredit.convertCreditToFeeToken((feePercent * _amount) / MAX_PPM);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

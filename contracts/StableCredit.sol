@@ -161,8 +161,8 @@ contract StableCredit is MutualCredit, IStableCredit {
     function repayCreditBalance(uint128 _amount) external {
         uint256 creditBalance = creditBalanceOf(msg.sender);
         require(_amount <= creditBalance, "StableCredit: invalid amount");
-        feeToken.transferFrom(msg.sender, address(reservePool), _amount);
-        networkDebt += creditBalance;
+        feeToken.transferFrom(msg.sender, address(reservePool), convertCreditToFeeToken(_amount));
+        networkDebt += _amount;
         members[msg.sender].creditBalance -= _amount;
         emit CreditBalanceRepayed(_amount);
     }

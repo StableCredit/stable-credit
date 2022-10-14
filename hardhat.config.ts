@@ -19,6 +19,8 @@ import "./tasks/clean"
 import "./tasks/fundedwallet"
 import "./tasks/generate"
 import "./tasks/sendFeeTokens"
+import "./tasks/depositCollateral"
+import "./tasks/distributeFees"
 
 import { CeloProvider } from "@celo-tools/celo-ethers-wrapper"
 

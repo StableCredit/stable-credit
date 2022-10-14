@@ -121,3 +121,4 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await reservePool.setMinLTV(200000)).wait()
 }
 export default func
+func.tags = ["NETWORK"]
