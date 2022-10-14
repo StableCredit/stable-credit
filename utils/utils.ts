@@ -70,18 +70,10 @@ export const deployProxyAndSave = async (
   return contract.address
 }
 
-export const stringToStableCredits = (value: string): ethers.BigNumber => {
-  return ethers.utils.parseUnits(value, "mwei")
-}
-
-export const stringToEth = (value: string): ethers.BigNumber => {
-  return ethers.utils.parseEther(value)
-}
-
-export const stableCreditsToString = (value: ethers.BigNumber): string => {
+export const formatStableCredits = (value: ethers.BigNumber) => {
   return ethers.utils.formatUnits(value, "mwei")
 }
 
-export const ethToString = (value: ethers.BigNumber): string => {
-  return ethers.utils.formatEther(value)
+export const parseStableCredits = (value: string) => {
+  return ethers.utils.parseUnits(value, "mwei")
 }

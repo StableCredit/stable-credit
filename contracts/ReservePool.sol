@@ -67,7 +67,7 @@ contract ReservePool is
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function depositCollateral(uint256 amount) public nonReentrant {
+    function depositCollateral(uint256 amount) public override nonReentrant {
         require(amount > 0, "ReservePool: Cannot stake 0");
         collateral += amount;
         IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(

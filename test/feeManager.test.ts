@@ -4,7 +4,8 @@ import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
 import { NetworkContracts, stableCreditFactory } from "./stableCreditFactory"
-import { stringToStableCredits, stringToEth, ethToString } from "../utils/utils"
+import { formatEther, parseEther } from "ethers/lib/utils"
+import { parseStableCredits } from "../utils/utils"
 
 chai.use(solidity)
 
@@ -30,14 +31,14 @@ describe("Fee Manager Tests", function () {
       contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
 
-    await expect(contracts.reservePool.depositCollateral(stringToEth("100000"))).to.not.be.reverted
+    await expect(contracts.reservePool.depositCollateral(parseEther("100000"))).to.not.be.reverted
 
     // unpause fees
     await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
 
     // fund sender wallet with fee tokens
     await expect(
-      contracts.mockFeeToken.transfer(memberA.address, stringToEth("100"))
+      contracts.mockFeeToken.transfer(memberA.address, parseEther("100"))
     ).to.not.be.reverted
 
     // approve sender wallet fee tokens
@@ -48,31 +49,31 @@ describe("Fee Manager Tests", function () {
     ).to.not.be.reverted
   })
   it("Fees are collected on transfer of credits", async function () {
-    expect(ethToString(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("100.0")
+    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("100.0")
 
     await expect(
-      contracts.stableCredit.connect(memberA).transfer(memberB.address, stringToStableCredits("20"))
+      contracts.stableCredit.connect(memberA).transfer(memberB.address, parseStableCredits("20"))
     ).to.not.be.reverted
 
-    expect(ethToString(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("96.0")
+    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("96.0")
     expect(
-      ethToString(await contracts.mockFeeToken.balanceOf(contracts.feeManager.address))
+      formatEther(await contracts.mockFeeToken.balanceOf(contracts.feeManager.address))
     ).to.equal("4.0")
   })
   it("distributing fees updates reserve pool", async function () {
     await expect(
-      contracts.stableCredit.connect(memberA).transfer(memberB.address, stringToStableCredits("20"))
+      contracts.stableCredit.connect(memberA).transfer(memberB.address, parseStableCredits("20"))
     ).to.not.be.reverted
 
-    expect(ethToString(await contracts.reservePool.collateral())).to.equal("100000.0")
+    expect(formatEther(await contracts.reservePool.collateral())).to.equal("100000.0")
 
-    expect(ethToString(await contracts.feeManager.collectedFees())).to.equal("4.0")
+    expect(formatEther(await contracts.feeManager.collectedFees())).to.equal("4.0")
 
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
-    expect(ethToString(await contracts.reservePool.collateral())).to.equal("100000.0")
-    expect(ethToString(await contracts.reservePool.swapSink())).to.equal("1.0")
-    expect(ethToString(await contracts.reservePool.operatorBalance())).to.equal("3.0")
+    expect(formatEther(await contracts.reservePool.collateral())).to.equal("100000.0")
+    expect(formatEther(await contracts.reservePool.swapSink())).to.equal("1.0")
+    expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("3.0")
   })
 
   it("setDefaultFeePercent updates network's feePercent", async function () {
@@ -82,19 +83,19 @@ describe("Fee Manager Tests", function () {
   })
 
   it("updating member's feePercent updates member's feePercent", async function () {
-    expect(ethToString(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("100.0")
+    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("100.0")
 
     await expect(contracts.feeManager.setMemberFeePercent(memberA.address, 100000)).to.not.be
       .reverted
 
     await expect(
-      contracts.stableCredit.connect(memberA).transfer(memberB.address, stringToStableCredits("20"))
+      contracts.stableCredit.connect(memberA).transfer(memberB.address, parseStableCredits("20"))
     ).to.not.be.reverted
 
-    expect(ethToString(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("98.0")
+    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("98.0")
 
     expect(
-      ethToString(await contracts.mockFeeToken.balanceOf(contracts.feeManager.address))
+      formatEther(await contracts.mockFeeToken.balanceOf(contracts.feeManager.address))
     ).to.equal("2.0")
   })
 

@@ -1,7 +1,8 @@
 import { upgrades, ethers } from "hardhat"
-import { stringToStableCredits, stringToEth } from "../utils/utils"
 import { FeeManager, ReservePool, AccessManager, MockERC20, StableCredit } from "../types"
 import { Contract } from "ethers"
+import { parseStableCredits } from "../utils/utils"
+import { parseEther } from "ethers/lib/utils"
 
 export interface NetworkContracts {
   mockFeeToken: MockERC20
@@ -42,7 +43,7 @@ const deployContractsWithSupply = async () => {
   await (
     await contracts.stableCredit.createCreditLine(
       memberA.address,
-      stringToStableCredits("100"),
+      parseStableCredits("100"),
       1000,
       1010,
       0
@@ -51,7 +52,7 @@ const deployContractsWithSupply = async () => {
   await (
     await contracts.stableCredit
       .connect(memberA)
-      .transfer(memberB.address, stringToStableCredits("10"))
+      .transfer(memberB.address, parseStableCredits("10"))
   ).wait()
 
   await ethers.provider.send("evm_increaseTime", [100])
@@ -61,7 +62,7 @@ const deployContractsWithSupply = async () => {
   await (
     await contracts.stableCredit.createCreditLine(
       memberC.address,
-      stringToStableCredits("100"),
+      parseStableCredits("100"),
       1000,
       1010,
       0
@@ -70,7 +71,7 @@ const deployContractsWithSupply = async () => {
   await (
     await contracts.stableCredit
       .connect(memberC)
-      .transfer(memberD.address, stringToStableCredits("10"))
+      .transfer(memberD.address, parseStableCredits("10"))
   ).wait()
   await ethers.provider.send("evm_increaseTime", [100])
   await ethers.provider.send("evm_mine", [])
@@ -78,7 +79,7 @@ const deployContractsWithSupply = async () => {
   await (
     await contracts.stableCredit.createCreditLine(
       memberE.address,
-      stringToStableCredits("100"),
+      parseStableCredits("100"),
       1000,
       1010,
       0
@@ -87,7 +88,7 @@ const deployContractsWithSupply = async () => {
   await (
     await contracts.stableCredit
       .connect(memberE)
-      .transfer(memberF.address, stringToStableCredits("10"))
+      .transfer(memberF.address, parseStableCredits("10"))
   ).wait()
   await ethers.provider.send("evm_increaseTime", [700])
   await ethers.provider.send("evm_mine", [])
@@ -100,7 +101,7 @@ const deployContracts = async () => {
   // deploy source
   const sourceTokenFactory = await ethers.getContractFactory("MockERC20")
   const sourceToken = (await sourceTokenFactory.deploy(
-    stringToEth("100000000"),
+    parseEther("100000000"),
     "SOURCE",
     "SOURCE"
   )) as MockERC20
@@ -108,7 +109,7 @@ const deployContracts = async () => {
   // deploy feeToken
   const mockERC20Factory = await ethers.getContractFactory("MockERC20")
   contracts.mockFeeToken = (await mockERC20Factory.deploy(
-    stringToEth("100000000"),
+    parseEther("100000000"),
     "USD Coin",
     "USDC"
   )) as MockERC20

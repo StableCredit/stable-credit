@@ -4,7 +4,8 @@ import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
 import { NetworkContracts, stableCreditFactory } from "./stableCreditFactory"
-import { stableCreditsToString, stringToStableCredits, stringToEth } from "../utils/utils"
+import { formatStableCredits, parseStableCredits } from "../utils/utils"
+import { formatEther, parseEther } from "ethers/lib/utils"
 
 chai.use(solidity)
 
@@ -37,12 +38,12 @@ describe("Stable Credit Network Debt Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
 
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("10.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
   })
 
   it("burning network debt updates network debt and total supply", async function () {
     // check total supply before default
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("30.0")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
 
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
@@ -50,27 +51,25 @@ describe("Stable Credit Network Debt Tests", function () {
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
 
     // check total supply and network debt
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("30.0")
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("10.0")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
     // memberB burn network debt
-    await expect(
-      contracts.stableCredit.connect(memberB).burnNetworkDebt(stringToStableCredits("5"))
-    ).to.not.be.reverted
+    await expect(contracts.stableCredit.connect(memberB).burnNetworkDebt(parseStableCredits("5")))
+      .to.not.be.reverted
     // check total supply and public debt after burn
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("25.0")
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("5.0")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("25.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("5.0")
     // memberD burn public debt
-    await expect(
-      contracts.stableCredit.connect(memberD).burnNetworkDebt(stringToStableCredits("5"))
-    ).to.not.be.reverted
+    await expect(contracts.stableCredit.connect(memberD).burnNetworkDebt(parseStableCredits("5")))
+      .to.not.be.reverted
     // check total supply and public debt after burn
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("20.0")
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("0.0")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("20.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("0.0")
   })
 
-  it("credit repayment updates public debt", async function () {
+  it("credit repayment updates network debt", async function () {
     // give tokens for repayment
-    await expect(contracts.mockFeeToken.transfer(memberA.address, stringToEth("10.0"))).to.not.be
+    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("10.0"))).to.not.be
       .reverted
     // approve fee tokens
     await expect(
@@ -80,46 +79,44 @@ describe("Stable Credit Network Debt Tests", function () {
     ).to.not.be.reverted
 
     await (
-      await contracts.stableCredit
-        .connect(memberA)
-        .repayCreditBalance(stringToStableCredits("10.0"))
+      await contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("10.0"))
     ).wait()
 
     // check memberA's credit balance
     expect(
-      stableCreditsToString(await contracts.stableCredit.creditBalanceOf(memberA.address))
+      formatStableCredits(await contracts.stableCredit.creditBalanceOf(memberA.address))
     ).to.equal("0.0")
 
     // check public debt
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("10.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
   })
 
   it("multiple defaults updates public debt accordingly", async function () {
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("0.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("0.0")
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
 
     // all existing debt is in default
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("10.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
 
     // default memberC creditline
     await ethers.provider.send("evm_mine", [])
     await ethers.provider.send("evm_increaseTime", [100])
     await expect(contracts.stableCredit.validateCreditLine(memberC.address)).to.not.be.reverted
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("20.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("20.0")
 
     // default memberE creditline
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberE.address)).to.not.be.reverted
     // all existing debt is in default
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("30.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("30.0")
   })
 
   it("credit lines initialized with balances update network debt", async function () {
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "10.0"
     )
 
@@ -128,12 +125,12 @@ describe("Stable Credit Network Debt Tests", function () {
         memberB.address,
         1000,
         1010,
-        stringToStableCredits("100"),
-        stringToStableCredits("10")
+        parseStableCredits("100"),
+        parseStableCredits("10")
       )
     ).to.not.be.reverted
 
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "20.0"
     )
   })

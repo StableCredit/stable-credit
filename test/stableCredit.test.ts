@@ -4,7 +4,8 @@ import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
 import { NetworkContracts, stableCreditFactory } from "./stableCreditFactory"
-import { stableCreditsToString, stringToStableCredits, ethToString } from "../utils/utils"
+import { parseEther, formatEther } from "ethers/lib/utils"
+import { formatStableCredits, parseStableCredits } from "../utils/utils"
 
 chai.use(solidity)
 
@@ -49,9 +50,9 @@ describe("Stable Credit Tests", function () {
 
   it("Default resets credit limit", async function () {
     // check credit limit before default
-    expect(
-      stableCreditsToString(await contracts.stableCredit.creditLimitOf(memberA.address))
-    ).to.eq("100.0")
+    expect(formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))).to.eq(
+      "100.0"
+    )
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
@@ -62,15 +63,15 @@ describe("Stable Credit Tests", function () {
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
 
     // check credit limit after default
-    expect(
-      stableCreditsToString(await contracts.stableCredit.creditLimitOf(memberA.address))
-    ).to.eq("0.0")
+    expect(formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))).to.eq(
+      "0.0"
+    )
   })
 
   it("credit lines are renewed if credit balance is cleared before expiration", async function () {
     // return outstanding debt to memberC
     await expect(
-      contracts.stableCredit.connect(memberB).transfer(memberA.address, stringToStableCredits("10"))
+      contracts.stableCredit.connect(memberB).transfer(memberA.address, parseStableCredits("10"))
     ).to.not.be.reverted
 
     await ethers.provider.send("evm_increaseTime", [90])
@@ -84,10 +85,10 @@ describe("Stable Credit Tests", function () {
     ).to.not.be.reverted
 
     expect(
-      stableCreditsToString(await contracts.stableCredit.creditLimitOf(memberA.address))
+      formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))
     ).to.equal("100.0")
     expect(
-      stableCreditsToString(await contracts.stableCredit.creditBalanceOf(memberA.address))
+      formatStableCredits(await contracts.stableCredit.creditBalanceOf(memberA.address))
     ).to.equal("10.0")
   })
 
@@ -101,13 +102,13 @@ describe("Stable Credit Tests", function () {
 
   it("Extending credit lines results in expanded credit limits", async function () {
     expect(
-      stableCreditsToString(await contracts.stableCredit.creditLimitOf(memberA.address))
+      formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))
     ).to.equal("100.0")
     await expect(
-      contracts.stableCredit.extendCreditLine(memberA.address, stringToStableCredits("1000"))
+      contracts.stableCredit.extendCreditLine(memberA.address, parseStableCredits("1000"))
     ).to.not.be.reverted
     expect(
-      stableCreditsToString(await contracts.stableCredit.creditLimitOf(memberA.address))
+      formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))
     ).to.equal("1000.0")
   })
 
@@ -117,7 +118,7 @@ describe("Stable Credit Tests", function () {
     await expect(
       contracts.stableCredit.createCreditLine(
         memberG.address,
-        stringToStableCredits("100"),
+        parseStableCredits("100"),
         1000,
         1010,
         0
@@ -131,25 +132,87 @@ describe("Stable Credit Tests", function () {
     await expect(
       contracts.stableCredit.createCreditLine(
         memberG.address,
-        stringToStableCredits("100"),
+        parseStableCredits("100"),
         1000,
         1010,
-        stringToStableCredits("100")
+        parseStableCredits("100")
       )
     ).to.not.be.reverted
 
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberG.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberG.address))).to.equal(
       "100.0"
     )
 
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("100.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("100.0")
   })
 
-  it("credit fee conversion returns eth denominated amount", async function () {
+  it("Credit fee conversion returns eth denominated amount", async function () {
     expect(
-      ethToString(
-        await contracts.stableCredit.convertCreditToFeeToken(stringToStableCredits("100"))
-      )
+      formatEther(await contracts.stableCredit.convertCreditToFeeToken(parseStableCredits("100")))
     ).to.equal("100.0")
+  })
+
+  it("Can not repay more than outstanding debt", async function () {
+    // give tokens for repayment
+    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("20.0"))).to.not.be
+      .reverted
+    // approve fee tokens
+    await expect(
+      contracts.mockFeeToken
+        .connect(memberA)
+        .approve(contracts.stableCredit.address, ethers.constants.MaxUint256)
+    ).to.not.be.reverted
+
+    await expect(
+      contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("11.0"))
+    ).to.be.reverted
+  })
+
+  it("Repayment causes fee token transfer to reserve", async function () {
+    // give tokens for repayment
+    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("10.0"))).to.not.be
+      .reverted
+    // approve fee tokens
+    await expect(
+      contracts.mockFeeToken
+        .connect(memberA)
+        .approve(contracts.stableCredit.address, ethers.constants.MaxUint256)
+    ).to.not.be.reverted
+
+    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("10.0")
+
+    expect(formatEther(await contracts.reservePool.collateral())).to.eq("0.0")
+
+    await expect(
+      contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("10.0"))
+    ).to.not.be.reverted
+
+    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("0.0")
+
+    expect(formatEther(await contracts.reservePool.collateral())).to.eq("10.0")
+  })
+
+  it("Repayment causes credit balance to decrease", async function () {
+    // give tokens for repayment
+    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("10.0"))).to.not.be
+      .reverted
+    // approve fee tokens
+    await expect(
+      contracts.mockFeeToken
+        .connect(memberA)
+        .approve(contracts.stableCredit.address, ethers.constants.MaxUint256)
+    ).to.not.be.reverted
+
+    expect(
+      formatStableCredits(await contracts.stableCredit.creditBalanceOf(memberA.address))
+    ).to.eq("10.0")
+
+    await expect(
+      contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("10.0"))
+    ).to.not.be.reverted
+
+    expect(
+      formatStableCredits(await contracts.stableCredit.creditBalanceOf(memberA.address))
+    ).to.eq("0.0")
   })
 })

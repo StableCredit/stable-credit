@@ -4,12 +4,8 @@ import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
 import { stableCreditFactory, NetworkContracts } from "./stableCreditFactory"
-import {
-  stableCreditsToString,
-  stringToStableCredits,
-  stringToEth,
-  ethToString,
-} from "../utils/utils"
+import { formatStableCredits, parseStableCredits } from "../utils/utils"
+import { formatEther } from "ethers/lib/utils"
 
 chai.use(solidity)
 
@@ -38,30 +34,30 @@ describe("Stable Credit Demurrage Tests", function () {
 
   it("demurrage burn updates total supply", async function () {
     // check total supply before default
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("30.0")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
-    expect(stableCreditsToString(await contracts.stableCredit.networkDebt())).to.equal("10.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
     // check total supply after default
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("30.0")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
     // burn memberB demuraged tokens
     await expect(contracts.stableCredit.burnDemurraged(memberB.address)).to.not.be.reverted
     // check total supply after token burn
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("26.666666")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("26.666666")
     // burn memberD demuraged tokens
     await expect(contracts.stableCredit.burnDemurraged(memberD.address)).to.not.be.reverted
     // check total supply after final burn (total supply should now be accurate because all demurraged tokens are burned away)
-    expect(stableCreditsToString(await contracts.stableCredit.totalSupply())).to.equal("23.333332")
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("23.333332")
     // check positive balances
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "6.666666"
     )
   })
@@ -72,20 +68,20 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
 
     // check memberA credit balance (default should liquidate credit line)
     expect(
-      stableCreditsToString(await contracts.stableCredit.creditBalanceOf(memberA.address))
+      formatStableCredits(await contracts.stableCredit.creditBalanceOf(memberA.address))
     ).to.equal("0.0")
 
     // check memberB balance (demuraged to cover default)
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
     // check memberD balance (demuraged to cover default)
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "6.666666"
     )
   })
@@ -96,17 +92,17 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
 
     // check positive balances before minted
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
       "6.666666"
     )
 
@@ -118,13 +114,13 @@ describe("Stable Credit Demurrage Tests", function () {
     ).wait()
 
     // check balances
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "16.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
       "6.666666"
     )
   })
@@ -135,29 +131,29 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
     // check positive balances (should be demurraged)
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
       "6.666666"
     )
 
     await expect(contracts.stableCredit.burnDemurraged(memberB.address)).to.not.be.reverted
 
     // check positive balances (should be demurraged)
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
       "6.666666"
     )
   })
@@ -168,16 +164,16 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
     // check positive balances
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "6.666666"
     )
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
       "6.666666"
     )
 
@@ -189,19 +185,19 @@ describe("Stable Credit Demurrage Tests", function () {
     ).wait()
 
     // check positive balances
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "13.333332"
     )
     expect(
-      stableCreditsToString(await contracts.stableCredit.demurragedBalanceOf(memberB.address))
+      formatStableCredits(await contracts.stableCredit.demurragedBalanceOf(memberB.address))
     ).to.equal("0.0")
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "0.0"
     )
     expect(
-      stableCreditsToString(await contracts.stableCredit.demurragedBalanceOf(memberB.address))
+      formatStableCredits(await contracts.stableCredit.demurragedBalanceOf(memberB.address))
     ).to.equal("0.0")
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberF.address))).to.equal(
       "6.666666"
     )
   })
@@ -212,30 +208,30 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
 
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
 
     await expect(contracts.stableCredit.burnDemurraged(memberB.address)).to.not.be.reverted
 
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "6.666666"
     )
 
     await expect(
       contracts.stableCredit
         .connect(memberB)
-        .transfer(memberE.address, stringToStableCredits("6.666666"))
+        .transfer(memberE.address, parseStableCredits("6.666666"))
     ).to.not.be.reverted
 
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
       "0.0"
     )
 
-    expect(stableCreditsToString(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberD.address))).to.equal(
       "6.666666"
     )
   })
@@ -246,11 +242,11 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
 
     // all existing debt is in default
-    expect(ethToString(await contracts.stableCredit.conversionRate())).to.equal(
+    expect(formatEther(await contracts.stableCredit.conversionRate())).to.equal(
       "0.666666666666666667"
     )
 
@@ -259,9 +255,9 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberC.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
-    expect(ethToString(await contracts.stableCredit.conversionRate())).to.equal(
+    expect(formatEther(await contracts.stableCredit.conversionRate())).to.equal(
       "0.333333333333333334"
     )
 
@@ -270,9 +266,9 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberE.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
-    expect(ethToString(await contracts.stableCredit.conversionRate())).to.equal("0.0")
+    expect(formatEther(await contracts.stableCredit.conversionRate())).to.equal("0.0")
   })
 
   it("deumurrage results in members demurrage balance to update proportionally", async function () {
@@ -281,16 +277,15 @@ describe("Stable Credit Demurrage Tests", function () {
     await ethers.provider.send("evm_mine", [])
     await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
     // demurrage network
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.not.be
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
 
     expect(
-      stableCreditsToString(await contracts.stableCredit.demurragedBalanceOf(memberB.address))
+      formatStableCredits(await contracts.stableCredit.demurragedBalanceOf(memberB.address))
     ).to.equal("3.333334")
   })
 
   it("network demurrage with insuffienct network debt is reverted", async function () {
-    await expect(contracts.stableCredit.demurrageMembers(stringToStableCredits("10"))).to.be
-      .reverted
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.be.reverted
   })
 })

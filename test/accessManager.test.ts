@@ -4,7 +4,6 @@ import { expect } from "chai"
 import chai from "chai"
 import { solidity } from "ethereum-waffle"
 import { NetworkContracts, stableCreditFactory } from "./stableCreditFactory"
-import { stringToStableCredits, stringToEth, ethToString } from "../utils/utils"
 import { AccessManager } from "../types"
 
 chai.use(solidity)
