@@ -119,7 +119,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   await (await feeManager.setDefaultFeePercent(200000)).wait()
   await (await reservePool.setOperatorPercent(750000)).wait()
-  await (await reservePool.setMinLTV(200000)).wait()
+  await (await reservePool.setMinRTD(200000)).wait()
 }
 export default func
 func.tags = ["NETWORK"]

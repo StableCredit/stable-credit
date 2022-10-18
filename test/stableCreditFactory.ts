@@ -1,6 +1,5 @@
 import { upgrades, ethers } from "hardhat"
 import { FeeManager, ReservePool, AccessManager, MockERC20, StableCredit } from "../types"
-import { Contract } from "ethers"
 import { parseStableCredits } from "../utils/utils"
 import { parseEther } from "ethers/lib/utils"
 
@@ -155,6 +154,6 @@ const deployContracts = async () => {
   await (await contracts.accessManager.grantOperator(contracts.stableCredit.address)).wait()
   await await contracts.feeManager.setDefaultFeePercent(200000)
   await await contracts.reservePool.setOperatorPercent(750000)
-  await await contracts.reservePool.setMinLTV(200000)
+  await await contracts.reservePool.setMinRTD(200000)
   return contracts
 }

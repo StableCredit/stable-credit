@@ -84,41 +84,41 @@ describe("Reserve Pool Tests", function () {
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(200000)
   })
 
-  it("depositing collateral updates reserve LTV", async function () {
+  it("depositing collateral updates reserve RTD", async function () {
     await expect(contracts.reservePool.depositCollateral(parseEther("15.0"))).to.not.be.reverted
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("15.0")
-    // LTV should be 50%
-    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(500000)
+    // RTD should be 50%
+    expect(await (await contracts.reservePool.RTD()).toNumber()).to.equal(500000)
     await expect(contracts.reservePool.depositCollateral(parseEther("15.0"))).to.not.be.reverted
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("30.0")
-    // LTV should be 100%
-    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(1000000)
+    // RTD should be 100%
+    expect(await (await contracts.reservePool.RTD()).toNumber()).to.equal(1000000)
   })
 
-  it("needed collateral is updated when LTV changes", async function () {
-    expect(await (await contracts.reservePool.minLTV()).toNumber()).to.equal(200000)
+  it("needed collateral is updated when RTD changes", async function () {
+    expect(await (await contracts.reservePool.minRTD()).toNumber()).to.equal(200000)
     expect(formatEther(await contracts.reservePool.getNeededCollateral())).to.equal("6.0")
     await expect(contracts.reservePool.depositCollateral(parseEther("5.0"))).to.not.be.reverted
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("5.0")
-    // LTV should be 16%
-    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(166666)
+    // RTD should be 16%
+    expect(await (await contracts.reservePool.RTD()).toNumber()).to.equal(166666)
     // needed is really 1.0 but results in 1.00002 from rounding
     expect(formatEther(await contracts.reservePool.getNeededCollateral())).to.equal("1.00002")
     await expect(contracts.reservePool.depositCollateral(parseEther("1.0"))).to.not.be.reverted
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("6.0")
-    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(200000)
+    expect(await (await contracts.reservePool.RTD()).toNumber()).to.equal(200000)
   })
 
-  it("Expanding stable credit supply updates reserve LTV", async function () {
+  it("Expanding stable credit supply updates reserve RTD", async function () {
     await expect(contracts.reservePool.depositCollateral(parseEther("15.0"))).to.not.be.reverted
     // 30 / 15 = 50%
-    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(500000)
+    expect(await (await contracts.reservePool.RTD()).toNumber()).to.equal(500000)
     // expand supply
     await expect(
       contracts.stableCredit.connect(memberA).transfer(memberB.address, parseStableCredits("10.0"))
     ).to.not.be.reverted
     // 40 / 15 = 37.5%
-    expect(await (await contracts.reservePool.LTV()).toNumber()).to.equal(375000)
+    expect(await (await contracts.reservePool.RTD()).toNumber()).to.equal(375000)
   })
 
   it("Distributing fees to reserve with fully insufficient collateral adds only to collateral", async function () {
@@ -174,7 +174,7 @@ describe("Reserve Pool Tests", function () {
 
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
-    // min LTV is 20% (8 collateral is 20% of totalSupply 40)
+    // min RTD is 20% (8 collateral is 20% of totalSupply 40)
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("8.0")
     expect(formatEther(await contracts.reservePool.swapSink())).to.equal("0.25")
     expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("0.75")

@@ -42,7 +42,7 @@ contract ReservePool is
 
     uint256 public operatorPercent;
     uint256 public swapSinkPercent;
-    uint256 public minLTV;
+    uint256 public minRTD;
 
     /* ========== INITIALIZER ========== */
 
@@ -150,9 +150,9 @@ contract ReservePool is
         swapSinkPercent = MAX_PPM - _operatorPercent;
     }
 
-    function setMinLTV(uint256 _minLTV) external onlyNetworkOperator {
-        require(_minLTV <= MAX_PPM, "ReservePool: LTV must be less than 100%");
-        minLTV = _minLTV;
+    function setMinRTD(uint256 _minRTD) external onlyNetworkOperator {
+        require(_minRTD <= MAX_PPM, "ReservePool: RTD must be less than 100%");
+        minRTD = _minRTD;
     }
 
     function convertNetworkFeeToSource(uint256 amount) private returns (uint256) {
@@ -171,8 +171,9 @@ contract ReservePool is
         return swapRouter.exactInputSingle(params);
     }
 
-    function LTV() public view returns (uint256) {
+    function RTD() public view returns (uint256) {
         if (collateral == 0) return collateral;
+        if (IERC20Upgradeable(address(stableCredit)).totalSupply() == 0) return 0;
         return
             (collateral * MAX_PPM) /
             stableCredit.convertCreditToFeeToken(
@@ -181,10 +182,10 @@ contract ReservePool is
     }
 
     function getNeededCollateral() public view returns (uint256) {
-        uint256 currentLTV = LTV();
-        if (currentLTV >= minLTV) return 0;
+        uint256 currentRTD = RTD();
+        if (currentRTD >= minRTD) return 0;
         return
-            ((minLTV - currentLTV) *
+            ((minRTD - currentRTD) *
                 stableCredit.convertCreditToFeeToken(
                     IERC20Upgradeable(address(stableCredit)).totalSupply()
                 )) / MAX_PPM;
