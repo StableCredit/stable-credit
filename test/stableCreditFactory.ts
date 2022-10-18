@@ -46,6 +46,7 @@ const deployContractsWithSupply = async () => {
       parseStableCredits("100"),
       1000,
       1010,
+      0,
       0
     )
   ).wait()
@@ -65,6 +66,7 @@ const deployContractsWithSupply = async () => {
       parseStableCredits("100"),
       1000,
       1010,
+      0,
       0
     )
   ).wait()
@@ -82,6 +84,7 @@ const deployContractsWithSupply = async () => {
       parseStableCredits("100"),
       1000,
       1010,
+      0,
       0
     )
   ).wait()

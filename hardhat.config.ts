@@ -21,6 +21,8 @@ import "./tasks/generate"
 import "./tasks/sendFeeTokens"
 import "./tasks/depositCollateral"
 import "./tasks/distributeFees"
+import "./tasks/toggleFees"
+import "./tasks/registerNetwork"
 
 import { CeloProvider } from "@celo-tools/celo-ethers-wrapper"
 

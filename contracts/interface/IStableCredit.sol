@@ -20,7 +20,14 @@ interface IStableCredit {
 
     function networkDebt() external view returns (uint256);
 
-    event CreditLineCreated(address member, uint256 creditLimit, uint256 timestamp);
+    event CreditLineCreated(
+        address member,
+        uint256 creditLimit,
+        uint256 pastDueTime,
+        uint256 defaultTime,
+        uint256 feePercent,
+        uint256 balance
+    );
 
     event CreditLimitExtended(address member, uint256 creditLimit);
 

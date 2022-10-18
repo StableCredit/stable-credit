@@ -187,29 +187,43 @@ contract StableCredit is MutualCredit, IStableCredit {
     function createCreditLine(
         address _member,
         uint256 _creditLimit,
-        uint256 _pastDue,
-        uint256 _default,
+        uint256 _pastDueTime,
+        uint256 _defaultTime,
+        uint256 _feePercent,
         uint256 _balance
     ) external onlyAuthorized {
         require(
             creditTerms[_member].issueDate == 0,
             "StableCredit: Credit line already exists for member"
         );
-        require(_pastDue > 0, "StableCredit: past due time must be greater than 0");
-        require(_default > _pastDue, "StableCredit: default time must be greater than past due");
+        require(_pastDueTime > 0, "StableCredit: past due time must be greater than 0");
+        require(
+            _defaultTime > _pastDueTime,
+            "StableCredit: default time must be greater than past due"
+        );
         if (!access.isMember(_member)) access.grantMember(_member);
         creditTerms[_member] = CreditTerms({
             issueDate: block.timestamp,
-            pastDueDate: block.timestamp + _pastDue,
-            defaultDate: block.timestamp + _default
+            pastDueDate: block.timestamp + _pastDueTime,
+            defaultDate: block.timestamp + _defaultTime
         });
         setCreditLimit(_member, _creditLimit);
+        if (_feePercent > 0) {
+            feeManager.setMemberFeePercent(_member, _feePercent);
+        }
         demurrageIndexOf[_member] = demurrageIndex;
         if (_balance > 0) {
             _mint(_member, _balance);
             networkDebt += _balance;
         }
-        emit CreditLineCreated(_member, _creditLimit, block.timestamp);
+        emit CreditLineCreated(
+            _member,
+            _creditLimit,
+            _pastDueTime,
+            _defaultTime,
+            _feePercent,
+            _balance
+        );
     }
 
     function extendCreditLine(address _member, uint256 _creditLimit) external onlyAuthorized {

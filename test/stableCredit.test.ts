@@ -121,6 +121,7 @@ describe("Stable Credit Tests", function () {
         parseStableCredits("100"),
         1000,
         1010,
+        0,
         0
       )
     ).to.not.be.reverted
@@ -135,6 +136,7 @@ describe("Stable Credit Tests", function () {
         parseStableCredits("100"),
         1000,
         1010,
+        0,
         parseStableCredits("100")
       )
     ).to.not.be.reverted

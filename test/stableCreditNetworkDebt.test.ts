@@ -126,6 +126,7 @@ describe("Stable Credit Network Debt Tests", function () {
         1000,
         1010,
         parseStableCredits("100"),
+        0,
         parseStableCredits("10")
       )
     ).to.not.be.reverted
