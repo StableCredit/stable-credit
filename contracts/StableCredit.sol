@@ -165,7 +165,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         reservePool.depositCollateral(convertCreditToFeeToken(_amount));
         networkDebt += _amount;
         members[msg.sender].creditBalance -= _amount;
-        emit CreditBalanceRepayed(_amount);
+        emit CreditBalanceRepayed(msg.sender, _amount);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */

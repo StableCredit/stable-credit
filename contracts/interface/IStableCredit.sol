@@ -35,11 +35,7 @@ interface IStableCredit {
 
     event MembersDemurraged(uint256 amount);
 
-    event CreditExpirationUpdated(uint256 expiration);
-
-    event PastDueExpirationUpdated(uint256 expiration);
-
-    event CreditBalanceRepayed(uint128 expiration);
+    event CreditBalanceRepayed(address member, uint128 amount);
 
     event NetworkDebtBurned(address member, uint256 amount);
 }
