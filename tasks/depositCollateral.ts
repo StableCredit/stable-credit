@@ -6,11 +6,13 @@ import { BigNumber } from "ethers"
 import { parseEther } from "ethers/lib/utils"
 
 task(DEPOSIT_COLLATERAL, "Deposit collateral into reserve pool")
+  .addParam("symbol", "Symbol of stable credit network")
   .addParam("amount", "Amount of fee token to deposit into the reserve")
   .setAction(async (taskArgs, { network, ethers }) => {
     const signer = (await ethers.getSigners())[0]
+    let symbol = taskArgs.symbol
 
-    const reservePool = await ethers.getContract("ReservePool")
+    const reservePool = await ethers.getContract(symbol + "_ReservePool")
 
     const feeTokenDeploymentPath = `./deployments/${network.name}/FeeToken.json`
     const feeTokenRolesDeployment = fs.readFileSync(feeTokenDeploymentPath).toString()

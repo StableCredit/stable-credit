@@ -14,7 +14,7 @@ contract NetworkRegistry is Ownable {
 
     function removeNetwork(address _network) external onlyOwner {
         require(networks[_network], "Registry: Network isn't registered");
-        networks[_network] = true;
+        networks[_network] = false;
         emit NetworkRemoved(_network);
     }
 

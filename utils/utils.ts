@@ -37,9 +37,20 @@ export const deployProxyAndSave = async (
   abi,
   deployOptions?: DeployProxyOptions
 ): Promise<string> => {
-  const contractFactory = await hardhat.ethers.getContractFactory(name)
+  return await deployProxyAndSaveAs(name, name, args, hardhat, abi, deployOptions)
+}
+
+export const deployProxyAndSaveAs = async (
+  factoryName: string,
+  name: string,
+  args: any,
+  hardhat: HardhatRuntimeEnvironment,
+  abi,
+  deployOptions?: DeployProxyOptions
+): Promise<string> => {
+  const contractFactory = await hardhat.ethers.getContractFactory(factoryName)
   let contract
-  let deployment = await hardhat.deployments.getOrNull(name)
+  let deployment = await hardhat.deployments.getOrNull(factoryName)
 
   if (deployment) {
     console.log("✅ ", name, " already deployed")

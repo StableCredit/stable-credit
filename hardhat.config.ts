@@ -22,7 +22,9 @@ import "./tasks/sendFeeTokens"
 import "./tasks/depositCollateral"
 import "./tasks/distributeFees"
 import "./tasks/toggleFees"
+import "./tasks/toggleReserve"
 import "./tasks/registerNetwork"
+import "./tasks/depositFees"
 
 import { CeloProvider } from "@celo-tools/celo-ethers-wrapper"
 

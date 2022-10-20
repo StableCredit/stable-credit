@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -59,10 +60,6 @@ contract ReservePool is
         swapRouter = ISwapRouter(_swapRouter);
         poolFee = 3000;
         source = _sourceAddress;
-        IERC20Upgradeable(stableCredit.getFeeToken()).approve(
-            address(swapRouter),
-            type(uint256).max
-        );
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -157,14 +154,17 @@ contract ReservePool is
 
     function convertNetworkFeeToSource(uint256 amount) private returns (uint256) {
         if (paused()) return amount;
+
+        TransferHelper.safeApprove(stableCredit.getFeeToken(), address(swapRouter), amount);
+
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: stableCredit.getFeeToken(),
             tokenOut: source,
             fee: poolFee,
-            recipient: msg.sender,
+            recipient: address(this),
             deadline: block.timestamp,
             amountIn: amount,
-            amountOutMinimum: 0,
+            amountOutMinimum: 1,
             sqrtPriceLimitX96: 0
         });
 
@@ -189,6 +189,16 @@ contract ReservePool is
                 stableCredit.convertCreditToFeeToken(
                     IERC20Upgradeable(address(stableCredit)).totalSupply()
                 )) / MAX_PPM;
+    }
+
+    function unPauseSourceSink() external {
+        require(paused(), "ReservePool: Source sink not paused");
+        _unpause();
+    }
+
+    function pauseSourceSink() external {
+        require(!paused(), "ReservePool: Source sink already paused");
+        _pause();
     }
 
     /* ========== MODIFIERS ========== */
