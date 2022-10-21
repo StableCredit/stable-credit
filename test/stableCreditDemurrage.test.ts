@@ -288,4 +288,20 @@ describe("Stable Credit Demurrage Tests", function () {
   it("network demurrage with insuffienct network debt is reverted", async function () {
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.be.reverted
   })
+
+  it("network demurrage updates network debt", async function () {
+    // check total supply before default
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
+    // default memberA
+    await ethers.provider.send("evm_increaseTime", [100])
+    await ethers.provider.send("evm_mine", [])
+    await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
+    // demurrage network
+    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
+      .reverted
+    // check total supply after default
+    expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
+    expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("0.0")
+  })
 })

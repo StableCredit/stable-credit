@@ -191,7 +191,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         uint256 _defaultTime,
         uint256 _feePercent,
         uint256 _balance
-    ) external onlyAuthorized {
+    ) external onlyUnderwriter {
         require(
             creditTerms[_member].issueDate == 0,
             "StableCredit: Credit line already exists for member"
@@ -226,7 +226,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         );
     }
 
-    function extendCreditLine(address _member, uint256 _creditLimit) external onlyAuthorized {
+    function extendCreditLine(address _member, uint256 _creditLimit) external onlyUnderwriter {
         require(
             creditTerms[_member].issueDate > 0,
             "StableCredit: Credit line does not exist for member"
@@ -241,6 +241,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         require(networkDebt >= _amount, "StableCredit: Insufficient network debt");
         demurraged += _amount;
         updateConversionRate();
+        networkDebt -= _amount;
         demurrageIndex++;
         emit MembersDemurraged(_amount);
     }
@@ -265,6 +266,11 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     modifier onlyAuthorized() override {
         require(isAuthorized(msg.sender), "Unauthorized caller");
+        _;
+    }
+
+    modifier onlyUnderwriter() {
+        require(access.isUnderwriter(msg.sender) || msg.sender == owner(), "Unauthorized caller");
         _;
     }
 }

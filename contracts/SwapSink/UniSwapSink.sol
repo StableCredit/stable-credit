@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "../interface/IStableCredit.sol";
-import "./ICeloSwapRouter.sol";
+import "./ISwapRouter02.sol";
 import "./SwapSink.sol";
 
 /// @title CeloUniSwapSink
@@ -17,7 +17,7 @@ import "./SwapSink.sol";
 /// @notice Converts collected tokens to SOURCE used to back inter-network swaps
 /// @dev This contract interacts with the Uniswap protocol. Ensure the targeted pool
 /// has sufficient liquidity.
-contract CeloUniSwapSink is SwapSink {
+contract UniSwapSink is SwapSink {
     /* ========== STATE VARIABLES ========== */
 
     ICeloSwapRouter public swapRouter;
