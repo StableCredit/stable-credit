@@ -7,23 +7,15 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "./interface/IReservePool.sol";
 import "./interface/IStableCredit.sol";
+import "./interface/ISwapSink.sol";
 
 /// @title ReservePool
 /// @author ReSource
-/// @notice Stores, converts, and transfers collected fee tokens according to reserve
+/// @notice Stores and transfers collected fee tokens according to reserve
 /// configuration set by network operators.
-/// @dev This contract interacts with the Uniswap protocol. Ensure the targeted pool
-/// has sufficient liquidity.
-contract ReservePool is
-    IReservePool,
-    OwnableUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /* ========== CONSTANTS ========== */
@@ -32,13 +24,10 @@ contract ReservePool is
 
     /* ========== STATE VARIABLES ========== */
 
-    ISwapRouter public swapRouter;
     IStableCredit public stableCredit;
-    address internal source;
-    uint24 public poolFee;
+    ISwapSink public swapSink;
 
     uint256 public collateral;
-    uint256 public swapSink;
     uint256 public operatorBalance;
 
     uint256 public operatorPercent;
@@ -47,19 +36,11 @@ contract ReservePool is
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(
-        address _stableCredit,
-        address _sourceAddress,
-        address _swapRouter
-    ) public initializer {
+    function initialize(address _stableCredit, address _swapSink) public initializer {
         __ReentrancyGuard_init();
-        __Pausable_init();
         __Ownable_init();
-        _pause();
         stableCredit = IStableCredit(_stableCredit);
-        swapRouter = ISwapRouter(_swapRouter);
-        poolFee = 3000;
-        source = _sourceAddress;
+        swapSink = ISwapSink(_swapSink);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -90,9 +71,13 @@ contract ReservePool is
             return;
         }
         collateral += neededCollateral;
-        swapSink += convertNetworkFeeToSource(
-            (swapSinkPercent * (amount - neededCollateral)) / MAX_PPM
-        );
+
+        uint256 sinkAmount = (swapSinkPercent * (amount - neededCollateral)) / MAX_PPM;
+        if (sinkAmount > 0) {
+            IERC20Upgradeable(stableCredit.getFeeToken()).approve(address(swapSink), sinkAmount);
+            swapSink.depositFees(sinkAmount);
+        }
+
         operatorBalance += (operatorPercent * (amount - neededCollateral)) / MAX_PPM;
     }
 
@@ -130,14 +115,6 @@ contract ReservePool is
         emit Recovered(tokenAddress, tokenAmount);
     }
 
-    function setSource(address _sourceAddress) external onlyOwner {
-        source = _sourceAddress;
-    }
-
-    function setPoolFee(uint24 _poolFee) external onlyOwner {
-        poolFee = _poolFee;
-    }
-
     function setOperatorPercent(uint256 _operatorPercent) external onlyNetworkOperator {
         require(
             _operatorPercent <= MAX_PPM,
@@ -152,24 +129,11 @@ contract ReservePool is
         minRTD = _minRTD;
     }
 
-    function convertNetworkFeeToSource(uint256 amount) private returns (uint256) {
-        if (paused()) return amount;
-
-        TransferHelper.safeApprove(stableCredit.getFeeToken(), address(swapRouter), amount);
-
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: stableCredit.getFeeToken(),
-            tokenOut: source,
-            fee: poolFee,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: amount,
-            amountOutMinimum: 1,
-            sqrtPriceLimitX96: 0
-        });
-
-        return swapRouter.exactInputSingle(params);
+    function setSwapSink(address _swapSink) external onlyNetworkOperator {
+        swapSink = ISwapSink(_swapSink);
     }
+
+    /* ========== VIEW FUNCTIONS ========== */
 
     function RTD() public view returns (uint256) {
         if (collateral == 0) return collateral;
@@ -189,16 +153,6 @@ contract ReservePool is
                 stableCredit.convertCreditToFeeToken(
                     IERC20Upgradeable(address(stableCredit)).totalSupply()
                 )) / MAX_PPM;
-    }
-
-    function unPauseSourceSink() external {
-        require(paused(), "ReservePool: Source sink not paused");
-        _unpause();
-    }
-
-    function pauseSourceSink() external {
-        require(!paused(), "ReservePool: Source sink already paused");
-        _pause();
     }
 
     /* ========== MODIFIERS ========== */

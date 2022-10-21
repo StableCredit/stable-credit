@@ -1,5 +1,5 @@
 import { upgrades, ethers } from "hardhat"
-import { FeeManager, ReservePool, AccessManager, MockERC20, StableCredit } from "../types"
+import { FeeManager, ReservePool, SwapSink, AccessManager, MockERC20, StableCredit } from "../types"
 import { parseStableCredits } from "../utils/utils"
 import { parseEther } from "ethers/lib/utils"
 
@@ -9,6 +9,7 @@ export interface NetworkContracts {
   stableCredit: StableCredit
   feeManager: FeeManager
   reservePool: ReservePool
+  swapSink: SwapSink
 }
 
 export const stableCreditFactory = {
@@ -133,13 +134,16 @@ const deployContracts = async () => {
   ]
   contracts.stableCredit = (await upgrades.deployProxy(stableCreditFactory, args)) as StableCredit
 
+  // deploy swapSink
+  const swapSinkFactory = await ethers.getContractFactory("SwapSink")
+  args = [contracts.stableCredit.address, sourceToken.address]
+  contracts.swapSink = (await upgrades.deployProxy(swapSinkFactory, args, {
+    initializer: "__SwapSink_init",
+  })) as SwapSink
+
   // deploy reservePool
   const reservePoolFactory = await ethers.getContractFactory("ReservePool")
-  args = [
-    contracts.stableCredit.address,
-    sourceToken.address,
-    "0xe592427a0aece92de3edee1f18e0157c05861564",
-  ]
+  args = [contracts.stableCredit.address, contracts.swapSink.address]
   contracts.reservePool = (await upgrades.deployProxy(reservePoolFactory, args)) as ReservePool
 
   // deploy feeManager

@@ -41,8 +41,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         _pause();
         reservePool = IReservePool(_reservePool);
         stableCredit = IStableCredit(_stableCredit);
-
-        IERC20Upgradeable(stableCredit.getFeeToken()).approve(_reservePool, type(uint256).max);
         defaultFeePercent = _defaultFeePercent;
     }
 
@@ -50,6 +48,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /// @notice Distributes collected fees to the reserve pool.
     function distributeFees() external {
+        IERC20Upgradeable(stableCredit.getFeeToken()).approve(address(reservePool), collectedFees);
         reservePool.depositFees(collectedFees);
         emit FeesDistributed(collectedFees);
         collectedFees = 0;

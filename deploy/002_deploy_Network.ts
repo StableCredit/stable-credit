@@ -21,9 +21,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   const networkConfig = fs.readFileSync(networkConfigPath).toString()
   const config = JSON.parse(networkConfig)
 
-  let { feeTokenAddress, sourceAddress, uniswapRouterAddress, name, symbol } = config
-
-  if (!uniswapRouterAddress) return console.log("No uniswap fee router specified")
+  let { feeTokenAddress, sourceAddress, name, symbol } = config
 
   if (!name || !symbol) return console.log("No stable credit name or symbol specified")
 
@@ -112,9 +110,21 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
 
+  // deploy swapSink
+  const swapSinkAbi = (await hardhat.artifacts.readArtifact("SwapSink")).abi
+  const swapSinkArgs = [stableCredit.address, sourceAddress]
+  const swapSinkAddress = await deployProxyAndSaveAs(
+    "SwapSink",
+    symbol + "_SwapSink",
+    swapSinkArgs,
+    hardhat,
+    swapSinkAbi,
+    { initializer: "__SwapSink_init" }
+  )
+
   // deploy reservePool
   const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
-  const reservePoolArgs = [stableCredit.address, sourceAddress, uniswapRouterAddress]
+  const reservePoolArgs = [stableCredit.address, swapSinkAddress]
   const reservePoolAddress = await deployProxyAndSaveAs(
     "ReservePool",
     symbol + "_ReservePool",

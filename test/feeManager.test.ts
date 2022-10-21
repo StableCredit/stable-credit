@@ -72,7 +72,9 @@ describe("Fee Manager Tests", function () {
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("100000.0")
-    expect(formatEther(await contracts.reservePool.swapSink())).to.equal("1.0")
+    expect(
+      formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
+    ).to.equal("1.0")
     expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("3.0")
   })
 

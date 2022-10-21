@@ -13,18 +13,12 @@ describe("Reserve Pool Tests", function () {
   let contracts: NetworkContracts
   let memberA: SignerWithAddress
   let memberB: SignerWithAddress
-  let memberC: SignerWithAddress
-  let memberD: SignerWithAddress
-  let memberE: SignerWithAddress
   let memberF: SignerWithAddress
 
   this.beforeEach(async function () {
     const accounts = await ethers.getSigners()
     memberA = accounts[1]
     memberB = accounts[2]
-    memberC = accounts[3]
-    memberD = accounts[4]
-    memberE = accounts[5]
     memberF = accounts[6]
 
     contracts = await stableCreditFactory.deployWithSupply()
@@ -144,7 +138,9 @@ describe("Reserve Pool Tests", function () {
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("4.0")
-    expect(formatEther(await contracts.reservePool.swapSink())).to.equal("0.0")
+    expect(
+      formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
+    ).to.equal("0.0")
     expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("0.0")
   })
 
@@ -167,7 +163,9 @@ describe("Reserve Pool Tests", function () {
     ).to.not.be.reverted
 
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("7.0")
-    expect(formatEther(await contracts.reservePool.swapSink())).to.equal("0.0")
+    expect(
+      formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
+    ).to.equal("0.0")
     expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("0.0")
 
     expect(formatEther(await contracts.feeManager.collectedFees())).to.equal("2.0")
@@ -176,7 +174,9 @@ describe("Reserve Pool Tests", function () {
 
     // min RTD is 20% (8 collateral is 20% of totalSupply 40)
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("8.0")
-    expect(formatEther(await contracts.reservePool.swapSink())).to.equal("0.25")
+    expect(
+      formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
+    ).to.equal("0.25")
     expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("0.75")
   })
 
