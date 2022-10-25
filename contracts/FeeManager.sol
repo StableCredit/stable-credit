@@ -48,7 +48,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /// @notice Distributes collected fees to the reserve pool.
     function distributeFees() external {
-        IERC20Upgradeable(stableCredit.getFeeToken()).approve(address(reservePool), collectedFees);
+        IERC20Upgradeable(stableCredit.feeToken()).approve(address(reservePool), collectedFees);
         reservePool.depositFees(collectedFees);
         emit FeesDistributed(collectedFees);
         collectedFees = 0;
@@ -67,7 +67,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     ) external override {
         if (paused()) return;
         uint256 totalFee = calculateMemberFee(sender, amount);
-        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
+        IERC20Upgradeable(stableCredit.feeToken()).safeTransferFrom(
             sender,
             address(this),
             totalFee

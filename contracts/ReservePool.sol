@@ -48,7 +48,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
     function depositCollateral(uint256 amount) public override nonReentrant {
         require(amount > 0, "ReservePool: Cannot stake 0");
         collateral += amount;
-        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
+        IERC20Upgradeable(stableCredit.feeToken()).safeTransferFrom(
             msg.sender,
             address(this),
             amount
@@ -60,7 +60,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
     /// and operator balances. Will also convert fee token to SOURCE if configured.
     function depositFees(uint256 amount) public override nonReentrant {
         require(amount > 0, "ReservePool: Cannot deposit 0");
-        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
+        IERC20Upgradeable(stableCredit.feeToken()).safeTransferFrom(
             msg.sender,
             address(this),
             amount
@@ -74,7 +74,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
         uint256 sinkAmount = (swapSinkPercent * (amount - neededCollateral)) / MAX_PPM;
         if (sinkAmount > 0) {
-            IERC20Upgradeable(stableCredit.getFeeToken()).approve(address(swapSink), sinkAmount);
+            IERC20Upgradeable(stableCredit.feeToken()).approve(address(swapSink), sinkAmount);
             swapSink.depositFees(sinkAmount);
         }
 
@@ -87,7 +87,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         require(amount > 0, "ReservePool: Cannot withdraw 0");
         require(amount <= operatorBalance, "ReservePool: Insufficient operator balance");
         operatorBalance -= amount;
-        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(stableCredit.feeToken()).safeTransfer(msg.sender, amount);
     }
 
     /// @notice called by the stable credit contract when members burn away bad credits
@@ -100,7 +100,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         nonReentrant
     {
         if (collateral == 0) return;
-        IERC20Upgradeable feeToken = IERC20Upgradeable(stableCredit.getFeeToken());
+        IERC20Upgradeable feeToken = IERC20Upgradeable(stableCredit.feeToken());
         if (credits < collateral) {
             collateral -= credits;
             feeToken.transfer(member, credits);

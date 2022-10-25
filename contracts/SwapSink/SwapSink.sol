@@ -44,7 +44,7 @@ contract SwapSink is
     /// @dev Called by ReservePool when collected fees are distributed by FeeManager.
     function depositFees(uint256 amount) public override nonReentrant {
         require(amount > 0, "SwapSink: Cannot deposit 0");
-        IERC20Upgradeable(stableCredit.getFeeToken()).safeTransferFrom(
+        IERC20Upgradeable(stableCredit.feeToken()).safeTransferFrom(
             msg.sender,
             address(this),
             amount

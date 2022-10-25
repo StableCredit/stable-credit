@@ -10,9 +10,9 @@ interface IStableCredit {
 
     function isAuthorized(address account) external view returns (bool);
 
-    function getReservePool() external view returns (address);
+    function reservePool() external view returns (address);
 
-    function getFeeToken() external view returns (address);
+    function feeToken() external view returns (address);
 
     function convertCreditToFeeToken(uint256 amount) external view returns (uint256);
 

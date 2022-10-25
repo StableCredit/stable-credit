@@ -38,13 +38,13 @@ contract UniSwapSink is SwapSink {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     function convertFeesToSwapToken() external override whenNotPaused {
-        IERC20Upgradeable feeToken = IERC20Upgradeable(stableCredit.getFeeToken());
+        IERC20Upgradeable feeToken = IERC20Upgradeable(stableCredit.feeToken());
         uint256 feeBalance = feeToken.balanceOf(address(this));
         TransferHelper.safeApprove(address(feeToken), address(swapRouter), feeBalance);
 
         ICeloSwapRouter.ExactInputSingleParams memory params = ICeloSwapRouter
             .ExactInputSingleParams({
-                tokenIn: stableCredit.getFeeToken(),
+                tokenIn: stableCredit.feeToken(),
                 tokenOut: source,
                 fee: poolFee,
                 recipient: address(this),

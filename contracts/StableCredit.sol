@@ -30,8 +30,8 @@ contract StableCredit is MutualCredit, IStableCredit {
     mapping(address => CreditTerms) public creditTerms;
     IAccessManager public access;
     IFeeManager public feeManager;
-    IReservePool public reservePool;
-    IERC20Upgradeable public feeToken;
+    address public reservePool;
+    address public feeToken;
 
     /* ========== INITIALIZER ========== */
 
@@ -42,7 +42,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         string memory symbol_
     ) external virtual initializer {
         access = IAccessManager(_accessManager);
-        feeToken = IERC20Upgradeable(_feeToken);
+        feeToken = _feeToken;
         __MutualCredit_init(name_, symbol_);
         demurrageIndex = 1;
         conversionRate = 1e18;
@@ -89,19 +89,14 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     function inDefault(address _member) public view returns (bool) {
-        return block.timestamp >= creditTerms[_member].defaultDate;
+        return creditBalanceOf(_member) > 0 && block.timestamp >= creditTerms[_member].defaultDate;
     }
 
     function isPastDue(address _member) public view returns (bool) {
-        return block.timestamp >= creditTerms[_member].pastDueDate && !inDefault(_member);
-    }
-
-    function getReservePool() external view override returns (address) {
-        return address(reservePool);
-    }
-
-    function getFeeToken() external view override returns (address) {
-        return address(feeToken);
+        return
+            creditBalanceOf(_member) > 0 &&
+            block.timestamp >= creditTerms[_member].pastDueDate &&
+            !inDefault(_member);
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
@@ -120,9 +115,12 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     function validateCreditLine(address _member) public returns (bool) {
         require(creditLimitOf(_member) > 0, "StableCredit: member does not have a credit line");
-        // renew if using creditline while past due and outstanding debt is zero
-        if (creditBalanceOf(_member) == 0 && isPastDue(_member)) {
-            CreditTerms memory terms = creditTerms[_member];
+        // renew if no outstanding debt while due date or default date has passed
+        CreditTerms memory terms = creditTerms[_member];
+        if (
+            creditBalanceOf(_member) == 0 &&
+            (block.timestamp >= terms.pastDueDate || block.timestamp >= terms.defaultDate)
+        ) {
             creditTerms[_member] = CreditTerms({
                 pastDueDate: block.timestamp + (terms.pastDueDate - terms.issueDate),
                 defaultDate: block.timestamp + (terms.defaultDate - terms.issueDate),
@@ -145,7 +143,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         burnDemurraged(msg.sender);
         _burn(msg.sender, _amount);
         networkDebt -= _amount;
-        reservePool.reimburseMember(msg.sender, convertCreditToFeeToken(_amount));
+        IReservePool(reservePool).reimburseMember(msg.sender, convertCreditToFeeToken(_amount));
         emit NetworkDebtBurned(msg.sender, _amount);
     }
 
@@ -155,14 +153,18 @@ contract StableCredit is MutualCredit, IStableCredit {
         if (burnAmount == 0) return;
         _burn(_member, burnAmount);
         demurraged -= burnAmount;
-        reservePool.reimburseMember(_member, convertCreditToFeeToken(burnAmount));
+        IReservePool(reservePool).reimburseMember(_member, convertCreditToFeeToken(burnAmount));
     }
 
     function repayCreditBalance(uint128 _amount) external {
         uint256 creditBalance = creditBalanceOf(msg.sender);
         require(_amount <= creditBalance, "StableCredit: invalid amount");
-        feeToken.transferFrom(msg.sender, address(this), convertCreditToFeeToken(_amount));
-        reservePool.depositCollateral(convertCreditToFeeToken(_amount));
+        IERC20Upgradeable(feeToken).transferFrom(
+            msg.sender,
+            address(this),
+            convertCreditToFeeToken(_amount)
+        );
+        IReservePool(reservePool).depositCollateral(convertCreditToFeeToken(_amount));
         networkDebt += _amount;
         members[msg.sender].creditBalance -= _amount;
         emit CreditBalanceRepayed(msg.sender, _amount);
@@ -247,13 +249,13 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     function setReservePool(address _reservePool) external onlyAuthorized {
-        reservePool = IReservePool(_reservePool);
-        feeToken.approve(_reservePool, type(uint256).max);
+        reservePool = _reservePool;
+        IERC20Upgradeable(feeToken).approve(_reservePool, type(uint256).max);
     }
 
     function setFeeManager(address _feeManager) external onlyAuthorized {
         feeManager = IFeeManager(_feeManager);
-        feeToken.approve(_feeManager, type(uint256).max);
+        IERC20Upgradeable(feeToken).approve(_feeManager, type(uint256).max);
     }
 
     /* ========== MODIFIERS ========== */
