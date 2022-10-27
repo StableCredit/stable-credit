@@ -72,7 +72,7 @@ describe("Reserve Pool Tests", function () {
     expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(250000)
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(750000)
 
-    await expect(contracts.reservePool.setOperatorPercent(200000)).to.not.be.reverted
+    await expect(contracts.reservePool.setSwapPercent(800000)).to.not.be.reverted
 
     expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(800000)
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(200000)

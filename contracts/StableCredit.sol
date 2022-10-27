@@ -28,7 +28,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     uint256 public networkDebt;
     mapping(address => uint256) private demurrageIndexOf;
     mapping(address => CreditTerms) public creditTerms;
-    IAccessManager public access;
+    address public access;
     IFeeManager public feeManager;
     address public reservePool;
     address public feeToken;
@@ -41,9 +41,9 @@ contract StableCredit is MutualCredit, IStableCredit {
         string memory name_,
         string memory symbol_
     ) external virtual initializer {
-        access = IAccessManager(_accessManager);
-        feeToken = _feeToken;
         __MutualCredit_init(name_, symbol_);
+        access = _accessManager;
+        feeToken = _feeToken;
         demurrageIndex = 1;
         conversionRate = 1e18;
     }
@@ -82,10 +82,6 @@ contract StableCredit is MutualCredit, IStableCredit {
         creditDecimals < feeDecimals
             ? conversion = ((amount * 10**(feeDecimals - creditDecimals)))
             : conversion = ((amount / 10**(creditDecimals - feeDecimals)));
-    }
-
-    function isAuthorized(address _member) public view override returns (bool) {
-        return access.isOperator(_member) || _member == owner();
     }
 
     function inDefault(address _member) public view returns (bool) {
@@ -203,7 +199,7 @@ contract StableCredit is MutualCredit, IStableCredit {
             _defaultTime > _pastDueTime,
             "StableCredit: default time must be greater than past due"
         );
-        if (!access.isMember(_member)) access.grantMember(_member);
+        if (!IAccessManager(access).isMember(_member)) IAccessManager(access).grantMember(_member);
         creditTerms[_member] = CreditTerms({
             issueDate: block.timestamp,
             pastDueDate: block.timestamp + _pastDueTime,
@@ -239,7 +235,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditLimitExtended(_member, _creditLimit);
     }
 
-    function demurrageMembers(uint256 _amount) external onlyAuthorized {
+    function demurrageMembers(uint256 _amount) external onlyOperator {
         require(networkDebt >= _amount, "StableCredit: Insufficient network debt");
         demurraged += _amount;
         updateConversionRate();
@@ -248,12 +244,12 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit MembersDemurraged(_amount);
     }
 
-    function setReservePool(address _reservePool) external onlyAuthorized {
+    function setReservePool(address _reservePool) external onlyOwner {
         reservePool = _reservePool;
         IERC20Upgradeable(feeToken).approve(_reservePool, type(uint256).max);
     }
 
-    function setFeeManager(address _feeManager) external onlyAuthorized {
+    function setFeeManager(address _feeManager) external onlyOwner {
         feeManager = IFeeManager(_feeManager);
         IERC20Upgradeable(feeToken).approve(_feeManager, type(uint256).max);
     }
@@ -261,18 +257,31 @@ contract StableCredit is MutualCredit, IStableCredit {
     /* ========== MODIFIERS ========== */
 
     modifier onlyMembers(address _from, address _to) {
-        require(access.isMember(_from) || access.isOperator(_from), "Sender is not network member");
-        require(access.isMember(_to) || access.isOperator(_to), "Recipient is not network member");
+        IAccessManager accessManager = IAccessManager(access);
+        require(
+            accessManager.isMember(_from) || accessManager.isOperator(_from),
+            "Sender is not network member"
+        );
+        require(
+            accessManager.isMember(_to) || accessManager.isOperator(_to),
+            "Recipient is not network member"
+        );
         _;
     }
 
-    modifier onlyAuthorized() override {
-        require(isAuthorized(msg.sender), "Unauthorized caller");
+    modifier onlyOperator() {
+        require(
+            IAccessManager(access).isOperator(msg.sender) || msg.sender == owner(),
+            "Unauthorized caller"
+        );
         _;
     }
 
     modifier onlyUnderwriter() {
-        require(access.isUnderwriter(msg.sender) || msg.sender == owner(), "Unauthorized caller");
+        require(
+            IAccessManager(access).isUnderwriter(msg.sender) || msg.sender == owner(),
+            "Unauthorized caller"
+        );
         _;
     }
 }

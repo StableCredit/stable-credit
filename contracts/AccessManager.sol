@@ -10,12 +10,12 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
 
     function initialize(address[] memory _operators) external initializer {
         __AccessControl_init();
+        __Ownable_init();
         // create roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole("OPERATOR", msg.sender);
         _setupRole("MEMBER", msg.sender);
         _setupRole("UNDERWRITER", msg.sender);
-        _setRoleAdmin("UNDERWRITER", "OPERATOR");
         _setRoleAdmin("MEMBER", "OPERATOR");
 
         for (uint256 j = 0; j < _operators.length; j++) {
@@ -32,7 +32,7 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit MemberAdded(_member);
     }
 
-    function grantUnderwriter(address _underwriter) external onlyNetworkOperator {
+    function grantUnderwriter(address _underwriter) external onlyOwner {
         grantRole("UNDERWRITER", _underwriter);
         emit UnderwriterAdded(_underwriter);
     }
@@ -53,7 +53,7 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit OperatorRemoved(_operator);
     }
 
-    function revokeUnderwriter(address _underwriter) external onlyNetworkOperator {
+    function revokeUnderwriter(address _underwriter) external onlyOwner {
         require(_underwriter != owner(), "can't remove owner");
         revokeRole("UNDERWRITER", _underwriter);
         emit UnderwriterRemoved(_underwriter);

@@ -26,11 +26,6 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         __Ownable_init();
     }
 
-    modifier onlyAuthorized() virtual {
-        require(msg.sender == owner(), "invalid caller address");
-        _;
-    }
-
     function decimals() public view virtual override returns (uint8) {
         return 6;
     }
@@ -51,7 +46,7 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         return _localMember.creditLimit - _localMember.creditBalance;
     }
 
-    function setCreditLimit(address _member, uint256 _limit) public virtual onlyAuthorized {
+    function setCreditLimit(address _member, uint256 _limit) internal virtual {
         members[_member].creditLimit = _limit.toUInt128();
         emit CreditLimitUpdate(_member, _limit);
     }

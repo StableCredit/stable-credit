@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "./interface/IReservePool.sol";
+import "./interface/IAccessManager.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/ISwapSink.sol";
 
@@ -96,7 +97,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
     function reimburseMember(address member, uint256 credits)
         external
         override
-        onlyNetworkOperator
+        onlyStableCredit
         nonReentrant
     {
         if (collateral == 0) return;
@@ -115,21 +116,18 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         emit Recovered(tokenAddress, tokenAmount);
     }
 
-    function setOperatorPercent(uint256 _operatorPercent) external onlyNetworkOperator {
-        require(
-            _operatorPercent <= MAX_PPM,
-            "ReservePool: operator percent must be less than 100%"
-        );
-        operatorPercent = _operatorPercent;
-        swapSinkPercent = MAX_PPM - _operatorPercent;
+    function setSwapPercent(uint256 _swapPercent) external onlyNetworkOperator {
+        require(_swapPercent <= MAX_PPM, "ReservePool: swap percent must be less than 100%");
+        swapSinkPercent = _swapPercent;
+        operatorPercent = MAX_PPM - _swapPercent;
     }
 
-    function setMinRTD(uint256 _minRTD) external onlyNetworkOperator {
+    function setMinRTD(uint256 _minRTD) external onlyUnderwriter {
         require(_minRTD <= MAX_PPM, "ReservePool: RTD must be less than 100%");
         minRTD = _minRTD;
     }
 
-    function setSwapSink(address _swapSink) external onlyNetworkOperator {
+    function setSwapSink(address _swapSink) external onlyOwner {
         swapSink = ISwapSink(_swapSink);
     }
 
@@ -159,8 +157,25 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     modifier onlyNetworkOperator() {
         require(
-            stableCredit.isAuthorized(msg.sender) || msg.sender == owner(),
-            "FeeManager: Unauthorized caller"
+            IAccessManager(stableCredit.access()).isOperator(msg.sender) || msg.sender == owner(),
+            "FeeManager: Caller is not underwriter"
+        );
+        _;
+    }
+
+    modifier onlyUnderwriter() {
+        require(
+            IAccessManager(stableCredit.access()).isUnderwriter(msg.sender) ||
+                msg.sender == owner(),
+            "FeeManager: Caller is not underwriter"
+        );
+        _;
+    }
+
+    modifier onlyStableCredit() {
+        require(
+            msg.sender == address(stableCredit) || msg.sender == owner(),
+            "FeeManager: Caller must be contract or owner"
         );
         _;
     }

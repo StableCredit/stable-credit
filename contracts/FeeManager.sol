@@ -23,7 +23,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /* ========== STATE VARIABLES ========== */
 
     IReservePool public reservePool;
-    IAccessManager public access;
     IStableCredit public stableCredit;
     mapping(address => uint256) public memberFeePercent;
     uint256 public defaultFeePercent;
@@ -114,18 +113,11 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyOperator() {
-        require(
-            stableCredit.isAuthorized(msg.sender) || msg.sender == owner(),
-            "FeeManager: Caller is not credit operator"
-        );
-        _;
-    }
-
     modifier onlyUnderwriter() {
         require(
-            stableCredit.isAuthorized(msg.sender) || msg.sender == owner(),
-            "FeeManager: Caller is not credit operator"
+            IAccessManager(stableCredit.access()).isUnderwriter(msg.sender) ||
+                msg.sender == owner(),
+            "FeeManager: Caller is not underwriter"
         );
         _;
     }

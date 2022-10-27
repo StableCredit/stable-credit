@@ -8,11 +8,11 @@ interface IStableCredit {
         uint256 pastDueDate;
     }
 
-    function isAuthorized(address account) external view returns (bool);
-
     function reservePool() external view returns (address);
 
     function feeToken() external view returns (address);
+
+    function access() external view returns (address);
 
     function convertCreditToFeeToken(uint256 amount) external view returns (uint256);
 
