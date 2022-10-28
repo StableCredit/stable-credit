@@ -95,7 +95,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         memberFeeRate[member] = _feePercent;
     }
 
-    function setAverageFeeRate(uint256 _feePercent) external onlyUnderwriter {
+    function setAverageFeeRate(uint256 _feePercent) external onlyAdmin {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
         averageFeeRate = _feePercent;
     }
@@ -120,6 +120,16 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
                 msg.sender == owner() ||
                 msg.sender == address(stableCredit),
             "FeeManager: Caller is not underwriter"
+        );
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(
+            IAccessManager(stableCredit.access()).isUnderwriter(msg.sender) ||
+                IAccessManager(stableCredit.access()).isOperator(msg.sender) ||
+                msg.sender == owner(),
+            "FeeManager: Caller is not authorized"
         );
         _;
     }
