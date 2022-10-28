@@ -24,8 +24,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     IReservePool public reservePool;
     IStableCredit public stableCredit;
-    mapping(address => uint256) public memberFeePercent;
-    uint256 public defaultFeePercent;
+    mapping(address => uint256) public memberFeeRate;
+    uint256 public averageFeeRate;
     uint256 public collectedFees;
 
     /* ========== INITIALIZER ========== */
@@ -33,14 +33,14 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     function initialize(
         address _stableCredit,
         address _reservePool,
-        uint256 _defaultFeePercent
+        uint256 _averageFeeRate
     ) external virtual initializer {
         __Ownable_init();
         __Pausable_init();
         _pause();
         reservePool = IReservePool(_reservePool);
         stableCredit = IStableCredit(_stableCredit);
-        defaultFeePercent = _defaultFeePercent;
+        averageFeeRate = _averageFeeRate;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -77,26 +77,27 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     function calculateMemberFee(address _member, uint256 _amount) public view returns (uint256) {
         if (paused()) return 0;
-        uint256 feePercent = memberFeePercent[_member] == 0
-            ? defaultFeePercent
-            : memberFeePercent[_member];
-        return stableCredit.convertCreditToFeeToken((feePercent * _amount) / MAX_PPM);
+        // uint256 feeRate = memberFeeRate[_member] == 0 ? averageFeeRate : memberFeeRate[_member];
+
+        uint256 feeRate = memberFeeRate[_member] == 0
+            ? averageFeeRate
+            : (averageFeeRate * memberFeeRate[_member]) / MAX_PPM;
+        return stableCredit.convertCreditToFeeToken((feeRate * _amount) / MAX_PPM);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function setMemberFeePercent(address member, uint256 _feePercent)
+    function setMemberFeeRate(address member, uint256 _feePercent)
         external
         override
         onlyUnderwriter
     {
-        require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
-        memberFeePercent[member] = _feePercent;
+        memberFeeRate[member] = _feePercent;
     }
 
-    function setDefaultFeePercent(uint256 _feePercent) external onlyUnderwriter {
+    function setAverageFeeRate(uint256 _feePercent) external onlyUnderwriter {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
-        defaultFeePercent = _feePercent;
+        averageFeeRate = _feePercent;
     }
 
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
@@ -116,7 +117,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     modifier onlyUnderwriter() {
         require(
             IAccessManager(stableCredit.access()).isUnderwriter(msg.sender) ||
-                msg.sender == owner(),
+                msg.sender == owner() ||
+                msg.sender == address(stableCredit),
             "FeeManager: Caller is not underwriter"
         );
         _;

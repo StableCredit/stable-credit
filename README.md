@@ -44,6 +44,15 @@ yarn
 yarn chain
 ```
 
+> configure `network_config.json` with
+
+```bash
+{
+  "name": "example_name",
+  "symbol": "exp"
+}
+```
+
 > deploy contracts to local hardhat chain
 
 ```bash

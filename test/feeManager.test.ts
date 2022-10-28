@@ -78,17 +78,16 @@ describe("Fee Manager Tests", function () {
     expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("3.0")
   })
 
-  it("setDefaultFeePercent updates network's feePercent", async function () {
-    expect(await (await contracts.feeManager.defaultFeePercent()).toNumber()).to.equal(200000)
-    await expect(contracts.feeManager.setDefaultFeePercent(100000)).to.not.be.reverted
-    expect(await (await contracts.feeManager.defaultFeePercent()).toNumber()).to.equal(100000)
+  it("setAverageFeeRate updates average fee rate", async function () {
+    expect(await (await contracts.feeManager.averageFeeRate()).toNumber()).to.equal(200000)
+    await expect(contracts.feeManager.setAverageFeeRate(100000)).to.not.be.reverted
+    expect(await (await contracts.feeManager.averageFeeRate()).toNumber()).to.equal(100000)
   })
 
   it("updating member's feePercent updates member's feePercent", async function () {
     expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.equal("100.0")
 
-    await expect(contracts.feeManager.setMemberFeePercent(memberA.address, 100000)).to.not.be
-      .reverted
+    await expect(contracts.feeManager.setMemberFeeRate(memberA.address, 500000)).to.not.be.reverted
 
     await expect(
       contracts.stableCredit.connect(memberA).transfer(memberB.address, parseStableCredits("20"))

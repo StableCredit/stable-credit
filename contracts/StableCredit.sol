@@ -111,19 +111,6 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     function validateCreditLine(address _member) public returns (bool) {
         require(creditLimitOf(_member) > 0, "StableCredit: member does not have a credit line");
-        // renew if no outstanding debt while due date or default date has passed
-        CreditTerms memory terms = creditTerms[_member];
-        if (
-            creditBalanceOf(_member) == 0 &&
-            (block.timestamp >= terms.pastDueDate || block.timestamp >= terms.defaultDate)
-        ) {
-            creditTerms[_member] = CreditTerms({
-                pastDueDate: block.timestamp + (terms.pastDueDate - terms.issueDate),
-                defaultDate: block.timestamp + (terms.defaultDate - terms.issueDate),
-                issueDate: block.timestamp
-            });
-            return true;
-        }
         require(!isPastDue(_member), "StableCredit: Credit line is past due");
         if (inDefault(_member)) {
             defaultCreditLine(_member);
@@ -207,7 +194,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         });
         setCreditLimit(_member, _creditLimit);
         if (_feePercent > 0) {
-            feeManager.setMemberFeePercent(_member, _feePercent);
+            feeManager.setMemberFeeRate(_member, _feePercent);
         }
         demurrageIndexOf[_member] = demurrageIndex;
         if (_balance > 0) {
