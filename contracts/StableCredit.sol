@@ -85,14 +85,11 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     function inDefault(address _member) public view returns (bool) {
-        return creditBalanceOf(_member) > 0 && block.timestamp >= creditTerms[_member].defaultDate;
+        return block.timestamp >= creditTerms[_member].defaultDate;
     }
 
     function isPastDue(address _member) public view returns (bool) {
-        return
-            creditBalanceOf(_member) > 0 &&
-            block.timestamp >= creditTerms[_member].pastDueDate &&
-            !inDefault(_member);
+        return block.timestamp >= creditTerms[_member].pastDueDate && !inDefault(_member);
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
@@ -154,13 +151,16 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
-
     function defaultCreditLine(address _member) internal virtual {
         uint256 creditBalance = creditBalanceOf(_member);
-        networkDebt += creditBalance;
         delete members[_member];
         delete creditTerms[_member];
-        emit CreditDefault(_member);
+        if (creditBalance > 0) {
+            networkDebt += creditBalance;
+            emit CreditDefault(_member);
+            return;
+        }
+        emit PeriodEnded(_member);
     }
 
     function updateConversionRate() private {

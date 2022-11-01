@@ -68,28 +68,27 @@ describe("Stable Credit Tests", function () {
     )
   })
 
-  it("credit lines are renewed if credit balance is cleared before expiration", async function () {
+  it("credit lines with outstanding credit balance past default date only emit CreditDefault event", async function () {
+    await ethers.provider.send("evm_increaseTime", [100])
+    await ethers.provider.send("evm_mine", [])
+
+    await expect(contracts.stableCredit.validateCreditLine(memberA.address))
+      .to.emit(contracts.stableCredit, "CreditDefault")
+      .to.not.emit(contracts.stableCredit, "PeriodEnded")
+  })
+
+  it("credit lines with zero credit balance past default date only emit PeriodEnded event", async function () {
     // return outstanding debt to memberC
     await expect(
       contracts.stableCredit.connect(memberB).transfer(memberA.address, parseStableCredits("10"))
     ).to.not.be.reverted
 
-    await ethers.provider.send("evm_increaseTime", [90])
+    await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
 
-    // use member A line (renewing credit line)
-    await expect(
-      contracts.stableCredit
-        .connect(memberA)
-        .transfer(memberB.address, ethers.utils.parseUnits("10", "mwei"))
-    ).to.not.be.reverted
-
-    expect(
-      formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))
-    ).to.equal("100.0")
-    expect(
-      formatStableCredits(await contracts.stableCredit.creditBalanceOf(memberA.address))
-    ).to.equal("10.0")
+    await expect(contracts.stableCredit.validateCreditLine(memberA.address))
+      .to.emit(contracts.stableCredit, "PeriodEnded")
+      .to.not.emit(contracts.stableCredit, "CreditDefault")
   })
 
   it("default results in a positive inDefault state", async function () {

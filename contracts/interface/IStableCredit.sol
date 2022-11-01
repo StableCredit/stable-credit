@@ -33,6 +33,8 @@ interface IStableCredit {
 
     event CreditDefault(address member);
 
+    event PeriodEnded(address member);
+
     event MembersDemurraged(uint256 amount);
 
     event CreditBalanceRepayed(address member, uint128 amount);
