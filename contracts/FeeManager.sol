@@ -77,12 +77,15 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     function calculateMemberFee(address _member, uint256 _amount) public view returns (uint256) {
         if (paused()) return 0;
-        // uint256 feeRate = memberFeeRate[_member] == 0 ? averageFeeRate : memberFeeRate[_member];
-
-        uint256 feeRate = memberFeeRate[_member] == 0
-            ? averageFeeRate
-            : (averageFeeRate * memberFeeRate[_member]) / MAX_PPM;
+        uint256 feeRate = getMemberFeeRate(_member);
         return stableCredit.convertCreditToFeeToken((feeRate * _amount) / MAX_PPM);
+    }
+
+    function getMemberFeeRate(address _member) public view returns (uint256) {
+        return
+            memberFeeRate[_member] == 0
+                ? averageFeeRate
+                : (averageFeeRate * memberFeeRate[_member]) / MAX_PPM;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
