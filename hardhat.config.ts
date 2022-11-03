@@ -25,6 +25,8 @@ import "./tasks/toggleFees"
 import "./tasks/toggleReserve"
 import "./tasks/registerNetwork"
 import "./tasks/depositFees"
+import "./tasks/validateCreditLine"
+import "./tasks/demoSetup"
 
 import { CeloProvider } from "@celo-tools/celo-ethers-wrapper"
 

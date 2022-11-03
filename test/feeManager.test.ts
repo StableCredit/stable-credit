@@ -78,10 +78,10 @@ describe("Fee Manager Tests", function () {
     expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("3.0")
   })
 
-  it("setAverageFeeRate updates average fee rate", async function () {
-    expect(await (await contracts.feeManager.averageFeeRate()).toNumber()).to.equal(200000)
-    await expect(contracts.feeManager.setAverageFeeRate(100000)).to.not.be.reverted
-    expect(await (await contracts.feeManager.averageFeeRate()).toNumber()).to.equal(100000)
+  it("setTargetFeeRate updates average fee rate", async function () {
+    expect(await (await contracts.feeManager.targetFeeRate()).toNumber()).to.equal(200000)
+    await expect(contracts.feeManager.setTargetFeeRate(100000)).to.not.be.reverted
+    expect(await (await contracts.feeManager.targetFeeRate()).toNumber()).to.equal(100000)
   })
 
   it("updating member's feePercent updates member's feePercent", async function () {

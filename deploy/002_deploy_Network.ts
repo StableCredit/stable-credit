@@ -165,9 +165,9 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await stableCredit.setFeeManager(feemanagerAddress)).wait()
   await (await stableCredit.setReservePool(reservePoolAddress)).wait()
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
-  await (await feeManager.setAverageFeeRate(200000)).wait()
-  await (await reservePool.setSwapPercent(250000)).wait()
-  await (await reservePool.setMinRTD(200000)).wait()
+  await (await feeManager.setTargetFeeRate(50000)).wait()
+  await (await reservePool.setSwapPercent(20000)).wait()
+  await (await reservePool.setTargetRTD(200000)).wait()
 }
 export default func
 func.tags = ["NETWORK"]

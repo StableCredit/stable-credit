@@ -25,7 +25,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     IReservePool public reservePool;
     IStableCredit public stableCredit;
     mapping(address => uint256) public memberFeeRate;
-    uint256 public averageFeeRate;
+    uint256 public targetFeeRate;
     uint256 public collectedFees;
 
     /* ========== INITIALIZER ========== */
@@ -33,14 +33,14 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     function initialize(
         address _stableCredit,
         address _reservePool,
-        uint256 _averageFeeRate
+        uint256 targetFeeRate
     ) external virtual initializer {
         __Ownable_init();
         __Pausable_init();
         _pause();
         reservePool = IReservePool(_reservePool);
         stableCredit = IStableCredit(_stableCredit);
-        averageFeeRate = _averageFeeRate;
+        targetFeeRate = targetFeeRate;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -84,8 +84,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     function getMemberFeeRate(address _member) public view returns (uint256) {
         return
             memberFeeRate[_member] == 0
-                ? averageFeeRate
-                : (averageFeeRate * memberFeeRate[_member]) / MAX_PPM;
+                ? targetFeeRate
+                : (targetFeeRate * memberFeeRate[_member]) / MAX_PPM;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -98,9 +98,9 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         memberFeeRate[member] = _feePercent;
     }
 
-    function setAverageFeeRate(uint256 _feePercent) external onlyAdmin {
+    function setTargetFeeRate(uint256 _feePercent) external onlyAdmin {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
-        averageFeeRate = _feePercent;
+        targetFeeRate = _feePercent;
     }
 
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {

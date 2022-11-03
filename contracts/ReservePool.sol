@@ -33,7 +33,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     uint256 public operatorPercent;
     uint256 public swapSinkPercent;
-    uint256 public minRTD;
+    uint256 public targetRTD;
 
     /* ========== INITIALIZER ========== */
 
@@ -122,9 +122,9 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         operatorPercent = MAX_PPM - _swapPercent;
     }
 
-    function setMinRTD(uint256 _minRTD) external onlyUnderwriter {
-        require(_minRTD <= MAX_PPM, "ReservePool: RTD must be less than 100%");
-        minRTD = _minRTD;
+    function setTargetRTD(uint256 _targetRTD) external onlyUnderwriter {
+        require(_targetRTD <= MAX_PPM, "ReservePool: RTD must be less than 100%");
+        targetRTD = _targetRTD;
     }
 
     function setSwapSink(address _swapSink) external onlyOwner {
@@ -145,9 +145,9 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     function getNeededCollateral() public view returns (uint256) {
         uint256 currentRTD = RTD();
-        if (currentRTD >= minRTD) return 0;
+        if (currentRTD >= targetRTD) return 0;
         return
-            ((minRTD - currentRTD) *
+            ((targetRTD - currentRTD) *
                 stableCredit.convertCreditToFeeToken(
                     IERC20Upgradeable(address(stableCredit)).totalSupply()
                 )) / MAX_PPM;

@@ -90,7 +90,7 @@ describe("Reserve Pool Tests", function () {
   })
 
   it("needed collateral is updated when RTD changes", async function () {
-    expect(await (await contracts.reservePool.minRTD()).toNumber()).to.equal(200000)
+    expect(await (await contracts.reservePool.targetRTD()).toNumber()).to.equal(200000)
     expect(formatEther(await contracts.reservePool.getNeededCollateral())).to.equal("6.0")
     await expect(contracts.reservePool.depositCollateral(parseEther("5.0"))).to.not.be.reverted
     expect(formatEther(await contracts.reservePool.collateral())).to.equal("5.0")

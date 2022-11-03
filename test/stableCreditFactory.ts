@@ -154,8 +154,8 @@ const deployContracts = async () => {
   await (await contracts.stableCredit.setFeeManager(contracts.feeManager.address)).wait()
   await (await contracts.stableCredit.setReservePool(contracts.reservePool.address)).wait()
   await (await contracts.accessManager.grantOperator(contracts.stableCredit.address)).wait()
-  await await contracts.feeManager.setAverageFeeRate(200000)
+  await await contracts.feeManager.setTargetFeeRate(200000)
   await await contracts.reservePool.setSwapPercent(250000)
-  await await contracts.reservePool.setMinRTD(200000)
+  await await contracts.reservePool.setTargetRTD(200000)
   return contracts
 }
