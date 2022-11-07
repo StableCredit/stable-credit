@@ -31,86 +31,82 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function grantOperator(address _operator)
+    function grantOperator(address operator)
         external
         onlyOperatorAccess
-        notNull(_operator)
-        noOperatorAccess(_operator)
+        notNull(operator)
+        noOperatorAccess(operator)
     {
-        grantRole("OPERATOR", _operator);
-        emit OperatorAdded(_operator);
+        grantRole("OPERATOR", operator);
+        emit OperatorAdded(operator);
     }
 
-    function grantUnderwriter(address _underwriter)
+    function grantUnderwriter(address underwriter)
         external
         onlyOwner
-        notNull(_underwriter)
-        noUderwriterAccess(_underwriter)
+        notNull(underwriter)
+        noUderwriterAccess(underwriter)
     {
-        grantRole("UNDERWRITER", _underwriter);
-        emit UnderwriterAdded(_underwriter);
+        grantRole("UNDERWRITER", underwriter);
+        emit UnderwriterAdded(underwriter);
     }
 
-    function grantMember(address _member)
+    function grantMember(address member)
         external
         override
         onlyOperatorAccess
-        notNull(_member)
-        noMemberAccess(_member)
+        notNull(member)
+        noMemberAccess(member)
     {
-        grantRole("MEMBER", _member);
-        emit MemberAdded(_member);
+        grantRole("MEMBER", member);
+        emit MemberAdded(member);
     }
 
-    function revokeOperator(address _operator)
-        external
-        onlyOperatorAccess
-        operatorAccess(_operator)
-    {
-        require(_operator != owner(), "can't remove owner operator");
-        revokeRole("OPERATOR", _operator);
-        emit OperatorRemoved(_operator);
+    function revokeOperator(address operator) external onlyOperatorAccess operatorAccess(operator) {
+        require(operator != owner(), "can't remove owner operator");
+        revokeRole("OPERATOR", operator);
+        emit OperatorRemoved(operator);
     }
 
-    function revokeUnderwriter(address _underwriter)
+    function revokeUnderwriter(address underwriter)
         external
         onlyOwner
-        uderwriterAccess(_underwriter)
+        uderwriterAccess(underwriter)
     {
-        require(_underwriter != owner(), "can't remove owner");
-        revokeRole("UNDERWRITER", _underwriter);
-        emit UnderwriterRemoved(_underwriter);
+        require(underwriter != owner(), "can't remove owner");
+        revokeRole("UNDERWRITER", underwriter);
+        emit UnderwriterRemoved(underwriter);
     }
 
-    function revokeMember(address _member) external onlyOperatorAccess {
-        require(_member != owner(), "can't remove owner");
-        revokeRole("MEMBER", _member);
-        emit MemberRemoved(_member);
+    function revokeMember(address member) external onlyOperatorAccess {
+        require(member != owner(), "can't remove owner");
+        revokeRole("MEMBER", member);
+        emit MemberRemoved(member);
     }
 
     /* ========== VIEWS ========== */
 
-    function isMember(address _member) public view override returns (bool) {
-        return hasRole("MEMBER", _member);
+    function isMember(address member) public view override returns (bool) {
+        return hasRole("MEMBER", member);
     }
 
-    function isOperator(address _operator) public view override returns (bool) {
-        return hasRole("OPERATOR", _operator);
+    function isOperator(address operator) public view override returns (bool) {
+        return hasRole("OPERATOR", operator);
     }
 
-    function isUnderwriter(address _underwriter) public view override returns (bool) {
-        return hasRole("UNDERWRITER", _underwriter);
+    function isUnderwriter(address underwriter) public view override returns (bool) {
+        return hasRole("UNDERWRITER", underwriter);
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier noOperatorAccess(address _operator) {
-        require(!isOperator(_operator), "AccessManager: operator access already granted");
+    modifier noOperatorAccess(address operator) {
+        require(!isOperator(operator), "AccessManager: operator access already granted");
         _;
     }
 
-    modifier operatorAccess(address _operator) {
-        require(isOperator(_operator), "AccessManager: operator access not granted");
+    modifier operatorAccess(address operator) {
+        require(isOperator(operator), "AccessManager: operator access not granted");
         _;
     }
 
@@ -119,18 +115,18 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _;
     }
 
-    modifier noUderwriterAccess(address _underwriter) {
-        require(!isUnderwriter(_underwriter), "AccessManager: underwriter access already granted");
+    modifier noUderwriterAccess(address underwriter) {
+        require(!isUnderwriter(underwriter), "AccessManager: underwriter access already granted");
         _;
     }
 
-    modifier uderwriterAccess(address _underwriter) {
-        require(isUnderwriter(_underwriter), "AccessManager: underwriter access not granted");
+    modifier uderwriterAccess(address underwriter) {
+        require(isUnderwriter(underwriter), "AccessManager: underwriter access not granted");
         _;
     }
 
-    modifier noMemberAccess(address _member) {
-        require(!isMember(_member), "AccessManager: member access already granted");
+    modifier noMemberAccess(address member) {
+        require(!isMember(member), "AccessManager: member access already granted");
         _;
     }
 

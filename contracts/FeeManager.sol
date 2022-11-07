@@ -77,20 +77,20 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     }
 
     /// @notice calculate fee to charge member in fee token value
-    /// @param _amount stable credit amount to base fee off of
-    /// @return amount in fee token to charge given member
-    function calculateMemberFee(address _member, uint256 _amount) public view returns (uint256) {
+    /// @param amount stable credit amount to base fee off of
+    /// @return fee token amount to charge given member
+    function calculateMemberFee(address member, uint256 amount) public view returns (uint256) {
         if (paused()) return 0;
-        uint256 feeRate = getMemberFeeRate(_member);
-        return stableCredit.convertCreditToFeeToken((feeRate * _amount) / MAX_PPM);
+        uint256 feeRate = getMemberFeeRate(member);
+        return stableCredit.convertCreditToFeeToken((feeRate * amount) / MAX_PPM);
     }
 
     /// @dev if the given member's fee rate is uninitialized, the target fee rate is returned
-    function getMemberFeeRate(address _member) public view returns (uint256) {
+    function getMemberFeeRate(address member) public view returns (uint256) {
         return
-            memberFeeRate[_member] == 0
+            memberFeeRate[member] == 0
                 ? targetFeeRate
-                : (targetFeeRate * memberFeeRate[_member]) / MAX_PPM;
+                : (targetFeeRate * memberFeeRate[member]) / MAX_PPM;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

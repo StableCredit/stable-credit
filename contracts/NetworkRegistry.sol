@@ -6,18 +6,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract NetworkRegistry is Ownable {
     mapping(address => bool) public networks;
 
-    function addNetwork(address _network) external onlyOwner {
-        require(!networks[_network], "Registry: Network is already registered");
-        networks[_network] = true;
-        emit NetworkAdded(_network);
+    function addNetwork(address network) external onlyOwner {
+        require(!networks[network], "Registry: Network is already registered");
+        networks[network] = true;
+        emit NetworkAdded(network);
     }
 
-    function removeNetwork(address _network) external onlyOwner {
-        require(networks[_network], "Registry: Network isn't registered");
-        networks[_network] = false;
-        emit NetworkRemoved(_network);
+    function removeNetwork(address network) external onlyOwner {
+        require(networks[network], "Registry: Network isn't registered");
+        networks[network] = false;
+        emit NetworkRemoved(network);
     }
 
-    event NetworkAdded(address _network);
-    event NetworkRemoved(address _network);
+    event NetworkAdded(address network);
+    event NetworkRemoved(address network);
 }
