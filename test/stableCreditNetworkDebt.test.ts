@@ -79,7 +79,9 @@ describe("Stable Credit Network Debt Tests", function () {
     ).to.not.be.reverted
 
     await (
-      await contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("10.0"))
+      await contracts.stableCredit
+        .connect(memberA)
+        .repayCreditBalance(memberA.address, parseStableCredits("10.0"))
     ).wait()
 
     // check memberA's credit balance

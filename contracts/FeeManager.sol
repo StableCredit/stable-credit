@@ -18,6 +18,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== CONSTANTS ========== */
 
+    /// @dev Maximum parts per million
     uint32 private constant MAX_PPM = 1000000;
 
     /* ========== STATE VARIABLES ========== */
@@ -33,14 +34,14 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     function initialize(
         address _stableCredit,
         address _reservePool,
-        uint256 targetFeeRate
+        uint256 _targetFeeRate
     ) external virtual initializer {
         __Ownable_init();
         __Pausable_init();
         _pause();
         reservePool = IReservePool(_reservePool);
         stableCredit = IStableCredit(_stableCredit);
-        targetFeeRate = targetFeeRate;
+        targetFeeRate = _targetFeeRate;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -75,12 +76,16 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         emit FeesCollected(sender, totalFee);
     }
 
+    /// @notice calculate fee to charge member in fee token value
+    /// @param _amount stable credit amount to base fee off of
+    /// @return amount in fee token to charge given member
     function calculateMemberFee(address _member, uint256 _amount) public view returns (uint256) {
         if (paused()) return 0;
         uint256 feeRate = getMemberFeeRate(_member);
         return stableCredit.convertCreditToFeeToken((feeRate * _amount) / MAX_PPM);
     }
 
+    /// @dev if the given member's fee rate is uninitialized, the target fee rate is returned
     function getMemberFeeRate(address _member) public view returns (uint256) {
         return
             memberFeeRate[_member] == 0
@@ -90,6 +95,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
+    /// @dev only accessable by underwriter role
+    /// @param _feePercent percent above or bellow the target fee rate for the given member
     function setMemberFeeRate(address member, uint256 _feePercent)
         external
         override
@@ -98,6 +105,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         memberFeeRate[member] = _feePercent;
     }
 
+    /// @dev only accessable by underwriter role
+    /// @param _feePercent percent to charge members by default
     function setTargetFeeRate(uint256 _feePercent) external onlyAdmin {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
         targetFeeRate = _feePercent;

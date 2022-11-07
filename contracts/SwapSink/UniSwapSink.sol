@@ -12,7 +12,7 @@ import "../interface/IStableCredit.sol";
 import "./ISwapRouter02.sol";
 import "./SwapSink.sol";
 
-/// @title CeloUniSwapSink
+/// @title UniSwapSink
 /// @author ReSource 
 /// @notice Converts collected tokens to SOURCE used to back inter-network swaps
 /// @dev This contract interacts with the Uniswap protocol. Ensure the targeted pool

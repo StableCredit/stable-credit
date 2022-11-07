@@ -8,6 +8,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20Burnable
 contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
     using ExtraMath for *;
 
+    /* ========== STATE VARIABLES ========== */
+
     struct Member {
         uint128 creditBalance;
         uint128 creditLimit;
@@ -15,7 +17,7 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
 
     mapping(address => Member) internal members;
 
-    event CreditLimitUpdate(address member, uint256 limit);
+    /* ========== INITIALIZER ========== */
 
     function __MutualCredit_init(string memory name_, string memory symbol_)
         public
@@ -25,6 +27,8 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         __ERC20_init(name_, symbol_);
         __Ownable_init();
     }
+
+    /* ========== VIEWS ========== */
 
     function decimals() public view virtual override returns (uint8) {
         return 6;
@@ -46,11 +50,6 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         return _localMember.creditLimit - _localMember.creditBalance;
     }
 
-    function setCreditLimit(address _member, uint256 _limit) internal virtual {
-        members[_member].creditLimit = _limit.toUInt128();
-        emit CreditLimitUpdate(_member, _limit);
-    }
-
     function _transfer(
         address _from,
         address _to,
@@ -59,6 +58,13 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         _beforeTransfer(_from, _amount);
         super._transfer(_from, _to, _amount);
         _afterTransfer(_to, _amount);
+    }
+
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function setCreditLimit(address _member, uint256 _limit) internal virtual {
+        members[_member].creditLimit = _limit.toUInt128();
+        emit CreditLimitUpdate(_member, _limit);
     }
 
     function _beforeTransfer(address _from, uint256 _amount) private {
@@ -84,6 +90,8 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         members[_to].creditBalance = (_memberTo.creditBalance - _repay).toUInt128();
         _burn(_to, _repay);
     }
+
+    event CreditLimitUpdate(address member, uint256 limit);
 }
 
 library ExtraMath {

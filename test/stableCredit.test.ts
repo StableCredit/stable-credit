@@ -165,7 +165,9 @@ describe("Stable Credit Tests", function () {
     ).to.not.be.reverted
 
     await expect(
-      contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("11.0"))
+      contracts.stableCredit
+        .connect(memberA)
+        .repayCreditBalance(memberA.address, parseStableCredits("11.0"))
     ).to.be.reverted
   })
 
@@ -185,7 +187,9 @@ describe("Stable Credit Tests", function () {
     expect(formatEther(await contracts.reservePool.collateral())).to.eq("0.0")
 
     await expect(
-      contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("10.0"))
+      contracts.stableCredit
+        .connect(memberA)
+        .repayCreditBalance(memberA.address, parseStableCredits("10.0"))
     ).to.not.be.reverted
 
     expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("0.0")
@@ -209,7 +213,9 @@ describe("Stable Credit Tests", function () {
     ).to.eq("10.0")
 
     await expect(
-      contracts.stableCredit.connect(memberA).repayCreditBalance(parseStableCredits("10.0"))
+      contracts.stableCredit
+        .connect(memberA)
+        .repayCreditBalance(memberA.address, parseStableCredits("10.0"))
     ).to.not.be.reverted
 
     expect(

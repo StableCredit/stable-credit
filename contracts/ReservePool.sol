@@ -27,13 +27,11 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     IStableCredit public stableCredit;
     ISwapSink public swapSink;
-
+    uint256 public targetRTD;
     uint256 public collateral;
     uint256 public operatorBalance;
-
     uint256 public operatorPercent;
     uint256 public swapSinkPercent;
-    uint256 public targetRTD;
 
     /* ========== INITIALIZER ========== */
 
@@ -46,6 +44,8 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
+    /// @notice Deposits fee tokens as collateral
+    /// @dev caller must approve fee tokens to be spent
     function depositCollateral(uint256 amount) public override nonReentrant {
         require(amount > 0, "ReservePool: Cannot stake 0");
         collateral += amount;
@@ -84,7 +84,8 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function withdrawOperator(uint256 amount) public nonReentrant onlyNetworkOperator {
+    /// @dev caller must have operator access
+    function withdrawOperator(uint256 amount) public nonReentrant onlyOperator {
         require(amount > 0, "ReservePool: Cannot withdraw 0");
         require(amount <= operatorBalance, "ReservePool: Insufficient operator balance");
         operatorBalance -= amount;
@@ -111,12 +112,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         }
     }
 
-    function recoverERC20(address tokenAddress, uint256 tokenAmount) public onlyOwner {
-        IERC20Upgradeable(tokenAddress).safeTransfer(msg.sender, tokenAmount);
-        emit Recovered(tokenAddress, tokenAmount);
-    }
-
-    function setSwapPercent(uint256 _swapPercent) external onlyNetworkOperator {
+    function setSwapPercent(uint256 _swapPercent) external onlyOperator {
         require(_swapPercent <= MAX_PPM, "ReservePool: swap percent must be less than 100%");
         swapSinkPercent = _swapPercent;
         operatorPercent = MAX_PPM - _swapPercent;
@@ -131,8 +127,14 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         swapSink = ISwapSink(_swapSink);
     }
 
+    function recoverERC20(address tokenAddress, uint256 tokenAmount) public onlyOwner {
+        IERC20Upgradeable(tokenAddress).safeTransfer(msg.sender, tokenAmount);
+        emit Recovered(tokenAddress, tokenAmount);
+    }
+
     /* ========== VIEW FUNCTIONS ========== */
 
+    /// @return Reserve to debt ratio meassured in parts per million
     function RTD() public view returns (uint256) {
         if (collateral == 0) return collateral;
         if (IERC20Upgradeable(address(stableCredit)).totalSupply() == 0) return 0;
@@ -143,6 +145,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
             );
     }
 
+    /// @return The total value of collateral needed to fill the reserve to the target RTD
     function getNeededCollateral() public view returns (uint256) {
         uint256 currentRTD = RTD();
         if (currentRTD >= targetRTD) return 0;
@@ -155,7 +158,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyNetworkOperator() {
+    modifier onlyOperator() {
         require(
             IAccessManager(stableCredit.access()).isOperator(msg.sender) || msg.sender == owner(),
             "FeeManager: Caller is not underwriter"

@@ -16,8 +16,6 @@ interface IStableCredit {
 
     function convertCreditToFeeToken(uint256 amount) external view returns (uint256);
 
-    function balanceOf(address _member) external view returns (uint256);
-
     function networkDebt() external view returns (uint256);
 
     event CreditLineCreated(
