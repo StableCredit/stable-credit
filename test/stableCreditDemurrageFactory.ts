@@ -3,22 +3,23 @@ import { FeeManager, ReservePool, SwapSink, AccessManager, MockERC20, StableCred
 import { parseStableCredits } from "../utils/utils"
 import { parseEther } from "ethers/lib/utils"
 import { RiskManager } from "../types/RiskManager"
+import { StableCreditDemurrage } from "../types/StableCreditDemurrage"
 
-export interface NetworkContracts {
+export interface DemurrageNetworkContracts {
   mockFeeToken: MockERC20
   accessManager: AccessManager
   riskManager: RiskManager
-  stableCredit: StableCredit
+  stableCredit: StableCreditDemurrage
   feeManager: FeeManager
   reservePool: ReservePool
   swapSink: SwapSink
 }
 
-export const stableCreditFactory = {
-  deployDefault: async (): Promise<NetworkContracts> => {
+export const stableCreditDemurrageFactory = {
+  deployDefault: async (): Promise<DemurrageNetworkContracts> => {
     return await deployContracts()
   },
-  deployWithSupply: async (): Promise<NetworkContracts> => {
+  deployWithSupply: async (): Promise<DemurrageNetworkContracts> => {
     return await deployContractsWithSupply()
   },
 }
@@ -101,7 +102,7 @@ const deployContractsWithSupply = async () => {
 }
 
 const deployContracts = async () => {
-  var contracts = {} as NetworkContracts
+  var contracts = {} as DemurrageNetworkContracts
 
   // deploy source
   const sourceTokenFactory = await ethers.getContractFactory("MockERC20")
@@ -128,16 +129,17 @@ const deployContracts = async () => {
   let args = <any>[]
 
   // deploy StableCredit
-  const stableCreditFactory = await ethers.getContractFactory("StableCredit")
+  const stableCreditDemurrageFactory = await ethers.getContractFactory("StableCreditDemurrage")
   args = [
     contracts.mockFeeToken.address,
     contracts.accessManager.address,
     "ReSource Dollars",
     "RSD",
   ]
-  contracts.stableCredit = (await upgrades.deployProxy(stableCreditFactory, args, {
-    initializer: "__StableCredit_init",
-  })) as StableCredit
+  contracts.stableCredit = (await upgrades.deployProxy(
+    stableCreditDemurrageFactory,
+    args
+  )) as StableCreditDemurrage
 
   // deploy swapSink
   const swapSinkFactory = await ethers.getContractFactory("SwapSink")

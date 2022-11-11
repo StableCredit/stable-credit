@@ -11,6 +11,7 @@ import { ReservePool__factory } from "../types/factories/ReservePool__factory"
 import { parseEther } from "ethers/lib/utils"
 import fs from "fs"
 import { NetworkRegistry__factory } from "../types/factories/NetworkRegistry__factory"
+import { RiskManager__factory } from "../types/factories/RiskManager__factory"
 
 const networkConfigPath = "./network_config.json"
 
@@ -102,7 +103,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     symbol + "_StableCredit",
     stableCreditArgs,
     hardhat,
-    stableCreditAbi
+    stableCreditAbi,
+    { initializer: "__StableCredit_init" }
   )
 
   const stableCredit = StableCredit__factory.connect(
@@ -137,6 +139,21 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
 
+  // deploy riskManager
+  const riskManagerAbi = (await hardhat.artifacts.readArtifact("RiskManager")).abi
+  const riskManagerArgs = [stableCredit.address]
+  const riskManagerAddress = await deployProxyAndSaveAs(
+    "RiskManager",
+    symbol + "_RiskManager",
+    riskManagerArgs,
+    hardhat,
+    riskManagerAbi
+  )
+  const riskManager = RiskManager__factory.connect(
+    riskManagerAddress,
+    (await ethers.getSigners())[0]
+  )
+
   // deploy feeManager
   const feeManagerAbi = (await hardhat.artifacts.readArtifact("FeeManager")).abi
   const feeManagerArgs = [stableCredit.address, reservePoolAddress, 100000]
@@ -164,6 +181,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   await (await stableCredit.setFeeManager(feemanagerAddress)).wait()
   await (await stableCredit.setReservePool(reservePoolAddress)).wait()
+  await (await stableCredit.setRiskManager(riskManager.address)).wait()
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   await (await feeManager.setTargetFeeRate(50000)).wait()
   await (await reservePool.setSwapPercent(20000)).wait()

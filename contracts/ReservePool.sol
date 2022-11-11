@@ -118,7 +118,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         operatorPercent = MAX_PPM - _swapPercent;
     }
 
-    function setTargetRTD(uint256 _targetRTD) external onlyUnderwriter {
+    function setTargetRTD(uint256 _targetRTD) external onlyRiskManager {
         require(_targetRTD <= MAX_PPM, "ReservePool: RTD must be less than 100%");
         targetRTD = _targetRTD;
     }
@@ -161,16 +161,15 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
     modifier onlyOperator() {
         require(
             IAccessManager(stableCredit.access()).isOperator(msg.sender) || msg.sender == owner(),
-            "FeeManager: Caller is not underwriter"
+            "FeeManager: Caller is not operator"
         );
         _;
     }
 
-    modifier onlyUnderwriter() {
+    modifier onlyRiskManager() {
         require(
-            IAccessManager(stableCredit.access()).isUnderwriter(msg.sender) ||
-                msg.sender == owner(),
-            "FeeManager: Caller is not underwriter"
+            msg.sender == address(stableCredit.riskManager()) || msg.sender == owner(),
+            "FeeManager: Caller is not risk manager"
         );
         _;
     }

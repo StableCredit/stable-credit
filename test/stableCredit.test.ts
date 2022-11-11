@@ -34,71 +34,6 @@ describe("Stable Credit Tests", function () {
     await ethers.provider.send("evm_mine", [])
   })
 
-  it("Past due freezes creditline", async function () {
-    await ethers.provider.send("evm_increaseTime", [90])
-    await ethers.provider.send("evm_mine", [])
-
-    expect(await contracts.stableCredit.isPastDue(memberA.address)).to.be.true
-    expect(await contracts.stableCredit.inDefault(memberA.address)).to.be.false
-
-    await expect(
-      contracts.stableCredit
-        .connect(memberA)
-        .transfer(memberB.address, ethers.utils.parseUnits("10", "mwei"))
-    ).to.be.revertedWith("Credit line is past due")
-  })
-
-  it("Default resets credit limit", async function () {
-    // check credit limit before default
-    expect(formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))).to.eq(
-      "100.0"
-    )
-    // default Credit Line A
-    await ethers.provider.send("evm_increaseTime", [100])
-    await ethers.provider.send("evm_mine", [])
-
-    expect(await contracts.stableCredit.isPastDue(memberA.address)).to.be.false
-    expect(await contracts.stableCredit.inDefault(memberA.address)).to.be.true
-
-    await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
-
-    // check credit limit after default
-    expect(formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))).to.eq(
-      "0.0"
-    )
-  })
-
-  it("credit lines with outstanding credit balance past default date only emit CreditDefault event", async function () {
-    await ethers.provider.send("evm_increaseTime", [100])
-    await ethers.provider.send("evm_mine", [])
-
-    await expect(contracts.stableCredit.validateCreditLine(memberA.address))
-      .to.emit(contracts.stableCredit, "CreditDefault")
-      .to.not.emit(contracts.stableCredit, "PeriodEnded")
-  })
-
-  it("credit lines with zero credit balance past default date only emit PeriodEnded event", async function () {
-    // return outstanding debt to memberC
-    await expect(
-      contracts.stableCredit.connect(memberB).transfer(memberA.address, parseStableCredits("10"))
-    ).to.not.be.reverted
-
-    await ethers.provider.send("evm_increaseTime", [100])
-    await ethers.provider.send("evm_mine", [])
-
-    await expect(contracts.stableCredit.validateCreditLine(memberA.address))
-      .to.emit(contracts.stableCredit, "PeriodEnded")
-      .to.not.emit(contracts.stableCredit, "CreditDefault")
-  })
-
-  it("default results in a positive inDefault state", async function () {
-    // default memberA
-    await ethers.provider.send("evm_increaseTime", [100])
-    await ethers.provider.send("evm_mine", [])
-
-    expect(await contracts.stableCredit.inDefault(memberA.address)).to.be.true
-  })
-
   it("Extending credit lines results in expanded credit limits", async function () {
     expect(
       formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))
@@ -115,14 +50,7 @@ describe("Stable Credit Tests", function () {
     expect(await contracts.accessManager.isMember(memberG.address)).to.equal(false)
 
     await expect(
-      contracts.stableCredit.createCreditLine(
-        memberG.address,
-        parseStableCredits("100"),
-        1000,
-        1010,
-        0,
-        0
-      )
+      contracts.stableCredit.createCreditLine(memberG.address, parseStableCredits("100"), 0)
     ).to.not.be.reverted
 
     expect(await contracts.accessManager.isMember(memberG.address)).to.equal(true)
@@ -133,9 +61,6 @@ describe("Stable Credit Tests", function () {
       contracts.stableCredit.createCreditLine(
         memberG.address,
         parseStableCredits("100"),
-        1000,
-        1010,
-        0,
         parseStableCredits("100")
       )
     ).to.not.be.reverted

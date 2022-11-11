@@ -44,13 +44,6 @@ describe("Access Manager Tests", function () {
     expect(await contracts.accessManager.isOperator(memberA.address)).to.be.false
   })
 
-  it("Revoking underwriter address adds role", async function () {
-    await expect(contracts.accessManager.grantUnderwriter(memberA.address)).to.not.be.reverted
-    expect(await contracts.accessManager.isUnderwriter(memberA.address)).to.be.true
-    await expect(contracts.accessManager.revokeUnderwriter(memberA.address)).to.not.be.reverted
-    expect(await contracts.accessManager.isUnderwriter(memberA.address)).to.be.false
-  })
-
   it("Revoking member address removes role", async function () {
     await expect(contracts.accessManager.grantMember(memberZ.address)).to.not.be.reverted
     expect(await contracts.accessManager.isMember(memberZ.address)).to.be.true

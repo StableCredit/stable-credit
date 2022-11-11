@@ -25,49 +25,7 @@ describe("Reserve Pool Tests", function () {
     await ethers.provider.send("evm_increaseTime", [10])
     await ethers.provider.send("evm_mine", [])
   })
-  it("Network demurraged tokens fully reimburse members when burned", async function () {
-    // deposit reserve collateral
-    await expect(contracts.reservePool.depositCollateral(parseEther("100000"))).to.not.be.reverted
-    // default Credit Line A
-    await ethers.provider.send("evm_increaseTime", [100])
-    await ethers.provider.send("evm_mine", [])
-    await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
 
-    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10.0"))).to.not.be
-      .reverted
-
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal("0.0")
-
-    await expect(contracts.stableCredit.burnDemurraged(memberB.address)).to.not.be.reverted
-
-    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
-      "6.666666"
-    )
-
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal(
-      "3.333334"
-    )
-  })
-  it("Network demurraged tokens partially reimburse members when burned", async function () {
-    // deposit reserve collateral
-    await expect(contracts.reservePool.depositCollateral(parseEther("3.0"))).to.not.be.reverted
-    // default Credit Line A
-    await ethers.provider.send("evm_increaseTime", [100])
-    await ethers.provider.send("evm_mine", [])
-    await expect(contracts.stableCredit.validateCreditLine(memberA.address)).to.not.be.reverted
-    await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10.0"))).to.not.be
-      .reverted
-
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal("0.0")
-
-    await expect(contracts.stableCredit.burnDemurraged(memberB.address)).to.not.be.reverted
-
-    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
-      "6.666666"
-    )
-
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberB.address))).to.equal("3.0")
-  })
   it("Configuring operator percent updates swapSink percent", async function () {
     expect(await (await contracts.reservePool.swapSinkPercent()).toNumber()).to.equal(250000)
     expect(await (await contracts.reservePool.operatorPercent()).toNumber()).to.equal(750000)

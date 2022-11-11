@@ -8,15 +8,9 @@ interface IAccessManager {
 
     event OperatorAdded(address _operator);
 
-    event UnderwriterAdded(address _underwriter);
-
     event OperatorRemoved(address _operator);
 
-    event UnderwriterRemoved(address _underwriter);
-
     function isMember(address _member) external view returns (bool);
-
-    function isUnderwriter(address _underwriter) external view returns (bool);
 
     function isOperator(address _operator) external view returns (bool);
 

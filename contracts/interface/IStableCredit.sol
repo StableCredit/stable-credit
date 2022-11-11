@@ -1,37 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "./IAccessManager.sol";
+import "./IReservePool.sol";
+import "./IRiskManager.sol";
+import "./IFeeManager.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IStableCredit {
-    struct CreditTerms {
-        uint256 issueDate;
-        uint256 defaultDate;
-        uint256 pastDueDate;
-    }
+    function reservePool() external view returns (IReservePool);
 
-    function reservePool() external view returns (address);
+    function feeToken() external view returns (IERC20Upgradeable);
 
-    function feeToken() external view returns (address);
+    function access() external view returns (IAccessManager);
 
-    function access() external view returns (address);
+    function riskManager() external view returns (IRiskManager);
 
-    function convertCreditToFeeToken(uint256 amount) external view returns (uint256);
+    function feeManager() external view returns (IFeeManager);
 
     function networkDebt() external view returns (uint256);
 
-    event CreditLineCreated(
+    function convertCreditToFeeToken(uint256 amount) external view returns (uint256);
+
+    function writeOffCreditLine(address member) external;
+
+    function createCreditLine(
         address member,
-        uint256 creditLimit,
-        uint256 pastDueTime,
-        uint256 defaultTime,
-        uint256 feePercent,
-        uint256 balance
-    );
+        uint256 _creditLimit,
+        uint256 _balance
+    ) external;
+
+    function extendCreditLine(address member, uint256 creditLimit) external;
+
+    event CreditLineCreated(address member, uint256 creditLimit, uint256 balance);
 
     event CreditLimitExtended(address member, uint256 creditLimit);
-
-    event CreditDefault(address member);
-
-    event PeriodEnded(address member);
 
     event MembersDemurraged(uint256 amount);
 

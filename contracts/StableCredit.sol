@@ -9,6 +9,7 @@ import "./interface/IAccessManager.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/IFeeManager.sol";
 import "./interface/IReservePool.sol";
+import "./interface/IRiskManager.sol";
 
 /// @title StableCreditDemurrage contract
 /// @author ReSource
@@ -20,56 +21,31 @@ import "./interface/IReservePool.sol";
 contract StableCredit is MutualCredit, IStableCredit {
     /* ========== STATE VARIABLES ========== */
 
-    uint256 public conversionRate;
-    uint256 public demurraged;
-    uint256 public demurrageIndex;
-    uint256 public networkDebt;
-    mapping(address => uint256) private demurrageIndexOf;
-    mapping(address => CreditTerms) public creditTerms;
-    address public access;
+    IAccessManager public access;
     IFeeManager public feeManager;
-    address public reservePool;
-    address public feeToken;
+    IReservePool public reservePool;
+    IERC20Upgradeable public feeToken;
+    IRiskManager public riskManager;
+    uint256 public networkDebt;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(
+    function __StableCredit_init(
         address _feeToken,
         address _accessManager,
         string memory name_,
         string memory symbol_
-    ) external virtual initializer {
+    ) public virtual initializer {
         __MutualCredit_init(name_, symbol_);
-        access = _accessManager;
-        feeToken = _feeToken;
-        demurrageIndex = 1;
-        conversionRate = 1e18;
+        access = IAccessManager(_accessManager);
+        feeToken = IERC20Upgradeable(_feeToken);
     }
 
     /* ========== VIEWS ========== */
 
-    /// @notice balance of referenced member.
-    /// @dev this is the undemurraged balance of referenced member.
-    function balanceOf(address member) public view override returns (uint256) {
-        uint256 burnable = demurragedBalanceOf(member);
-        if (burnable == 0) return super.balanceOf(member);
-        return (super.balanceOf(member) * conversionRate) / 1e18;
-    }
-
-    /// @notice balance of referenced member that has been demurraged.
-    function demurragedBalanceOf(address member) public view returns (uint256) {
-        if (
-            demurrageIndexOf[member] == demurrageIndex ||
-            super.balanceOf(member) == 0 ||
-            demurraged == 0
-        ) return 0;
-        uint256 balance = (super.balanceOf(member) * conversionRate) / 1e18;
-        return super.balanceOf(member) - balance;
-    }
-
     /// @notice convert a credit amount to a fee token amount value
     /// @return credit amount coverted to fee token value.
-    function convertCreditToFeeToken(uint256 amount) public view override returns (uint256) {
+    function convertCreditToFeeToken(uint256 amount) public view returns (uint256) {
         if (amount == 0) return amount;
         uint256 feeDecimals = IERC20Metadata(address(feeToken)).decimals();
         uint256 creditDecimals = decimals();
@@ -77,22 +53,6 @@ contract StableCredit is MutualCredit, IStableCredit {
             creditDecimals < feeDecimals
                 ? ((amount * 10**(feeDecimals - creditDecimals)))
                 : ((amount / 10**(creditDecimals - feeDecimals)));
-    }
-
-    function inDefault(address member) public view returns (bool) {
-        return
-            // if terms don't exist return false
-            creditTerms[member].issueDate == 0
-                ? false
-                : block.timestamp >= creditTerms[member].defaultDate;
-    }
-
-    function isPastDue(address member) public view returns (bool) {
-        return
-            // if terms don't exist return false
-            creditTerms[member].issueDate == 0
-                ? false
-                : block.timestamp >= creditTerms[member].pastDueDate && !inDefault(member);
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
@@ -103,47 +63,22 @@ contract StableCredit is MutualCredit, IStableCredit {
         address _from,
         address _to,
         uint256 _amount
-    ) internal override onlyMembers(_from, _to) {
+    ) internal virtual override onlyMembers(_from, _to) {
         uint256 balanceFrom = balanceOf(_from);
-        if (_amount > balanceFrom && !validateCreditLine(_from)) return;
-        feeManager.collectFees(_from, _to, _amount);
-        if (demurrageIndexOf[_to] != demurrageIndex) burnDemurraged(_to);
-        if (demurrageIndexOf[_from] != demurrageIndex) burnDemurraged(_from);
+        if (_amount > balanceFrom && !riskManager.validateCreditLine(_from)) return;
+        IFeeManager(feeManager).collectFees(_from, _to, _amount);
         super._transfer(_from, _to, _amount);
-    }
-
-    /// @notice Freezes past due lines and defaults expired lines.
-    /// @dev publically exposed for state synchronization. Returns true if line is valid.
-    function validateCreditLine(address member) public returns (bool) {
-        require(creditLimitOf(member) > 0, "StableCredit: member does not have a credit line");
-        require(!isPastDue(member), "StableCredit: Credit line is past due");
-        if (inDefault(member)) {
-            updateCreditLine(member);
-            return false;
-        }
-        return true;
     }
 
     /// @notice Burns network debt in exchange for reserve reimbursement.
     /// @dev Must have network debt to burn.
-    function burnNetworkDebt(uint256 amount) public {
+    function burnNetworkDebt(uint256 amount) public virtual {
         require(balanceOf(msg.sender) >= amount, "StableCredit: Insufficient balance");
         require(amount <= networkDebt, "StableCredit: Insufficient network debt");
-        burnDemurraged(msg.sender);
         _burn(msg.sender, amount);
         networkDebt -= amount;
         IReservePool(reservePool).reimburseMember(msg.sender, convertCreditToFeeToken(amount));
         emit NetworkDebtBurned(msg.sender, amount);
-    }
-
-    /// @notice Burns provided member's demurraged balance in exchange for reimbursement.
-    function burnDemurraged(address member) public {
-        uint256 burnAmount = demurragedBalanceOf(member);
-        demurrageIndexOf[member] = demurrageIndex;
-        if (burnAmount == 0) return;
-        _burn(member, burnAmount);
-        demurraged -= burnAmount;
-        IReservePool(reservePool).reimburseMember(member, convertCreditToFeeToken(burnAmount));
     }
 
     /// @notice Repays referenced member's credit balance by amount.
@@ -168,78 +103,40 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @dev If the member address is not a current member, then the address is granted membership
     /// @param member address of line holder
     /// @param _creditLimit credit limit of new line
-    /// @param _pastDueTime seconds until past due
-    /// @param _defaultTime seconds dit line expires
-    /// @param _feeRate % of configured target fee rate to collect
     /// @param _balance positive balance to initialize member with (will increment network debt)
     function createCreditLine(
         address member,
         uint256 _creditLimit,
-        uint256 _pastDueTime,
-        uint256 _defaultTime,
-        uint256 _feeRate,
         uint256 _balance
-    ) external onlyUnderwriter {
-        require(
-            creditTerms[member].issueDate == 0,
-            "StableCredit: Credit line already exists for member"
-        );
-        require(_pastDueTime > 0, "StableCredit: past due time must be greater than 0");
-        require(
-            _defaultTime > _pastDueTime,
-            "StableCredit: default time must be greater than past due"
-        );
+    ) public virtual override onlyRiskManager {
         if (!IAccessManager(access).isMember(member)) IAccessManager(access).grantMember(member);
-        creditTerms[member] = CreditTerms({
-            issueDate: block.timestamp,
-            pastDueDate: block.timestamp + _pastDueTime,
-            defaultDate: block.timestamp + _defaultTime
-        });
         setCreditLimit(member, _creditLimit);
-        if (_feeRate > 0) {
-            feeManager.setMemberFeeRate(member, _feeRate);
-        }
-        demurrageIndexOf[member] = demurrageIndex;
         if (_balance > 0) {
             _mint(member, _balance);
             networkDebt += _balance;
         }
-        emit CreditLineCreated(
-            member,
-            _creditLimit,
-            _pastDueTime,
-            _defaultTime,
-            _feeRate,
-            _balance
-        );
+        emit CreditLineCreated(member, _creditLimit, _balance);
     }
 
     /// @notice Extend existing credit lines
     /// @param creditLimit must be greater than referenced member's current credit line
-    function extendCreditLine(address member, uint256 creditLimit) external onlyUnderwriter {
-        require(
-            creditTerms[member].issueDate > 0,
-            "StableCredit: Credit line does not exist for member"
-        );
+    function extendCreditLine(address member, uint256 creditLimit) external onlyRiskManager {
+        require(creditLimitOf(member) > 0, "StableCredit: Credit line does not exist for member");
         uint256 curCreditLimit = creditLimitOf(member);
         require(curCreditLimit < creditLimit, "invalid credit limit");
         setCreditLimit(member, creditLimit);
         emit CreditLimitExtended(member, creditLimit);
     }
 
-    /// @notice reduces all positive balances proportionally to pay off networkDebt
-    function demurrageMembers(uint256 amount) external onlyUnderwriter {
-        require(networkDebt >= amount, "StableCredit: Insufficient network debt");
-        demurraged += amount;
-        updateConversionRate();
-        networkDebt -= amount;
-        demurrageIndex++;
-        emit MembersDemurraged(amount);
+    function writeOffCreditLine(address member) external onlyRiskManager {
+        uint256 creditBalance = creditBalanceOf(member);
+        delete members[member];
+        networkDebt += creditBalance;
     }
 
     /// @dev Replaces reservePool and approves fee token spend for new reservePool
     function setReservePool(address _reservePool) external onlyOwner {
-        reservePool = _reservePool;
+        reservePool = IReservePool(_reservePool);
         IERC20Upgradeable(feeToken).approve(_reservePool, type(uint256).max);
     }
 
@@ -249,25 +146,8 @@ contract StableCredit is MutualCredit, IStableCredit {
         IERC20Upgradeable(feeToken).approve(_feeManager, type(uint256).max);
     }
 
-    /* ========== PRIVATE FUNCTIONS ========== */
-
-    /// @dev deletes credit terms and emits a default event if caller has outstanding debt.
-    function updateCreditLine(address member) internal virtual {
-        uint256 creditBalance = creditBalanceOf(member);
-        delete members[member];
-        delete creditTerms[member];
-        if (creditBalance > 0) {
-            networkDebt += creditBalance;
-            emit CreditDefault(member);
-            return;
-        }
-        emit PeriodEnded(member);
-    }
-
-    /// @dev Called on network demurrage to rebase credits.
-    function updateConversionRate() private {
-        if (demurraged == 0) return;
-        conversionRate = 1e18 - (demurraged * 1e18) / totalSupply();
+    function setRiskManager(address _riskManager) external onlyOwner {
+        riskManager = IRiskManager(_riskManager);
     }
 
     /* ========== MODIFIERS ========== */
@@ -293,11 +173,9 @@ contract StableCredit is MutualCredit, IStableCredit {
         _;
     }
 
-    modifier onlyUnderwriter() {
-        require(
-            IAccessManager(access).isUnderwriter(msg.sender) || msg.sender == owner(),
-            "Unauthorized caller"
-        );
+    modifier onlyRiskManager() {
+        // TODO: re explore unifying ReservePool AND RiskManager
+        require(msg.sender == address(riskManager) || msg.sender == owner(), "Unauthorized caller");
         _;
     }
 }

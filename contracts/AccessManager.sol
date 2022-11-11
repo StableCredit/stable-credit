@@ -19,13 +19,11 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole("OPERATOR", msg.sender);
         _setupRole("MEMBER", msg.sender);
-        _setupRole("UNDERWRITER", msg.sender);
         _setRoleAdmin("MEMBER", "OPERATOR");
 
         for (uint256 j = 0; j < _operators.length; j++) {
             require(_operators[j] != address(0), "AccessManager: invalid operator supplied");
             grantRole("OPERATOR", _operators[j]);
-            grantRole("UNDERWRITER", _operators[j]);
         }
     }
 
@@ -39,16 +37,6 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
     {
         grantRole("OPERATOR", operator);
         emit OperatorAdded(operator);
-    }
-
-    function grantUnderwriter(address underwriter)
-        external
-        onlyOwner
-        notNull(underwriter)
-        noUderwriterAccess(underwriter)
-    {
-        grantRole("UNDERWRITER", underwriter);
-        emit UnderwriterAdded(underwriter);
     }
 
     function grantMember(address member)
@@ -68,16 +56,6 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit OperatorRemoved(operator);
     }
 
-    function revokeUnderwriter(address underwriter)
-        external
-        onlyOwner
-        uderwriterAccess(underwriter)
-    {
-        require(underwriter != owner(), "can't remove owner");
-        revokeRole("UNDERWRITER", underwriter);
-        emit UnderwriterRemoved(underwriter);
-    }
-
     function revokeMember(address member) external onlyOperatorAccess {
         require(member != owner(), "can't remove owner");
         revokeRole("MEMBER", member);
@@ -94,10 +72,6 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         return hasRole("OPERATOR", operator);
     }
 
-    function isUnderwriter(address underwriter) public view override returns (bool) {
-        return hasRole("UNDERWRITER", underwriter);
-    }
-
     /* ========== MODIFIERS ========== */
 
     modifier noOperatorAccess(address operator) {
@@ -112,16 +86,6 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
 
     modifier onlyOperatorAccess() {
         require(isOperator(msg.sender), "AccessManager: caller does not have operator access");
-        _;
-    }
-
-    modifier noUderwriterAccess(address underwriter) {
-        require(!isUnderwriter(underwriter), "AccessManager: underwriter access already granted");
-        _;
-    }
-
-    modifier uderwriterAccess(address underwriter) {
-        require(isUnderwriter(underwriter), "AccessManager: underwriter access not granted");
         _;
     }
 

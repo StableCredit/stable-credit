@@ -44,7 +44,7 @@ contract UniSwapSink is SwapSink {
 
         ICeloSwapRouter.ExactInputSingleParams memory params = ICeloSwapRouter
             .ExactInputSingleParams({
-                tokenIn: stableCredit.feeToken(),
+                tokenIn: address(stableCredit.feeToken()),
                 tokenOut: source,
                 fee: poolFee,
                 recipient: address(this),

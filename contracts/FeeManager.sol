@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interface/IReservePool.sol";
 import "./interface/IStableCredit.sol";
-import "./interface/IAccessManager.sol";
 import "./interface/IFeeManager.sol";
 
 /// @title FeeManager
@@ -95,19 +94,17 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    /// @dev only accessable by underwriter role
     /// @param _feePercent percent above or bellow the target fee rate for the given member
     function setMemberFeeRate(address member, uint256 _feePercent)
         external
         override
-        onlyUnderwriter
+        onlyAuthorized
     {
         memberFeeRate[member] = _feePercent;
     }
 
-    /// @dev only accessable by underwriter role
     /// @param _feePercent percent to charge members by default
-    function setTargetFeeRate(uint256 _feePercent) external onlyAdmin {
+    function setTargetFeeRate(uint256 _feePercent) external onlyAuthorized {
         require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
         targetFeeRate = _feePercent;
     }
@@ -126,22 +123,13 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyUnderwriter() {
+    modifier onlyAuthorized() {
         require(
-            IAccessManager(stableCredit.access()).isUnderwriter(msg.sender) ||
+            msg.sender == address(stableCredit.riskManager()) ||
+                stableCredit.access().isOperator(msg.sender) ||
                 msg.sender == owner() ||
                 msg.sender == address(stableCredit),
-            "FeeManager: Caller is not underwriter"
-        );
-        _;
-    }
-
-    modifier onlyAdmin() {
-        require(
-            IAccessManager(stableCredit.access()).isUnderwriter(msg.sender) ||
-                IAccessManager(stableCredit.access()).isOperator(msg.sender) ||
-                msg.sender == owner(),
-            "FeeManager: Caller is not authorized"
+            "FeeManager: Unauthorized caller"
         );
         _;
     }

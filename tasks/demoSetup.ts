@@ -13,6 +13,8 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
 
     const feeManager = await ethers.getContract(symbol + "_FeeManager")
 
+    const riskManager = await ethers.getContract(symbol + "_RiskManager")
+
     const feeToken = await ethers.getContract("FeeToken")
 
     const feesPaused = await feeManager.paused()
@@ -31,7 +33,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     for (var i = 1; i <= 5; i++) {
       // assign credit lines
       await (
-        await stableCredit.createCreditLine(
+        await riskManager.createCreditLine(
           signers[i].address,
           parseStableCredits("10000"),
           100000000,
@@ -73,14 +75,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
 
     // assign defaulting credit line to Account 2
     await (
-      await stableCredit.createCreditLine(
-        account2.address,
-        parseStableCredits("1000"),
-        30,
-        31,
-        0,
-        0
-      )
+      await riskManager.createCreditLine(account2.address, parseStableCredits("1000"), 30, 31, 0, 0)
     ).wait()
     tx = {
       to: account2.address,
@@ -101,7 +96,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
 
     // configure account 3
     await (
-      await stableCredit.createCreditLine(
+      await riskManager.createCreditLine(
         "0xc44deEd52309b286a698BC2A8b3A7424E52302a1",
         parseStableCredits("1000"),
         300000,

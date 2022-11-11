@@ -9,9 +9,9 @@ task(VALIDATE_CREDIT_LINE, "Validate a referenced member's credit limit")
     let symbol = taskArgs.symbol
     let address = taskArgs.address
 
-    const stableCredit = await ethers.getContract(symbol + "_StableCredit")
+    const riskManager = await ethers.getContract(symbol + "_RiskManager")
 
-    await (await stableCredit.validateCreditLine(address)).wait()
+    await (await riskManager.validateCreditLine(address)).wait()
 
     console.log("✅ credit line validated")
   })
