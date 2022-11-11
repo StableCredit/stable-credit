@@ -7,9 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./MutualCredit.sol";
 import "./interface/IAccessManager.sol";
 import "./interface/IStableCredit.sol";
-import "./interface/IFeeManager.sol";
-import "./interface/IReservePool.sol";
-import "./interface/IRiskManager.sol";
+import "../risk/interface/IRiskManager.sol";
 
 /// @title StableCreditDemurrage contract
 /// @author ReSource
@@ -22,10 +20,9 @@ contract StableCredit is MutualCredit, IStableCredit {
     /* ========== STATE VARIABLES ========== */
 
     IAccessManager public access;
-    IFeeManager public feeManager;
-    IReservePool public reservePool;
     IERC20Upgradeable public feeToken;
     IRiskManager public riskManager;
+    IFeeManager public feeManager;
     uint256 public networkDebt;
 
     /* ========== INITIALIZER ========== */
@@ -65,8 +62,8 @@ contract StableCredit is MutualCredit, IStableCredit {
         uint256 _amount
     ) internal virtual override onlyMembers(_from, _to) {
         uint256 balanceFrom = balanceOf(_from);
-        if (_amount > balanceFrom && !riskManager.validateCreditLine(_from)) return;
-        IFeeManager(feeManager).collectFees(_from, _to, _amount);
+        if (_amount > balanceFrom && !riskManager.validateCreditLine(address(this), _from)) return;
+        feeManager.collectFees(_from, _to, _amount);
         super._transfer(_from, _to, _amount);
     }
 
@@ -77,7 +74,11 @@ contract StableCredit is MutualCredit, IStableCredit {
         require(amount <= networkDebt, "StableCredit: Insufficient network debt");
         _burn(msg.sender, amount);
         networkDebt -= amount;
-        IReservePool(reservePool).reimburseMember(msg.sender, convertCreditToFeeToken(amount));
+        riskManager.reservePool().reimburseMember(
+            address(this),
+            msg.sender,
+            convertCreditToFeeToken(amount)
+        );
         emit NetworkDebtBurned(msg.sender, amount);
     }
 
@@ -86,12 +87,8 @@ contract StableCredit is MutualCredit, IStableCredit {
     function repayCreditBalance(address member, uint128 amount) external {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid amount");
-        IERC20Upgradeable(feeToken).transferFrom(
-            msg.sender,
-            address(this),
-            convertCreditToFeeToken(amount)
-        );
-        IReservePool(reservePool).depositCollateral(convertCreditToFeeToken(amount));
+        feeToken.transferFrom(msg.sender, address(this), convertCreditToFeeToken(amount));
+        riskManager.reservePool().depositCollateral(address(this), convertCreditToFeeToken(amount));
         networkDebt += amount;
         members[msg.sender].creditBalance -= amount;
         emit CreditBalanceRepayed(msg.sender, amount);
@@ -109,7 +106,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         uint256 _creditLimit,
         uint256 _balance
     ) public virtual override onlyRiskManager {
-        if (!IAccessManager(access).isMember(member)) IAccessManager(access).grantMember(member);
+        if (!access.isMember(member)) access.grantMember(member);
         setCreditLimit(member, _creditLimit);
         if (_balance > 0) {
             _mint(member, _balance);
@@ -128,53 +125,37 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditLimitExtended(member, creditLimit);
     }
 
+    /// @notice transfer a given member's debt to the network
     function writeOffCreditLine(address member) external onlyRiskManager {
         uint256 creditBalance = creditBalanceOf(member);
         delete members[member];
         networkDebt += creditBalance;
     }
 
-    /// @dev Replaces reservePool and approves fee token spend for new reservePool
-    function setReservePool(address _reservePool) external onlyOwner {
-        reservePool = IReservePool(_reservePool);
-        IERC20Upgradeable(feeToken).approve(_reservePool, type(uint256).max);
-    }
-
-    /// @dev Replaces feeManager and approves fee token spend for new feeManager
-    function setFeeManager(address _feeManager) external onlyOwner {
-        feeManager = IFeeManager(_feeManager);
-        IERC20Upgradeable(feeToken).approve(_feeManager, type(uint256).max);
-    }
-
     function setRiskManager(address _riskManager) external onlyOwner {
         riskManager = IRiskManager(_riskManager);
+        feeToken.approve(address(riskManager.reservePool()), type(uint256).max);
+    }
+
+    function setFeeManager(address _feeManager) external onlyOwner {
+        feeManager = IFeeManager(_feeManager);
+        feeToken.approve(address(feeManager), type(uint256).max);
     }
 
     /* ========== MODIFIERS ========== */
 
     modifier onlyMembers(address _from, address _to) {
-        IAccessManager accessManager = IAccessManager(access);
-        require(
-            accessManager.isMember(_from) || accessManager.isOperator(_from),
-            "Sender is not network member"
-        );
-        require(
-            accessManager.isMember(_to) || accessManager.isOperator(_to),
-            "Recipient is not network member"
-        );
+        require(access.isMember(_from) || access.isOperator(_from), "Sender is not network member");
+        require(access.isMember(_to) || access.isOperator(_to), "Recipient is not network member");
         _;
     }
 
     modifier onlyOperator() {
-        require(
-            IAccessManager(access).isOperator(msg.sender) || msg.sender == owner(),
-            "Unauthorized caller"
-        );
+        require(access.isOperator(msg.sender) || msg.sender == owner(), "Unauthorized caller");
         _;
     }
 
     modifier onlyRiskManager() {
-        // TODO: re explore unifying ReservePool AND RiskManager
         require(msg.sender == address(riskManager) || msg.sender == owner(), "Unauthorized caller");
         _;
     }

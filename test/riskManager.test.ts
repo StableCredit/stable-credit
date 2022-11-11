@@ -30,8 +30,10 @@ describe("Risk Manager Tests", function () {
     await ethers.provider.send("evm_increaseTime", [90])
     await ethers.provider.send("evm_mine", [])
 
-    expect(await contracts.riskManager.isPastDue(memberA.address)).to.be.true
-    expect(await contracts.riskManager.inDefault(memberA.address)).to.be.false
+    expect(await contracts.riskManager.isPastDue(contracts.stableCredit.address, memberA.address))
+      .to.be.true
+    expect(await contracts.riskManager.inDefault(contracts.stableCredit.address, memberA.address))
+      .to.be.false
 
     await expect(
       contracts.stableCredit
@@ -49,10 +51,14 @@ describe("Risk Manager Tests", function () {
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
 
-    expect(await contracts.riskManager.isPastDue(memberA.address)).to.be.false
-    expect(await contracts.riskManager.inDefault(memberA.address)).to.be.true
+    expect(await contracts.riskManager.isPastDue(contracts.stableCredit.address, memberA.address))
+      .to.be.false
+    expect(await contracts.riskManager.inDefault(contracts.stableCredit.address, memberA.address))
+      .to.be.true
 
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
 
     // check credit limit after default
     expect(formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))).to.eq(
@@ -64,7 +70,9 @@ describe("Risk Manager Tests", function () {
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
 
-    await expect(contracts.riskManager.validateCreditLine(memberA.address))
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    )
       .to.emit(contracts.riskManager, "CreditDefault")
       .to.not.emit(contracts.riskManager, "PeriodEnded")
   })
@@ -78,18 +86,19 @@ describe("Risk Manager Tests", function () {
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
 
-    await expect(contracts.riskManager.validateCreditLine(memberA.address))
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    )
       .to.emit(contracts.riskManager, "PeriodEnded")
       .to.not.emit(contracts.riskManager, "CreditDefault")
   })
 
-  it("default results in a positive inDefault state", async function () {
+  it("default results in a positive inDefault  contracts.stableCredit.address, state", async function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
 
-    expect(await contracts.riskManager.inDefault(memberA.address)).to.be.true
+    expect(await contracts.riskManager.inDefault(contracts.stableCredit.address, memberA.address))
+      .to.be.true
   })
-
-  // TODO: test createcreditline create credit line and create credit terms
 })

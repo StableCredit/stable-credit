@@ -31,7 +31,9 @@ describe("Fee Manager Tests", function () {
       contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
 
-    await expect(contracts.reservePool.depositCollateral(parseEther("100000"))).to.not.be.reverted
+    await expect(
+      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("100000"))
+    ).to.not.be.reverted
 
     // unpause fees
     await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
@@ -65,17 +67,23 @@ describe("Fee Manager Tests", function () {
       contracts.stableCredit.connect(memberA).transfer(memberB.address, parseStableCredits("20"))
     ).to.not.be.reverted
 
-    expect(formatEther(await contracts.reservePool.collateral())).to.equal("100000.0")
+    expect(
+      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+    ).to.equal("100000.0")
 
     expect(formatEther(await contracts.feeManager.collectedFees())).to.equal("4.0")
 
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
-    expect(formatEther(await contracts.reservePool.collateral())).to.equal("100000.0")
+    expect(
+      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+    ).to.equal("100000.0")
     expect(
       formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
     ).to.equal("1.0")
-    expect(formatEther(await contracts.reservePool.operatorBalance())).to.equal("3.0")
+    expect(
+      formatEther(await contracts.reservePool.operatorBalance(contracts.stableCredit.address))
+    ).to.equal("3.0")
   })
 
   it("setTargetFeeRate updates average fee rate", async function () {

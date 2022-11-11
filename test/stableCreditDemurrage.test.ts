@@ -41,7 +41,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
@@ -69,7 +71,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -93,7 +97,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -132,7 +138,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -165,7 +173,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -209,7 +219,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -243,7 +255,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -256,7 +270,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberC
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberC.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberC.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -267,7 +283,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberE
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberE.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberE.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -278,7 +296,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
       .reverted
@@ -298,7 +318,9 @@ describe("Stable Credit Demurrage Tests", function () {
     // default memberA
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
     // demurrage network
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10"))).to.not.be
@@ -309,11 +331,15 @@ describe("Stable Credit Demurrage Tests", function () {
   })
   it("Network demurraged tokens fully reimburse members when burned", async function () {
     // deposit reserve collateral
-    await expect(contracts.reservePool.depositCollateral(parseEther("100000"))).to.not.be.reverted
+    await expect(
+      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("100000"))
+    ).to.not.be.reverted
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
 
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10.0"))).to.not.be
       .reverted
@@ -333,11 +359,15 @@ describe("Stable Credit Demurrage Tests", function () {
 
   it("Network demurraged tokens partially reimburse members when burned", async function () {
     // deposit reserve collateral
-    await expect(contracts.reservePool.depositCollateral(parseEther("3.0"))).to.not.be.reverted
+    await expect(
+      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("3.0"))
+    ).to.not.be.reverted
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
     await expect(contracts.stableCredit.demurrageMembers(parseStableCredits("10.0"))).to.not.be
       .reverted
 

@@ -45,6 +45,7 @@ const deployContractsWithSupply = async () => {
   // Initialize A and B
   await (
     await contracts.riskManager.createCreditLine(
+      contracts.stableCredit.address,
       memberA.address,
       parseStableCredits("100"),
       1000,
@@ -65,6 +66,7 @@ const deployContractsWithSupply = async () => {
   // Initialize C and D
   await (
     await contracts.riskManager.createCreditLine(
+      contracts.stableCredit.address,
       memberC.address,
       parseStableCredits("100"),
       1000,
@@ -83,6 +85,7 @@ const deployContractsWithSupply = async () => {
   // Initialize E and F
   await (
     await contracts.riskManager.createCreditLine(
+      contracts.stableCredit.address,
       memberE.address,
       parseStableCredits("100"),
       1000,
@@ -104,6 +107,10 @@ const deployContractsWithSupply = async () => {
 const deployContracts = async () => {
   var contracts = {} as DemurrageNetworkContracts
 
+  let args = <any>[]
+
+  // ================= DEPLOY RISK =================
+
   // deploy source
   const sourceTokenFactory = await ethers.getContractFactory("MockERC20")
   const sourceToken = (await sourceTokenFactory.deploy(
@@ -111,6 +118,27 @@ const deployContracts = async () => {
     "SOURCE",
     "SOURCE"
   )) as MockERC20
+
+  // deploy riskManager
+  const riskManagerFactory = await ethers.getContractFactory("RiskManager")
+  args = []
+  contracts.riskManager = (await upgrades.deployProxy(riskManagerFactory, args)) as RiskManager
+
+  // deploy swapSink
+  const swapSinkFactory = await ethers.getContractFactory("SwapSink")
+  args = [sourceToken.address]
+  contracts.swapSink = (await upgrades.deployProxy(swapSinkFactory, args, {
+    initializer: "__SwapSink_init",
+  })) as SwapSink
+
+  // deploy reservePool
+  const reservePoolFactory = await ethers.getContractFactory("ReservePool")
+  args = [contracts.riskManager.address, contracts.swapSink.address]
+  contracts.reservePool = (await upgrades.deployProxy(reservePoolFactory, args)) as ReservePool
+
+  await (await contracts.riskManager.setReservePool(contracts.reservePool.address)).wait()
+
+  // ================= DEPLOY CREDIT =================
 
   // deploy feeToken
   const mockERC20Factory = await ethers.getContractFactory("MockERC20")
@@ -126,49 +154,30 @@ const deployContracts = async () => {
     [],
   ])) as AccessManager
 
-  let args = <any>[]
-
   // deploy StableCredit
-  const stableCreditDemurrageFactory = await ethers.getContractFactory("StableCreditDemurrage")
+  const stableCreditFactory = await ethers.getContractFactory("StableCreditDemurrage")
   args = [
     contracts.mockFeeToken.address,
     contracts.accessManager.address,
     "ReSource Dollars",
     "RSD",
   ]
-  contracts.stableCredit = (await upgrades.deployProxy(
-    stableCreditDemurrageFactory,
-    args
-  )) as StableCreditDemurrage
-
-  // deploy swapSink
-  const swapSinkFactory = await ethers.getContractFactory("SwapSink")
-  args = [contracts.stableCredit.address, sourceToken.address]
-  contracts.swapSink = (await upgrades.deployProxy(swapSinkFactory, args, {
-    initializer: "__SwapSink_init",
-  })) as SwapSink
-
-  // deploy reservePool
-  const reservePoolFactory = await ethers.getContractFactory("ReservePool")
-  args = [contracts.stableCredit.address, contracts.swapSink.address]
-  contracts.reservePool = (await upgrades.deployProxy(reservePoolFactory, args)) as ReservePool
-
-  // deploy riskManager
-  const riskManagerFactory = await ethers.getContractFactory("RiskManager")
-  args = [contracts.stableCredit.address]
-  contracts.riskManager = (await upgrades.deployProxy(riskManagerFactory, args)) as RiskManager
+  contracts.stableCredit = (await upgrades.deployProxy(stableCreditFactory, args, {
+    initializer: "__StableCredit_init",
+  })) as StableCreditDemurrage
 
   // deploy feeManager
   const feeManagerFactory = await ethers.getContractFactory("FeeManager")
-  args = [contracts.stableCredit.address, contracts.reservePool.address, 100000]
+  args = [contracts.stableCredit.address]
   contracts.feeManager = (await upgrades.deployProxy(feeManagerFactory, args)) as FeeManager
 
-  await (await contracts.stableCredit.setFeeManager(contracts.feeManager.address)).wait()
-  await (await contracts.stableCredit.setReservePool(contracts.reservePool.address)).wait()
+  // initialize risk manager
   await (await contracts.stableCredit.setRiskManager(contracts.riskManager.address)).wait()
   await (await contracts.accessManager.grantOperator(contracts.stableCredit.address)).wait()
+  await (await contracts.stableCredit.setFeeManager(contracts.feeManager.address)).wait()
+  // network risk configuration
   await await contracts.feeManager.setTargetFeeRate(200000)
-  await await contracts.reservePool.setSwapPercent(250000)
-  await await contracts.reservePool.setTargetRTD(200000)
+  await await contracts.reservePool.setSwapPercent(contracts.stableCredit.address, 250000)
+  await await contracts.reservePool.setTargetRTD(contracts.stableCredit.address, 200000)
   return contracts
 }

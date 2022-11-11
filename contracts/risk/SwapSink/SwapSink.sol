@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "../interface/ISwapSink.sol";
-import "../interface/IStableCredit.sol";
+import "../../credit/interface/IStableCredit.sol";
 
 /// @title CeloUniSwapSink
 /// @author ReSource
@@ -25,33 +25,33 @@ contract SwapSink is
 
     /* ========== STATE VARIABLES ========== */
 
-    IStableCredit public stableCredit;
     address internal source;
+    mapping(address => uint256) networkBalance;
 
     /* ========== INITIALIZER ========== */
 
-    function __SwapSink_init(address _stableCredit, address _sourceAddress) public initializer {
+    function __SwapSink_init(address _sourceAddress) public initializer {
         __ReentrancyGuard_init();
         __Pausable_init();
         __Ownable_init();
         _pause();
-        stableCredit = IStableCredit(_stableCredit);
         source = _sourceAddress;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /// @dev Called by ReservePool when collected fees are distributed by FeeManager.
-    function depositFees(uint256 amount) public override nonReentrant {
+    function depositFees(address network, uint256 amount) public override nonReentrant {
         require(amount > 0, "SwapSink: Cannot deposit 0");
-        IERC20Upgradeable(stableCredit.feeToken()).safeTransferFrom(
+        IERC20Upgradeable(IStableCredit(network).feeToken()).safeTransferFrom(
             msg.sender,
             address(this),
             amount
         );
+        networkBalance[network] = amount;
     }
 
-    function convertFeesToSwapToken() external virtual {}
+    function convertFeesToSwapToken(address network) external virtual {}
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 

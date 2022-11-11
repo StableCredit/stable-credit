@@ -5,17 +5,14 @@ import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./MutualCredit.sol";
-import "./interface/IAccessManager.sol";
-import "./interface/IStableCredit.sol";
-import "./interface/IFeeManager.sol";
+import "../credit/interface/IMutualCredit.sol";
+import "../credit/interface/IStableCredit.sol";
+import "../credit/interface/IAccessManager.sol";
 import "./interface/IReservePool.sol";
-import "./interface/IMutualCredit.sol";
 import "./interface/IRiskManager.sol";
 
 /// @title RiskManager contract
 /// @author ReSource
-/// @notice
 /// @dev Restricted functions are only callable by the operator role.
 
 contract RiskManager is OwnableUpgradeable, IRiskManager {
@@ -26,46 +23,48 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
     }
 
     /* ========== STATE VARIABLES ========== */
-    address public stableCredit;
-    mapping(address => CreditTerms) public creditTerms;
+    // network => member => terms
+    mapping(address => mapping(address => CreditTerms)) public creditTerms;
+
+    IReservePool public reservePool;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(address _stableCredit) external virtual initializer {
+    function initialize() external virtual initializer {
         __Ownable_init();
-        stableCredit = _stableCredit;
     }
 
     /* ========== VIEWS ========== */
 
-    function inDefault(address member) public view returns (bool) {
+    function inDefault(address network, address member) public view returns (bool) {
         return
             // if terms don't exist return false
-            creditTerms[member].issueDate == 0
+            creditTerms[network][member].issueDate == 0
                 ? false
-                : block.timestamp >= creditTerms[member].defaultDate;
+                : block.timestamp >= creditTerms[network][member].defaultDate;
     }
 
-    function isPastDue(address member) public view returns (bool) {
+    function isPastDue(address network, address member) public view returns (bool) {
         return
             // if terms don't exist return false
-            creditTerms[member].issueDate == 0
+            creditTerms[network][member].issueDate == 0
                 ? false
-                : block.timestamp >= creditTerms[member].pastDueDate && !inDefault(member);
+                : block.timestamp >= creditTerms[network][member].pastDueDate &&
+                    !inDefault(network, member);
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
     /// @notice Freezes past due lines and defaults expired lines.
     /// @dev publically exposed for state synchronization. Returns true if line is valid.
-    function validateCreditLine(address member) public returns (bool) {
+    function validateCreditLine(address network, address member) public returns (bool) {
         require(
-            IMutualCredit(stableCredit).creditLimitOf(member) > 0,
+            IMutualCredit(network).creditLimitOf(member) > 0,
             "StableCredit: member does not have a credit line"
         );
-        require(!isPastDue(member), "StableCredit: Credit line is past due");
-        if (inDefault(member)) {
-            updateCreditLine(member);
+        require(!isPastDue(network, member), "StableCredit: Credit line is past due");
+        if (inDefault(network, member)) {
+            updateCreditLine(network, member);
             return false;
         }
         return true;
@@ -73,11 +72,12 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
     function createCreditTerms(
+        address network,
         address member,
         uint256 _pastDueTime,
         uint256 _defaultTime
     ) public onlyOwner {
-        creditTerms[member] = CreditTerms({
+        creditTerms[network][member] = CreditTerms({
             issueDate: block.timestamp,
             pastDueDate: block.timestamp + _pastDueTime,
             defaultDate: block.timestamp + _defaultTime
@@ -85,6 +85,7 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
     }
 
     function createCreditLine(
+        address network,
         address member,
         uint256 _creditLimit,
         uint256 _pastDueTime,
@@ -93,38 +94,45 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
         uint256 _balance
     ) external onlyOwner {
         require(
-            creditTerms[member].issueDate == 0,
-            "StableCredit: Credit line already exists for member"
+            creditTerms[network][member].issueDate == 0,
+            "RiskManager: Credit line already exists for member"
         );
-        require(_pastDueTime > 0, "StableCredit: past due time must be greater than 0");
+        require(_pastDueTime > 0, "RiskManager: past due time must be greater than 0");
         require(
             _defaultTime > _pastDueTime,
             "StableCredit: default time must be greater than past due"
         );
-        createCreditTerms(member, _pastDueTime, _defaultTime);
+        createCreditTerms(network, member, _pastDueTime, _defaultTime);
         if (_feeRate > 0) {
-            IStableCredit(stableCredit).feeManager().setMemberFeeRate(member, _feeRate);
+            IStableCredit(network).feeManager().setMemberFeeRate(member, _feeRate);
         }
-        IStableCredit(stableCredit).createCreditLine(member, _creditLimit, _balance);
+        IStableCredit(network).createCreditLine(member, _creditLimit, _balance);
     }
 
-    function extendCreditLine(address member, uint256 creditLimit) external onlyOwner {
-        IStableCredit(stableCredit).extendCreditLine(member, creditLimit);
+    function extendCreditLine(
+        address network,
+        address member,
+        uint256 creditLimit
+    ) external onlyOwner {
+        IStableCredit(network).extendCreditLine(member, creditLimit);
+    }
+
+    /// @dev Replaces reservePool and approves fee token spend for new reservePool
+    function setReservePool(address _reservePool) external onlyOwner {
+        reservePool = IReservePool(_reservePool);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
 
     /// @dev deletes credit terms and emits a default event if caller has outstanding debt.
-    function updateCreditLine(address member) private {
-        uint256 creditBalance = IMutualCredit(stableCredit).creditBalanceOf(member);
-        IStableCredit(stableCredit).writeOffCreditLine(member);
-        delete creditTerms[member];
+    function updateCreditLine(address network, address member) private {
+        uint256 creditBalance = IMutualCredit(network).creditBalanceOf(member);
+        IStableCredit(network).writeOffCreditLine(member);
+        delete creditTerms[network][member];
         if (creditBalance > 0) {
             emit CreditDefault(member);
             return;
         }
         emit PeriodEnded(member);
     }
-
-    /* ========== MODIFIERS ========== */
 }

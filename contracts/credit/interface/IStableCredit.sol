@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "./IAccessManager.sol";
-import "./IReservePool.sol";
-import "./IRiskManager.sol";
 import "./IFeeManager.sol";
+import "../../risk/interface/IReservePool.sol";
+import "../../risk/interface/IRiskManager.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IStableCredit {
-    function reservePool() external view returns (IReservePool);
-
     function feeToken() external view returns (IERC20Upgradeable);
 
     function access() external view returns (IAccessManager);

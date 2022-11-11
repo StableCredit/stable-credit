@@ -22,11 +22,14 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   const networkConfig = fs.readFileSync(networkConfigPath).toString()
   const config = JSON.parse(networkConfig)
 
-  let { feeTokenAddress, sourceAddress, name, symbol } = config
+  let { feeTokenAddress, riskManagerAddress, name, symbol } = config
+
+  if (!riskManagerAddress)
+    riskManagerAddress = (await hardhat.deployments.getOrNull("RiskManager"))?.address
+
+  if (!riskManagerAddress) return console.log("No risk manager deployed or specified")
 
   if (!name || !symbol) return console.log("No stable credit name or symbol specified")
-
-  const MockSourceAddress = (await hardhat.deployments.getOrNull("SourceToken"))?.address
 
   const MockFeeTokenAddress = (await hardhat.deployments.getOrNull("FeeToken"))?.address
 
@@ -53,30 +56,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
       hardhat.deployments.save("FeeToken", contractDeployment)
       feeTokenAddress = feeToken.address
-    }
-  }
-
-  if (!sourceAddress) {
-    if (MockSourceAddress) sourceAddress = MockSourceAddress
-    else {
-      console.log("No SOURCE Address specified, deploying mock SOURCE")
-      const erc20Factory = await ethers.getContractFactory("MockERC20")
-      const mockERC20Abi = (await hardhat.artifacts.readArtifact("MockERC20")).abi
-      const sourceToken = (await erc20Factory.deploy(
-        parseEther("100000000"),
-        "SOURCE",
-        "SOURCE"
-      )) as ERC20
-
-      let contractDeployment = {
-        address: sourceToken.address,
-        abi: mockERC20Abi,
-        receipt: await sourceToken.deployTransaction.wait(),
-      }
-
-      hardhat.deployments.save("SourceToken", contractDeployment)
-
-      sourceAddress = sourceToken.address
     }
   }
 
@@ -112,51 +91,9 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
 
-  // deploy swapSink
-  const swapSinkAbi = (await hardhat.artifacts.readArtifact("SwapSink")).abi
-  const swapSinkArgs = [stableCredit.address, sourceAddress]
-  const swapSinkAddress = await deployProxyAndSaveAs(
-    "SwapSink",
-    symbol + "_SwapSink",
-    swapSinkArgs,
-    hardhat,
-    swapSinkAbi,
-    { initializer: "__SwapSink_init" }
-  )
-
-  // deploy reservePool
-  const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
-  const reservePoolArgs = [stableCredit.address, swapSinkAddress]
-  const reservePoolAddress = await deployProxyAndSaveAs(
-    "ReservePool",
-    symbol + "_ReservePool",
-    reservePoolArgs,
-    hardhat,
-    reservePoolAbi
-  )
-  const reservePool = ReservePool__factory.connect(
-    reservePoolAddress,
-    (await ethers.getSigners())[0]
-  )
-
-  // deploy riskManager
-  const riskManagerAbi = (await hardhat.artifacts.readArtifact("RiskManager")).abi
-  const riskManagerArgs = [stableCredit.address]
-  const riskManagerAddress = await deployProxyAndSaveAs(
-    "RiskManager",
-    symbol + "_RiskManager",
-    riskManagerArgs,
-    hardhat,
-    riskManagerAbi
-  )
-  const riskManager = RiskManager__factory.connect(
-    riskManagerAddress,
-    (await ethers.getSigners())[0]
-  )
-
   // deploy feeManager
   const feeManagerAbi = (await hardhat.artifacts.readArtifact("FeeManager")).abi
-  const feeManagerArgs = [stableCredit.address, reservePoolAddress, 100000]
+  const feeManagerArgs = [stableCredit.address]
   const feemanagerAddress = await deployProxyAndSaveAs(
     "FeeManager",
     symbol + "_FeeManager",
@@ -179,13 +116,23 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     }
   }
 
+  // get risk manager address and reservepool contract
+  const riskManager = RiskManager__factory.connect(
+    riskManagerAddress,
+    (await ethers.getSigners())[0]
+  )
+
+  const reservePool = ReservePool__factory.connect(
+    await riskManager.reservePool(),
+    (await ethers.getSigners())[0]
+  )
+
   await (await stableCredit.setFeeManager(feemanagerAddress)).wait()
-  await (await stableCredit.setReservePool(reservePoolAddress)).wait()
-  await (await stableCredit.setRiskManager(riskManager.address)).wait()
+  await (await stableCredit.setRiskManager(riskManagerAddress)).wait()
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   await (await feeManager.setTargetFeeRate(50000)).wait()
-  await (await reservePool.setSwapPercent(20000)).wait()
-  await (await reservePool.setTargetRTD(200000)).wait()
+  await (await reservePool.setSwapPercent(stableCredit.address, 20000)).wait()
+  await (await reservePool.setTargetRTD(stableCredit.address, 200000)).wait()
 }
 export default func
-func.tags = ["NETWORK"]
+func.tags = ["CREDIT"]

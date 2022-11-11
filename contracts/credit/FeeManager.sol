@@ -4,8 +4,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "./interface/IReservePool.sol";
-import "./interface/IStableCredit.sol";
+import "../credit/interface/IStableCredit.sol";
 import "./interface/IFeeManager.sol";
 
 /// @title FeeManager
@@ -21,34 +20,30 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     uint32 private constant MAX_PPM = 1000000;
 
     /* ========== STATE VARIABLES ========== */
-
-    IReservePool public reservePool;
     IStableCredit public stableCredit;
+    // network => member => feeRate
     mapping(address => uint256) public memberFeeRate;
     uint256 public targetFeeRate;
     uint256 public collectedFees;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(
-        address _stableCredit,
-        address _reservePool,
-        uint256 _targetFeeRate
-    ) external virtual initializer {
+    function initialize(address _stableCredit) external virtual initializer {
         __Ownable_init();
         __Pausable_init();
         _pause();
-        reservePool = IReservePool(_reservePool);
         stableCredit = IStableCredit(_stableCredit);
-        targetFeeRate = _targetFeeRate;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /// @notice Distributes collected fees to the reserve pool.
     function distributeFees() external {
-        IERC20Upgradeable(stableCredit.feeToken()).approve(address(reservePool), collectedFees);
-        reservePool.depositFees(collectedFees);
+        IERC20Upgradeable(stableCredit.feeToken()).approve(
+            address(stableCredit.riskManager().reservePool()),
+            collectedFees
+        );
+        stableCredit.riskManager().reservePool().depositFees(address(stableCredit), collectedFees);
         emit FeesDistributed(collectedFees);
         collectedFees = 0;
     }
@@ -66,11 +61,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     ) external override {
         if (paused()) return;
         uint256 totalFee = calculateMemberFee(sender, amount);
-        IERC20Upgradeable(stableCredit.feeToken()).safeTransferFrom(
-            sender,
-            address(this),
-            totalFee
-        );
+        stableCredit.feeToken().safeTransferFrom(sender, address(this), totalFee);
         collectedFees += totalFee;
         emit FeesCollected(sender, totalFee);
     }
@@ -126,7 +117,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     modifier onlyAuthorized() {
         require(
             msg.sender == address(stableCredit.riskManager()) ||
-                stableCredit.access().isOperator(msg.sender) ||
                 msg.sender == owner() ||
                 msg.sender == address(stableCredit),
             "FeeManager: Unauthorized caller"

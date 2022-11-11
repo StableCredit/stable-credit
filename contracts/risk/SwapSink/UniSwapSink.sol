@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-import "../interface/IStableCredit.sol";
+import "../../credit/interface/IStableCredit.sol";
 import "./ISwapRouter02.sol";
 import "./SwapSink.sol";
 
@@ -21,30 +21,30 @@ contract UniSwapSink is SwapSink {
     /* ========== STATE VARIABLES ========== */
 
     ICeloSwapRouter public swapRouter;
+    mapping(address => uint256) public networkSink;
     uint24 public poolFee;
 
     /* ========== INITIALIZER ========== */
 
     function initialize(
-        address _stableCredit,
         address _sourceAddress,
         address _swapRouter
     ) public initializer {
-        __SwapSink_init(_stableCredit, _sourceAddress);
+        __SwapSink_init(_sourceAddress);
         swapRouter = ICeloSwapRouter(_swapRouter);
         poolFee = 3000;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function convertFeesToSwapToken() external override whenNotPaused {
-        IERC20Upgradeable feeToken = IERC20Upgradeable(stableCredit.feeToken());
+    function convertFeesToSwapToken(address network) external override whenNotPaused {
+        IERC20Upgradeable feeToken = IERC20Upgradeable(IStableCredit(network).feeToken());
         uint256 feeBalance = feeToken.balanceOf(address(this));
         TransferHelper.safeApprove(address(feeToken), address(swapRouter), feeBalance);
 
         ICeloSwapRouter.ExactInputSingleParams memory params = ICeloSwapRouter
             .ExactInputSingleParams({
-                tokenIn: address(stableCredit.feeToken()),
+                tokenIn: address(IStableCredit(network).feeToken()),
                 tokenOut: source,
                 fee: poolFee,
                 recipient: address(this),
@@ -53,8 +53,8 @@ contract UniSwapSink is SwapSink {
                 amountOutMinimum: 1,
                 sqrtPriceLimitX96: 0
             });
-
-        swapRouter.exactInputSingle(params);
+            
+        networkSink[network] += swapRouter.exactInputSingle(params);
     }
 
 

@@ -109,7 +109,10 @@ describe("Stable Credit Tests", function () {
 
     expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("10.0")
 
-    expect(formatEther(await contracts.reservePool.collateral())).to.eq("0.0")
+    // expect empty reserve
+    expect(
+      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+    ).to.eq("0.0")
 
     await expect(
       contracts.stableCredit
@@ -119,7 +122,9 @@ describe("Stable Credit Tests", function () {
 
     expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("0.0")
 
-    expect(formatEther(await contracts.reservePool.collateral())).to.eq("10.0")
+    expect(
+      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+    ).to.eq("10.0")
   })
 
   it("Repayment causes credit balance to decrease", async function () {

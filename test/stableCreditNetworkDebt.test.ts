@@ -36,7 +36,9 @@ describe("Stable Credit Network Debt Tests", function () {
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
 
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
   })
@@ -48,7 +50,9 @@ describe("Stable Credit Network Debt Tests", function () {
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
 
     // check total supply and network debt
     expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
@@ -98,7 +102,9 @@ describe("Stable Credit Network Debt Tests", function () {
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberA.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
 
     // all existing debt is in default
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
@@ -106,13 +112,17 @@ describe("Stable Credit Network Debt Tests", function () {
     // default memberC creditline
     await ethers.provider.send("evm_mine", [])
     await ethers.provider.send("evm_increaseTime", [100])
-    await expect(contracts.riskManager.validateCreditLine(memberC.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberC.address)
+    ).to.not.be.reverted
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("20.0")
 
     // default memberE creditline
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
-    await expect(contracts.riskManager.validateCreditLine(memberE.address)).to.not.be.reverted
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberE.address)
+    ).to.not.be.reverted
     // all existing debt is in default
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("30.0")
   })

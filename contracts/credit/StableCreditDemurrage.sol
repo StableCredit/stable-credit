@@ -78,7 +78,11 @@ contract StableCreditDemurrage is StableCredit {
         if (burnAmount == 0) return;
         _burn(member, burnAmount);
         demurraged -= burnAmount;
-        IReservePool(reservePool).reimburseMember(member, convertCreditToFeeToken(burnAmount));
+        riskManager.reservePool().reimburseMember(
+            address(this),
+            member,
+            convertCreditToFeeToken(burnAmount)
+        );
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
