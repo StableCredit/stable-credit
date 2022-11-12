@@ -12,14 +12,15 @@ task(DEPOSIT_COLLATERAL, "Deposit collateral into reserve pool")
     const signer = (await ethers.getSigners())[0]
     let symbol = taskArgs.symbol
 
-    const reservePool = await ethers.getContract(symbol + "_ReservePool")
+    const reservePool = await ethers.getContract("ReservePool")
+    const stableCredit = await ethers.getContract(symbol + "_StableCredit")
 
-    const feeTokenDeploymentPath = `./deployments/${network.name}/FeeToken.json`
-    const feeTokenRolesDeployment = fs.readFileSync(feeTokenDeploymentPath).toString()
-    const feeTokenAddress = JSON.parse(feeTokenRolesDeployment)["address"]
     const feeTokenFactory = await ethers.getContractFactory("ERC20")
-
-    const feeToken = new ethers.Contract(feeTokenAddress, feeTokenFactory.interface, signer)
+    const feeToken = new ethers.Contract(
+      await stableCredit.feeToken(),
+      feeTokenFactory.interface,
+      signer
+    )
 
     const allowance = (await feeToken.allowance(signer.address, reservePool.address)) as BigNumber
 
@@ -29,7 +30,7 @@ task(DEPOSIT_COLLATERAL, "Deposit collateral into reserve pool")
 
     let amount = taskArgs.amount
 
-    await (await reservePool.depositCollateral(parseEther(amount))).wait()
+    await (await reservePool.depositCollateral(stableCredit.address, parseEther(amount))).wait()
 
     console.log("💵 " + amount + " collateral deposited")
   })
