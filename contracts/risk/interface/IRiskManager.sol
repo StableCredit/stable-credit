@@ -8,7 +8,14 @@ interface IRiskManager {
 
     function validateCreditLine(address network, address member) external returns (bool);
 
-    event CreditDefault(address member);
+    event CreditDefault(address network, address member);
 
-    event PeriodEnded(address member);
+    event PeriodEnded(address network, address member);
+
+    event CreditTermsCreated(
+        address network,
+        address member,
+        uint256 pastDueTime,
+        uint256 defaultTime
+    );
 }

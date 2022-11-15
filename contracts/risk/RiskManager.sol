@@ -82,6 +82,7 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
             pastDueDate: block.timestamp + pastDueTime,
             defaultDate: block.timestamp + defaultTime
         });
+        emit CreditTermsCreated(network, member, pastDueTime, defaultTime);
     }
 
     function createCreditLine(
@@ -130,9 +131,9 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
         IStableCredit(network).writeOffCreditLine(member);
         delete creditTerms[network][member];
         if (creditBalance > 0) {
-            emit CreditDefault(member);
+            emit CreditDefault(network, member);
             return;
         }
-        emit PeriodEnded(member);
+        emit PeriodEnded(network, member);
     }
 }

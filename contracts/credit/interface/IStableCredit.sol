@@ -29,7 +29,7 @@ interface IStableCredit {
 
     event CreditLineCreated(address member, uint256 creditLimit, uint256 balance);
 
-    event CreditLimitExtended(address member, uint256 creditLimit);
+    event CreditLimitUpdated(address member, uint256 creditLimit);
 
     event MembersDemurraged(uint256 amount);
 

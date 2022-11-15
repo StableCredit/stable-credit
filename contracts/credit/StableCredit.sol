@@ -123,7 +123,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         require(creditLimitOf(member) > 0, "StableCredit: Credit line does not exist for member");
         require(creditLimit >= creditBalanceOf(member), "StableCredit: invalid credit limit");
         setCreditLimit(member, creditLimit);
-        emit CreditLimitExtended(member, creditLimit);
+        emit CreditLimitUpdated(member, creditLimit);
     }
 
     /// @notice transfer a given member's debt to the network
