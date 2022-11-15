@@ -39,7 +39,7 @@ describe("Stable Credit Tests", function () {
       formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))
     ).to.equal("100.0")
     await expect(
-      contracts.stableCredit.extendCreditLine(memberA.address, parseStableCredits("1000"))
+      contracts.stableCredit.updateCreditLimit(memberA.address, parseStableCredits("1000"))
     ).to.not.be.reverted
     expect(
       formatStableCredits(await contracts.stableCredit.creditLimitOf(memberA.address))
@@ -110,9 +110,9 @@ describe("Stable Credit Tests", function () {
     expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("10.0")
 
     // expect empty reserve
-    expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
-    ).to.eq("0.0")
+    expect(formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))).to.eq(
+      "0.0"
+    )
 
     await expect(
       contracts.stableCredit
@@ -122,9 +122,9 @@ describe("Stable Credit Tests", function () {
 
     expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("0.0")
 
-    expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
-    ).to.eq("10.0")
+    expect(formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))).to.eq(
+      "10.0"
+    )
   })
 
   it("Repayment causes credit balance to decrease", async function () {

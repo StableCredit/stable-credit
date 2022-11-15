@@ -30,12 +30,12 @@ contract SwapSink is
 
     /* ========== INITIALIZER ========== */
 
-    function __SwapSink_init(address _sourceAddress) public initializer {
+    function __SwapSink_init(address _source) public initializer {
         __ReentrancyGuard_init();
         __Pausable_init();
         __Ownable_init();
         _pause();
-        source = _sourceAddress;
+        source = _source;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -55,8 +55,8 @@ contract SwapSink is
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function setSource(address _sourceAddress) external onlyOwner {
-        source = _sourceAddress;
+    function setSource(address _source) external onlyOwner {
+        source = _source;
     }
 
     function unPauseSink() external onlyOwner {

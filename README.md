@@ -15,20 +15,27 @@ A stable credit is a complementary currency in an on-chain mutual credit network
 
 ---
 
-Network members are granted access to credit by network operators via the `AccessManager`. Operators are also responsible for managing network configurations in order to promote healthy network activity.
+Network members are granted access to credit by network operators via the `AccessManager` contract. Operators are responsible curating healthy network participation.
 
-Network fee configurations are stored in the `FeeManager`. Each time credits are transacted, fees are collected by the `FeeManager` and disbursed to the `ReservePool`.
+In order to stabalize networks, members pay transaction fees that are deposited into the `ReservePool` contract. The `ReservePool` insures a given network's default rate by storing a reserve of fee tokens. These tokens are used to reimburse members for removing credits from circulation that are no longer backed by member debt. The reserve has three major components: a reserve balance used to reimburse network credit defaults, a withdrawable operator balance, and a swap sink used as a medium for future cross network credit swaps.
 
-The `ReservePool` is most responsible for securing credit lines accross networks using collateral supplied by transaction fees. The reserve has three major components: Credit collateral used to reimburse network credit defaults, a withdrawable operator balance, and a SOURCE sink used as a medium for future cross network credit swaps.
+The `RiskManager` contract is responsible for altering network configurations to stabalize the currency. Risk mitigation configurations include a target reserve to debt ratio (stored in the `ReservePool`), and fee rates (stored in the `FeeManager` contract).
 
 ---
 
 ## Contracts:
 
+####Risk
+
+- `RiskManager`: Responsible for executing risk mitigation strategies by managing network configurations.
+- `ReservePool`: Responsible for storing and transfering network fee tokens.
+- `SwapSink`: Responsible for converting network fee tokens with SOURCE to be used within the internetwork credit swap protocol.
+
+####Credit
+
 - `StableCredit`: An ERC20 extension that includes logic for credit lines and default managment.
+- `FeeManager`: Collects and routes fees to the ReservePool.
 - `AccessManager`: An extension of the Open Zeppelin "AccessControl" contract, responsible for granting and revoking network member and operator addresses.
-- `FeeManager`: Collects and routes fees to the configured pools.
-- `ReservePool`: Responsible for storing, converting, and transfering network transaction fees according to configuration.
 
 # 🏄‍♂️ Quick Start
 

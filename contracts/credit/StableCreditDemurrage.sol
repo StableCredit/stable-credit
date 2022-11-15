@@ -90,22 +90,22 @@ contract StableCreditDemurrage is StableCredit {
     /// @notice called by the underwriting layer to assign credit lines
     /// @dev If the member address is not a current member, then the address is granted membership
     /// @param member address of line holder
-    /// @param _creditLimit credit limit of new line
-    /// @param _balance positive balance to initialize member with (will increment network debt)
+    /// @param creditLimit credit limit of new line
+    /// @param balance positive balance to initialize member with (will increment network debt)
     function createCreditLine(
         address member,
-        uint256 _creditLimit,
-        uint256 _balance
+        uint256 creditLimit,
+        uint256 balance
     ) public override onlyRiskManager {
         demurrageIndexOf[member] = demurrageIndex;
-        super.createCreditLine(member, _creditLimit, _balance);
+        super.createCreditLine(member, creditLimit, balance);
     }
 
     /// @notice reduces all positive balances proportionally to pay off networkDebt
     function demurrageMembers(uint256 amount) external onlyOperator {
-        require(networkDebt >= amount, "StableCredit: Insufficient network debt");
         demurraged += amount;
         updateConversionRate();
+        require(networkDebt >= amount, "StableCredit: Insufficient network debt");
         networkDebt -= amount;
         demurrageIndex++;
         emit MembersDemurraged(amount);

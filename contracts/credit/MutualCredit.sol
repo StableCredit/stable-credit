@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "./interface/IMutualCredit.sol";
 
-contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
+contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgradeable {
     using ExtraMath for *;
 
     /* ========== STATE VARIABLES ========== */
@@ -34,16 +35,16 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         return 6;
     }
 
-    function creditBalanceOf(address _member) public view returns (uint256) {
-        return members[_member].creditBalance;
+    function creditBalanceOf(address member) public view override returns (uint256) {
+        return members[member].creditBalance;
     }
 
-    function creditLimitOf(address _member) public view returns (uint256) {
-        return members[_member].creditLimit;
+    function creditLimitOf(address member) public view override returns (uint256) {
+        return members[member].creditLimit;
     }
 
-    function creditLimitLeftOf(address _member) public view returns (uint256) {
-        Member memory _localMember = members[_member];
+    function creditLimitLeftOf(address member) public view returns (uint256) {
+        Member memory _localMember = members[member];
         if (_localMember.creditBalance >= _localMember.creditLimit) {
             return 0;
         }
@@ -62,9 +63,9 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function setCreditLimit(address _member, uint256 _limit) internal virtual {
-        members[_member].creditLimit = _limit.toUInt128();
-        emit CreditLimitUpdate(_member, _limit);
+    function setCreditLimit(address member, uint256 limit) internal virtual {
+        members[member].creditLimit = limit.toUInt128();
+        emit CreditLimitUpdate(member, limit);
     }
 
     function _beforeTransfer(address _from, uint256 _amount) private {
@@ -90,8 +91,6 @@ contract MutualCredit is OwnableUpgradeable, ERC20BurnableUpgradeable {
         members[_to].creditBalance = (_memberTo.creditBalance - _repay).toUInt128();
         _burn(_to, _repay);
     }
-
-    event CreditLimitUpdate(address member, uint256 limit);
 }
 
 library ExtraMath {

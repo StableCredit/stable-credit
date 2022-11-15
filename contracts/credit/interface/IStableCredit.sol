@@ -15,8 +15,6 @@ interface IStableCredit {
 
     function feeManager() external view returns (IFeeManager);
 
-    function networkDebt() external view returns (uint256);
-
     function convertCreditToFeeToken(uint256 amount) external view returns (uint256);
 
     function writeOffCreditLine(address member) external;
@@ -27,7 +25,7 @@ interface IStableCredit {
         uint256 _balance
     ) external;
 
-    function extendCreditLine(address member, uint256 creditLimit) external;
+    function updateCreditLimit(address member, uint256 creditLimit) external;
 
     event CreditLineCreated(address member, uint256 creditLimit, uint256 balance);
 

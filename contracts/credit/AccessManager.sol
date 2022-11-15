@@ -12,7 +12,7 @@ import "./interface/IAccessManager.sol";
 contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessManager {
     /* ========== INITIALIZER ========== */
 
-    function initialize(address[] memory _operators) external initializer {
+    function initialize(address[] memory operators) external initializer {
         __AccessControl_init();
         __Ownable_init();
         // create roles
@@ -21,9 +21,9 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _setupRole("MEMBER", msg.sender);
         _setRoleAdmin("MEMBER", "OPERATOR");
 
-        for (uint256 j = 0; j < _operators.length; j++) {
-            require(_operators[j] != address(0), "AccessManager: invalid operator supplied");
-            grantRole("OPERATOR", _operators[j]);
+        for (uint256 j = 0; j < operators.length; j++) {
+            require(operators[j] != address(0), "AccessManager: invalid operator supplied");
+            grantRole("OPERATOR", operators[j]);
         }
     }
 

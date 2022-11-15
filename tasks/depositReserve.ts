@@ -1,11 +1,11 @@
 import { task } from "hardhat/config"
 const fs = require("fs")
 
-import { DEPOSIT_COLLATERAL } from "./task-names"
+import { DEPOSIT_RESERVE } from "./task-names"
 import { BigNumber } from "ethers"
 import { parseEther } from "ethers/lib/utils"
 
-task(DEPOSIT_COLLATERAL, "Deposit collateral into reserve pool")
+task(DEPOSIT_RESERVE, "Deposit reserve into reserve pool")
   .addParam("symbol", "Symbol of stable credit network")
   .addParam("amount", "Amount of fee token to deposit into the reserve")
   .setAction(async (taskArgs, { network, ethers }) => {
@@ -30,7 +30,7 @@ task(DEPOSIT_COLLATERAL, "Deposit collateral into reserve pool")
 
     let amount = taskArgs.amount
 
-    await (await reservePool.depositCollateral(stableCredit.address, parseEther(amount))).wait()
+    await (await reservePool.depositReserve(stableCredit.address, parseEther(amount))).wait()
 
-    console.log("💵 " + amount + " collateral deposited")
+    console.log("💵 " + amount + " reserve funded")
   })

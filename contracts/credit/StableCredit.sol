@@ -23,6 +23,8 @@ contract StableCredit is MutualCredit, IStableCredit {
     IERC20Upgradeable public feeToken;
     IRiskManager public riskManager;
     IFeeManager public feeManager;
+
+    // debt owned by network
     uint256 public networkDebt;
 
     /* ========== INITIALIZER ========== */
@@ -88,7 +90,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid amount");
         feeToken.transferFrom(msg.sender, address(this), convertCreditToFeeToken(amount));
-        riskManager.reservePool().depositCollateral(address(this), convertCreditToFeeToken(amount));
+        riskManager.reservePool().depositReserve(address(this), convertCreditToFeeToken(amount));
         networkDebt += amount;
         members[msg.sender].creditBalance -= amount;
         emit CreditBalanceRepayed(msg.sender, amount);
@@ -116,11 +118,10 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     /// @notice Extend existing credit lines
-    /// @param creditLimit must be greater than referenced member's current credit line
-    function extendCreditLine(address member, uint256 creditLimit) external onlyRiskManager {
+    /// @param creditLimit must be greater than given member's outstanding debt
+    function updateCreditLimit(address member, uint256 creditLimit) external onlyRiskManager {
         require(creditLimitOf(member) > 0, "StableCredit: Credit line does not exist for member");
-        uint256 curCreditLimit = creditLimitOf(member);
-        require(curCreditLimit < creditLimit, "invalid credit limit");
+        require(creditLimit >= creditBalanceOf(member), "StableCredit: invalid credit limit");
         setCreditLimit(member, creditLimit);
         emit CreditLimitExtended(member, creditLimit);
     }

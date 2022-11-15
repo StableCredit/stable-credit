@@ -23,6 +23,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     IStableCredit public stableCredit;
     // network => member => feeRate
     mapping(address => uint256) public memberFeeRate;
+    /// @notice The base rate that member fee rates are derived from
     uint256 public targetFeeRate;
     uint256 public collectedFees;
 
@@ -85,23 +86,15 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    /// @param _feePercent percent above or bellow the target fee rate for the given member
-    function setMemberFeeRate(address member, uint256 _feePercent)
-        external
-        override
-        onlyAuthorized
-    {
-        memberFeeRate[member] = _feePercent;
+    /// @param feePercent percent above or bellow the target fee rate for the given member
+    function setMemberFeeRate(address member, uint256 feePercent) external override onlyAuthorized {
+        memberFeeRate[member] = feePercent;
     }
 
-    /// @param _feePercent percent to charge members by default
-    function setTargetFeeRate(uint256 _feePercent) external onlyAuthorized {
-        require(_feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
-        targetFeeRate = _feePercent;
-    }
-
-    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
-        IERC20Upgradeable(tokenAddress).safeTransfer(msg.sender, tokenAmount);
+    /// @param feePercent percent to charge members by default
+    function setTargetFeeRate(uint256 feePercent) external onlyAuthorized {
+        require(feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
+        targetFeeRate = feePercent;
     }
 
     function pauseFees() public onlyOwner {
@@ -114,11 +107,11 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== MODIFIERS ========== */
 
+    /// @dev caller must be the risk manager contract, or have operator access
     modifier onlyAuthorized() {
         require(
             msg.sender == address(stableCredit.riskManager()) ||
-                msg.sender == owner() ||
-                msg.sender == address(stableCredit),
+                stableCredit.access().isOperator(msg.sender),
             "FeeManager: Unauthorized caller"
         );
         _;

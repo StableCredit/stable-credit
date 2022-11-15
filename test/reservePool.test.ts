@@ -45,22 +45,22 @@ describe("Reserve Pool Tests", function () {
     ).to.equal(200000)
   })
 
-  it("depositing collateral updates reserve RTD", async function () {
+  it("depositing reserve updates reserve RTD", async function () {
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("15.0"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("15.0"))
     ).to.not.be.reverted
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("15.0")
     // RTD should be 50%
     expect(
       await (await contracts.reservePool.RTD(contracts.stableCredit.address)).toNumber()
     ).to.equal(500000)
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("15.0"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("15.0"))
     ).to.not.be.reverted
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("30.0")
     // RTD should be 100%
     expect(
@@ -68,18 +68,18 @@ describe("Reserve Pool Tests", function () {
     ).to.equal(1000000)
   })
 
-  it("needed collateral is updated when RTD changes", async function () {
+  it("needed reserve is updated when RTD changes", async function () {
     expect(
       await (await contracts.reservePool.targetRTD(contracts.stableCredit.address)).toNumber()
     ).to.equal(200000)
     expect(
-      formatEther(await contracts.reservePool.getNeededCollateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.getNeededReserves(contracts.stableCredit.address))
     ).to.equal("6.0")
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("5.0"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("5.0"))
     ).to.not.be.reverted
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("5.0")
     // RTD should be 16%
     expect(
@@ -87,13 +87,13 @@ describe("Reserve Pool Tests", function () {
     ).to.equal(166666)
     // needed is really 1.0 but results in 1.00002 from rounding
     expect(
-      formatEther(await contracts.reservePool.getNeededCollateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.getNeededReserves(contracts.stableCredit.address))
     ).to.equal("1.00002")
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("1.0"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("1.0"))
     ).to.not.be.reverted
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("6.0")
     expect(
       await (await contracts.reservePool.RTD(contracts.stableCredit.address)).toNumber()
@@ -102,7 +102,7 @@ describe("Reserve Pool Tests", function () {
 
   it("Expanding stable credit supply updates reserve RTD", async function () {
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("15.0"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("15.0"))
     ).to.not.be.reverted
     // 30 / 15 = 50%
     expect(
@@ -118,7 +118,7 @@ describe("Reserve Pool Tests", function () {
     ).to.equal(375000)
   })
 
-  it("Distributing fees to reserve with fully insufficient collateral adds only to collateral", async function () {
+  it("Distributing fees to reserve with fully insufficient reserve adds only to reserve", async function () {
     // unpuase fee collection
     await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
 
@@ -136,14 +136,14 @@ describe("Reserve Pool Tests", function () {
     ).to.not.be.reverted
 
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("0.0")
 
     // because savings pool is empty, all fees will go to reserve
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("4.0")
     expect(
       formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
@@ -153,9 +153,9 @@ describe("Reserve Pool Tests", function () {
     ).to.equal("0.0")
   })
 
-  it("Distributing fees to reserve with partially sufficient collateral adds to collateral first", async function () {
+  it("Distributing fees to reserve with partially sufficient reserve adds to reserve first", async function () {
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("7"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("7"))
     ).to.not.be.reverted
     // unpuase fee collection
     await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
@@ -174,7 +174,7 @@ describe("Reserve Pool Tests", function () {
     ).to.not.be.reverted
 
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("7.0")
     expect(
       formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
@@ -187,9 +187,9 @@ describe("Reserve Pool Tests", function () {
 
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
-    // min RTD is 20% (8 collateral is 20% of totalSupply 40)
+    // min RTD is 20% (8 reserve is 20% of totalSupply 40)
     expect(
-      formatEther(await contracts.reservePool.collateral(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("8.0")
     expect(
       formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
@@ -205,7 +205,7 @@ describe("Reserve Pool Tests", function () {
       contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("1000"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("1000"))
     ).to.not.be.reverted
 
     await expect(

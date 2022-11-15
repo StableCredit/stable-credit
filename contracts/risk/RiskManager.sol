@@ -74,13 +74,13 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
     function createCreditTerms(
         address network,
         address member,
-        uint256 _pastDueTime,
-        uint256 _defaultTime
+        uint256 pastDueTime,
+        uint256 defaultTime
     ) public onlyOwner {
         creditTerms[network][member] = CreditTerms({
             issueDate: block.timestamp,
-            pastDueDate: block.timestamp + _pastDueTime,
-            defaultDate: block.timestamp + _defaultTime
+            pastDueDate: block.timestamp + pastDueTime,
+            defaultDate: block.timestamp + defaultTime
         });
     }
 
@@ -88,8 +88,8 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
         address network,
         address member,
         uint256 _creditLimit,
-        uint256 _pastDueTime,
-        uint256 _defaultTime,
+        uint256 pastDueTime,
+        uint256 defaultTime,
         uint256 _feeRate,
         uint256 _balance
     ) external onlyOwner {
@@ -97,24 +97,24 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
             creditTerms[network][member].issueDate == 0,
             "RiskManager: Credit line already exists for member"
         );
-        require(_pastDueTime > 0, "RiskManager: past due time must be greater than 0");
+        require(pastDueTime > 0, "RiskManager: past due time must be greater than 0");
         require(
-            _defaultTime > _pastDueTime,
+            defaultTime > pastDueTime,
             "StableCredit: default time must be greater than past due"
         );
-        createCreditTerms(network, member, _pastDueTime, _defaultTime);
+        createCreditTerms(network, member, pastDueTime, defaultTime);
         if (_feeRate > 0) {
             IStableCredit(network).feeManager().setMemberFeeRate(member, _feeRate);
         }
         IStableCredit(network).createCreditLine(member, _creditLimit, _balance);
     }
 
-    function extendCreditLine(
+    function updateCreditLimit(
         address network,
         address member,
         uint256 creditLimit
     ) external onlyOwner {
-        IStableCredit(network).extendCreditLine(member, creditLimit);
+        IStableCredit(network).updateCreditLimit(member, creditLimit);
     }
 
     /// @dev Replaces reservePool and approves fee token spend for new reservePool

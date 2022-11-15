@@ -330,9 +330,9 @@ describe("Stable Credit Demurrage Tests", function () {
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("0.0")
   })
   it("Network demurraged tokens fully reimburse members when burned", async function () {
-    // deposit reserve collateral
+    // deposit reserve reserve
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("100000"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("100000"))
     ).to.not.be.reverted
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
@@ -358,9 +358,9 @@ describe("Stable Credit Demurrage Tests", function () {
   })
 
   it("Network demurraged tokens partially reimburse members when burned", async function () {
-    // deposit reserve collateral
+    // deposit reserve reserve
     await expect(
-      contracts.reservePool.depositCollateral(contracts.stableCredit.address, parseEther("3.0"))
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("3.0"))
     ).to.not.be.reverted
     // default Credit Line A
     await ethers.provider.send("evm_increaseTime", [100])
