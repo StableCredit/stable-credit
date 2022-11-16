@@ -127,6 +127,10 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
         IStableCredit(network).feeManager().setMemberFeeRate(member, _memberFeeRate);
     }
 
+    function setTargetFeeRate(address network, uint256 _targetFeeRate) external onlyOwner {
+        IStableCredit(network).feeManager().setTargetFeeRate(_targetFeeRate);
+    }
+
     /// @dev Replaces reservePool and approves fee token spend for new reservePool
     function setReservePool(address _reservePool) external onlyOwner {
         reservePool = IReservePool(_reservePool);

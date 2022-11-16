@@ -92,7 +92,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     }
 
     /// @param feePercent percent to charge members by default
-    function setTargetFeeRate(uint256 feePercent) external onlyAuthorized {
+    function setTargetFeeRate(uint256 feePercent) external override onlyAuthorized {
         require(feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
         targetFeeRate = feePercent;
     }

@@ -10,6 +10,8 @@ interface IFeeManager {
 
     function setMemberFeeRate(address member, uint256 _feePercent) external;
 
+    function setTargetFeeRate(uint256 feePercent) external;
+
     event FeesCollected(address member, uint256 totalFee);
 
     event FeesDistributed(uint256 totalFee);
