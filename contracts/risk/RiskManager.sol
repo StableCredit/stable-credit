@@ -13,7 +13,8 @@ import "./interface/IRiskManager.sol";
 
 /// @title RiskManager contract
 /// @author ReSource
-/// @dev Restricted functions are only callable by the operator role.
+/// @notice This contract interfaces with a network's "Credit Contracts" in order
+/// to execute risk mitigation strategies.
 
 contract RiskManager is OwnableUpgradeable, IRiskManager {
     struct CreditTerms {
@@ -116,6 +117,14 @@ contract RiskManager is OwnableUpgradeable, IRiskManager {
         uint256 creditLimit
     ) external onlyOwner {
         IStableCredit(network).updateCreditLimit(member, creditLimit);
+    }
+
+    function setMemberFeeRate(
+        address network,
+        address member,
+        uint256 _memberFeeRate
+    ) external onlyOwner {
+        IStableCredit(network).feeManager().setMemberFeeRate(member, _memberFeeRate);
     }
 
     /// @dev Replaces reservePool and approves fee token spend for new reservePool

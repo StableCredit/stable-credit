@@ -13,8 +13,8 @@ import "./interface/ISwapSink.sol";
 
 /// @title ReservePool
 /// @author ReSource
-/// @notice Stores and transfers collected fee tokens according to reserve
-/// configuration set by network operators.
+/// @notice Stores and transfers collected fee tokens according to network reserve
+/// configurations set by the RiskManager.
 contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
