@@ -26,9 +26,9 @@ describe("Reserve Pool Tests", function () {
     await ethers.provider.send("evm_mine", [])
   })
 
-  it("Configuring operator percent updates swapSink percent", async function () {
+  it("Configuring operator percent updates swapPercent", async function () {
     expect(
-      await (await contracts.reservePool.swapSinkPercent(contracts.stableCredit.address)).toNumber()
+      await (await contracts.reservePool.swapPercent(contracts.stableCredit.address)).toNumber()
     ).to.equal(250000)
     expect(
       await (await contracts.reservePool.operatorPercent(contracts.stableCredit.address)).toNumber()
@@ -38,7 +38,7 @@ describe("Reserve Pool Tests", function () {
       .not.be.reverted
 
     expect(
-      await (await contracts.reservePool.swapSinkPercent(contracts.stableCredit.address)).toNumber()
+      await (await contracts.reservePool.swapPercent(contracts.stableCredit.address)).toNumber()
     ).to.equal(800000)
     expect(
       await (await contracts.reservePool.operatorPercent(contracts.stableCredit.address)).toNumber()
@@ -123,12 +123,12 @@ describe("Reserve Pool Tests", function () {
     await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
 
     await expect(
-      contracts.mockFeeToken
+      contracts.mockReferenceToken
         .connect(memberA)
         .approve(contracts.feeManager.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
 
-    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("20"))).to.not.be
+    await expect(contracts.mockReferenceToken.transfer(memberA.address, parseEther("20"))).to.not.be
       .reverted
 
     await expect(
@@ -139,17 +139,16 @@ describe("Reserve Pool Tests", function () {
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("0.0")
 
-    // because savings pool is empty, all fees will go to reserve
     await expect(contracts.feeManager.distributeFees()).to.not.be.reverted
 
     expect(
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("4.0")
     expect(
-      formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
+      formatEther(await contracts.reservePool.swapReserve(contracts.stableCredit.address))
     ).to.equal("0.0")
     expect(
-      formatEther(await contracts.reservePool.operatorBalance(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
     ).to.equal("0.0")
   })
 
@@ -161,12 +160,12 @@ describe("Reserve Pool Tests", function () {
     await expect(contracts.feeManager.unpauseFees()).to.not.be.reverted
 
     await expect(
-      contracts.mockFeeToken
+      contracts.mockReferenceToken
         .connect(memberA)
         .approve(contracts.feeManager.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
 
-    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("20"))).to.not.be
+    await expect(contracts.mockReferenceToken.transfer(memberA.address, parseEther("20"))).to.not.be
       .reverted
 
     await expect(
@@ -177,10 +176,10 @@ describe("Reserve Pool Tests", function () {
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("7.0")
     expect(
-      formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
+      formatEther(await contracts.reservePool.swapReserve(contracts.stableCredit.address))
     ).to.equal("0.0")
     expect(
-      formatEther(await contracts.reservePool.operatorBalance(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
     ).to.equal("0.0")
 
     expect(formatEther(await contracts.feeManager.collectedFees())).to.equal("2.0")
@@ -192,17 +191,20 @@ describe("Reserve Pool Tests", function () {
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("8.0")
     expect(
-      formatEther(await contracts.mockFeeToken.balanceOf(contracts.swapSink.address))
+      formatEther(await contracts.reservePool.swapReserve(contracts.stableCredit.address))
     ).to.equal("0.25")
     expect(
-      formatEther(await contracts.reservePool.operatorBalance(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
     ).to.equal("0.75")
   })
 
   it("Withdrawing operator balance transfers and updates operator balance", async function () {
     await expect(contracts.accessManager.grantOperator(memberF.address)).to.not.be.reverted
     await expect(
-      contracts.mockFeeToken.approve(contracts.reservePool.address, ethers.constants.MaxUint256)
+      contracts.mockReferenceToken.approve(
+        contracts.reservePool.address,
+        ethers.constants.MaxUint256
+      )
     ).to.not.be.reverted
     await expect(
       contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("1000"))
@@ -213,18 +215,65 @@ describe("Reserve Pool Tests", function () {
     ).to.not.be.reverted
 
     expect(
-      formatEther(await contracts.reservePool.operatorBalance(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
     ).to.equal("75.0")
 
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberF.address))).to.equal("0.0")
+    expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberF.address))).to.equal(
+      "0.0"
+    )
     await expect(
       contracts.reservePool
         .connect(memberF)
         .withdrawOperator(contracts.stableCredit.address, parseEther("75"))
     ).to.not.be.reverted
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberF.address))).to.equal("75.0")
+    expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberF.address))).to.equal(
+      "75.0"
+    )
     expect(
-      formatEther(await contracts.reservePool.operatorBalance(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
+    ).to.equal("0.0")
+  })
+
+  it("reserve reimbursement first come from paymentReserve then network reserve", async function () {
+    expect(
+      await contracts.reservePool.depositPayment(contracts.stableCredit.address, parseEther("1"))
+    )
+    expect(
+      await contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("1"))
+    )
+
+    // default Credit Line A
+    await ethers.provider.send("evm_increaseTime", [100])
+    await ethers.provider.send("evm_mine", [])
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
+
+    expect(
+      formatEther(await contracts.reservePool.paymentReserve(contracts.stableCredit.address))
+    ).to.equal("1.0")
+    expect(
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
+    ).to.equal("1.0")
+
+    await expect(contracts.stableCredit.connect(memberB).burnNetworkDebt(parseStableCredits("1")))
+      .to.not.be.reverted
+
+    expect(
+      formatEther(await contracts.reservePool.paymentReserve(contracts.stableCredit.address))
+    ).to.equal("0.0")
+    expect(
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
+    ).to.equal("1.0")
+
+    await expect(contracts.stableCredit.connect(memberB).burnNetworkDebt(parseStableCredits("1")))
+      .to.not.be.reverted
+
+    expect(
+      formatEther(await contracts.reservePool.paymentReserve(contracts.stableCredit.address))
+    ).to.equal("0.0")
+    expect(
+      formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("0.0")
   })
 })

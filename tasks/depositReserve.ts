@@ -7,7 +7,7 @@ import { parseEther } from "ethers/lib/utils"
 
 task(DEPOSIT_RESERVE, "Deposit reserve into reserve pool")
   .addParam("symbol", "Symbol of stable credit network")
-  .addParam("amount", "Amount of fee token to deposit into the reserve")
+  .addParam("amount", "Amount of reference token to deposit into the reserve")
   .setAction(async (taskArgs, { network, ethers }) => {
     const signer = (await ethers.getSigners())[0]
     let symbol = taskArgs.symbol
@@ -15,17 +15,20 @@ task(DEPOSIT_RESERVE, "Deposit reserve into reserve pool")
     const reservePool = await ethers.getContract("ReservePool")
     const stableCredit = await ethers.getContract(symbol + "_StableCredit")
 
-    const feeTokenFactory = await ethers.getContractFactory("ERC20")
-    const feeToken = new ethers.Contract(
-      await stableCredit.feeToken(),
-      feeTokenFactory.interface,
+    const referenceTokenFactory = await ethers.getContractFactory("ERC20")
+    const referenceToken = new ethers.Contract(
+      await stableCredit.referenceToken(),
+      referenceTokenFactory.interface,
       signer
     )
 
-    const allowance = (await feeToken.allowance(signer.address, reservePool.address)) as BigNumber
+    const allowance = (await referenceToken.allowance(
+      signer.address,
+      reservePool.address
+    )) as BigNumber
 
     if (allowance.eq(0)) {
-      await (await feeToken.approve(reservePool.address, ethers.constants.MaxUint256)).wait()
+      await (await referenceToken.approve(reservePool.address, ethers.constants.MaxUint256)).wait()
     }
 
     let amount = taskArgs.amount

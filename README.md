@@ -17,7 +17,7 @@ A stable credit is a complementary currency in an on-chain mutual credit network
 
 Network members are granted access to credit by network operators via the `AccessManager` contract. Operators are responsible curating healthy network participation.
 
-In order to stabalize networks, members pay transaction fees that are deposited into the `ReservePool` contract. The `ReservePool` insures a given network's default rate by storing a reserve of fee tokens. These tokens are used to reimburse members for removing credits from circulation that are no longer backed by member debt. The reserve has three major components: a reserve balance used to reimburse network credit defaults, a withdrawable operator balance, and a swap sink used as a medium for future cross network credit swaps.
+In order to stabalize networks, members pay transaction fees that are deposited into the `ReservePool` contract. The `ReservePool` insures a given network's projected default rate by storing a reserve of reference tokens. These tokens are used to reimburse members for removing credits from circulation that are no longer backed by member debt. The reserve has three major components: a reserve balance used to reimburse network credit defaults, a withdrawable operator balance, and a swap sink used as a medium for future cross network credit swaps.
 
 The `RiskManager` contract is responsible for altering network configurations to stabalize the currency. Risk mitigation configurations include a target reserve to debt ratio (stored in the `ReservePool`), and fee rates (stored in the `FeeManager` contract).
 
@@ -28,8 +28,7 @@ The `RiskManager` contract is responsible for altering network configurations to
 ####Risk
 
 - `RiskManager`: Responsible for executing risk mitigation strategies by managing network configurations.
-- `ReservePool`: Responsible for storing and transfering network fee tokens.
-- `SwapSink`: Responsible for converting network fee tokens with SOURCE to be used within the internetwork credit swap protocol.
+- `ReservePool`: Responsible for storing and transfering network reference tokens.
 
 ####Credit
 

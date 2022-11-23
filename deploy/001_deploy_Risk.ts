@@ -48,8 +48,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     }
   }
 
-  let riskManager
-
   if (!riskManagerAddress) {
     // deploy riskManager
     const riskManagerAbi = (await hardhat.artifacts.readArtifact("RiskManager")).abi
@@ -60,23 +58,17 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       hardhat,
       riskManagerAbi
     )
-    riskManager = RiskManager__factory.connect(riskManagerAddress, (await ethers.getSigners())[0])
   }
 
+  const riskManager = RiskManager__factory.connect(
+    riskManagerAddress,
+    (await ethers.getSigners())[0]
+  )
+
   if (!reservePoolAddress) {
-    // deploy swapSink
-    const swapSinkAbi = (await hardhat.artifacts.readArtifact("SwapSink")).abi
-    const swapSinkArgs = [sourceAddress]
-    const swapSinkAddress = await deployProxyAndSave(
-      "SwapSink",
-      swapSinkArgs,
-      hardhat,
-      swapSinkAbi,
-      { initializer: "__SwapSink_init" }
-    )
     // deploy reservePool
     const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
-    const reservePoolArgs = [riskManagerAddress, swapSinkAddress]
+    const reservePoolArgs = [riskManagerAddress]
     reservePoolAddress = await deployProxyAndSave(
       "ReservePool",
       reservePoolArgs,

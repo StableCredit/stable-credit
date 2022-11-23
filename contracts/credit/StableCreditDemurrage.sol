@@ -21,12 +21,12 @@ contract StableCreditDemurrage is StableCredit {
     /* ========== INITIALIZER ========== */
 
     function initialize(
-        address _feeToken,
+        address _referenceToken,
         address _accessManager,
         string memory name_,
         string memory symbol_
     ) public virtual initializer {
-        __StableCredit_init(_feeToken, _accessManager, name_, symbol_);
+        __StableCredit_init(_referenceToken, _accessManager, name_, symbol_);
     }
 
     /* ========== VIEWS ========== */
@@ -52,7 +52,7 @@ contract StableCreditDemurrage is StableCredit {
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    /// @notice Caller must approve feeManager to spend fee tokens for transfer of credits.
+    /// @notice Caller must approve feeManager to spend reference tokens for transfer of credits.
     /// @dev Validates the caller's credit line and synchronizes demurrage balance.
     function _transfer(
         address _from,
@@ -81,7 +81,7 @@ contract StableCreditDemurrage is StableCredit {
         riskManager.reservePool().reimburseMember(
             address(this),
             member,
-            convertCreditToFeeToken(burnAmount)
+            convertCreditToReferenceToken(burnAmount)
         );
     }
 

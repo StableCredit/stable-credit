@@ -74,17 +74,19 @@ describe("Stable Credit Tests", function () {
 
   it("Credit fee conversion returns eth denominated amount", async function () {
     expect(
-      formatEther(await contracts.stableCredit.convertCreditToFeeToken(parseStableCredits("100")))
+      formatEther(
+        await contracts.stableCredit.convertCreditToReferenceToken(parseStableCredits("100"))
+      )
     ).to.equal("100.0")
   })
 
   it("Can not repay more than outstanding debt", async function () {
     // give tokens for repayment
-    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("20.0"))).to.not.be
-      .reverted
-    // approve fee tokens
+    await expect(contracts.mockReferenceToken.transfer(memberA.address, parseEther("20.0"))).to.not
+      .be.reverted
+    // approve reference tokens
     await expect(
-      contracts.mockFeeToken
+      contracts.mockReferenceToken
         .connect(memberA)
         .approve(contracts.stableCredit.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
@@ -96,18 +98,18 @@ describe("Stable Credit Tests", function () {
     ).to.be.reverted
   })
 
-  it("Repayment causes fee token transfer to reserve", async function () {
+  it("Repayment causes reference token transfer to network's paymentReserve", async function () {
     // give tokens for repayment
-    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("10.0"))).to.not.be
-      .reverted
-    // approve fee tokens
+    await expect(contracts.mockReferenceToken.transfer(memberA.address, parseEther("10.0"))).to.not
+      .be.reverted
+    // approve reference tokens
     await expect(
-      contracts.mockFeeToken
+      contracts.mockReferenceToken
         .connect(memberA)
         .approve(contracts.stableCredit.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted
 
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("10.0")
+    expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberA.address))).to.eq("10.0")
 
     // expect empty reserve
     expect(formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))).to.eq(
@@ -120,20 +122,20 @@ describe("Stable Credit Tests", function () {
         .repayCreditBalance(memberA.address, parseStableCredits("10.0"))
     ).to.not.be.reverted
 
-    expect(formatEther(await contracts.mockFeeToken.balanceOf(memberA.address))).to.eq("0.0")
+    expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberA.address))).to.eq("0.0")
 
-    expect(formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))).to.eq(
-      "10.0"
-    )
+    expect(
+      formatEther(await contracts.reservePool.paymentReserve(contracts.stableCredit.address))
+    ).to.eq("10.0")
   })
 
   it("Repayment causes credit balance to decrease", async function () {
     // give tokens for repayment
-    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("10.0"))).to.not.be
-      .reverted
-    // approve fee tokens
+    await expect(contracts.mockReferenceToken.transfer(memberA.address, parseEther("10.0"))).to.not
+      .be.reverted
+    // approve reference tokens
     await expect(
-      contracts.mockFeeToken
+      contracts.mockReferenceToken
         .connect(memberA)
         .approve(contracts.stableCredit.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted

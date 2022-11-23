@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   const networkConfig = fs.readFileSync(networkConfigPath).toString()
   const config = JSON.parse(networkConfig)
 
-  let { feeTokenAddress, riskManagerAddress, name, symbol } = config
+  let { referenceTokenAddress, riskManagerAddress, name, symbol } = config
 
   if (!riskManagerAddress)
     riskManagerAddress = (await hardhat.deployments.getOrNull("RiskManager"))?.address
@@ -31,31 +31,31 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   if (!name || !symbol) return console.log("No stable credit name or symbol specified")
 
-  const MockFeeTokenAddress = (await hardhat.deployments.getOrNull("FeeToken"))?.address
+  const MockReferenceTokenAddress = (await hardhat.deployments.getOrNull("FeeToken"))?.address
 
-  if (!feeTokenAddress) {
-    if (MockFeeTokenAddress) feeTokenAddress = MockFeeTokenAddress
+  if (!referenceTokenAddress) {
+    if (MockReferenceTokenAddress) referenceTokenAddress = MockReferenceTokenAddress
     else {
-      console.log("No Fee Token Address specified, deploying mock fee token")
-      // deploy feeToken
+      console.log("No Reference Token Address specified, deploying mock reference token")
+      // deploy referenceToken
       const erc20Factory = await ethers.getContractFactory("MockERC20")
 
       const mockERC20Abi = (await hardhat.artifacts.readArtifact("MockERC20")).abi
 
-      const feeToken = (await erc20Factory.deploy(
+      const referenceToken = (await erc20Factory.deploy(
         parseEther("100000000"),
         "USD Coin",
         "USDC"
       )) as ERC20
 
       let contractDeployment = {
-        address: feeToken.address,
+        address: referenceToken.address,
         abi: mockERC20Abi,
-        receipt: await feeToken.deployTransaction.wait(),
+        receipt: await referenceToken.deployTransaction.wait(),
       }
 
-      hardhat.deployments.save("FeeToken", contractDeployment)
-      feeTokenAddress = feeToken.address
+      hardhat.deployments.save("ReferenceToken", contractDeployment)
+      referenceTokenAddress = referenceToken.address
     }
   }
 
@@ -76,7 +76,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   // deploy StableCredit
   const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
-  const stableCreditArgs = [feeTokenAddress, accessManagerAddress, name, symbol]
+  const stableCreditArgs = [referenceTokenAddress, accessManagerAddress, name, symbol]
   const stableCreditAddress = await deployProxyAndSaveAs(
     "StableCredit",
     symbol + "_StableCredit",

@@ -43,6 +43,36 @@ describe("Stable Credit Network Debt Tests", function () {
     expect(formatStableCredits(await contracts.stableCredit.networkDebt())).to.equal("10.0")
   })
 
+  it("burning network debt reimburses member from reserve", async function () {
+    // default Credit Line A
+    await ethers.provider.send("evm_increaseTime", [100])
+    await ethers.provider.send("evm_mine", [])
+    await expect(
+      contracts.riskManager.validateCreditLine(contracts.stableCredit.address, memberA.address)
+    ).to.not.be.reverted
+
+    await expect(
+      contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("100"))
+    ).to.not.be.reverted
+
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+      "10.0"
+    )
+    expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberB.address))).to.equal(
+      "0.0"
+    )
+
+    await expect(contracts.stableCredit.connect(memberB).burnNetworkDebt(parseStableCredits("10")))
+      .to.not.be.reverted
+
+    expect(formatStableCredits(await contracts.stableCredit.balanceOf(memberB.address))).to.equal(
+      "0.0"
+    )
+    expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberB.address))).to.equal(
+      "10.0"
+    )
+  })
+
   it("burning network debt updates network debt and total supply", async function () {
     // check total supply before default
     expect(formatStableCredits(await contracts.stableCredit.totalSupply())).to.equal("30.0")
@@ -73,11 +103,11 @@ describe("Stable Credit Network Debt Tests", function () {
 
   it("credit repayment updates network debt", async function () {
     // give tokens for repayment
-    await expect(contracts.mockFeeToken.transfer(memberA.address, parseEther("10.0"))).to.not.be
-      .reverted
-    // approve fee tokens
+    await expect(contracts.mockReferenceToken.transfer(memberA.address, parseEther("10.0"))).to.not
+      .be.reverted
+    // approve reference tokens
     await expect(
-      contracts.mockFeeToken
+      contracts.mockReferenceToken
         .connect(memberA)
         .approve(contracts.stableCredit.address, ethers.constants.MaxUint256)
     ).to.not.be.reverted

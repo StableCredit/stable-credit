@@ -15,7 +15,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
 
     const riskManager = await ethers.getContract("RiskManager")
 
-    const feeToken = await ethers.getContract("FeeToken")
+    const referenceToken = await ethers.getContract("ReferenceToken")
 
     const feesPaused = await feeManager.paused()
 
@@ -49,9 +49,13 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
       }
       send(ethers.provider.getSigner(), tx)
 
-      await (await feeToken.transfer(signers[i].address, ethers.utils.parseEther("2000"))).wait()
       await (
-        await feeToken.connect(signers[i]).approve(feeManager.address, ethers.constants.MaxUint256)
+        await referenceToken.transfer(signers[i].address, ethers.utils.parseEther("2000"))
+      ).wait()
+      await (
+        await referenceToken
+          .connect(signers[i])
+          .approve(feeManager.address, ethers.constants.MaxUint256)
       ).wait()
     }
 
@@ -68,7 +72,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     send(ethers.provider.getSigner(), tx)
 
     await (
-      await feeToken.transfer(
+      await referenceToken.transfer(
         "0x77dE279ee3dDfAEC727dDD2bb707824C795514EE",
         ethers.utils.parseEther("2000")
       )
@@ -92,9 +96,11 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     }
     send(ethers.provider.getSigner(), tx)
 
-    await (await feeToken.transfer(account2.address, ethers.utils.parseEther("2000"))).wait()
+    await (await referenceToken.transfer(account2.address, ethers.utils.parseEther("2000"))).wait()
     await (
-      await feeToken.connect(account2).approve(feeManager.address, ethers.constants.MaxUint256)
+      await referenceToken
+        .connect(account2)
+        .approve(feeManager.address, ethers.constants.MaxUint256)
     ).wait()
     await (
       await stableCredit.connect(account2).transfer(accountB.address, parseStableCredits("200"))
@@ -122,7 +128,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     send(ethers.provider.getSigner(), tx)
 
     await (
-      await feeToken.transfer(
+      await referenceToken.transfer(
         "0xc44deEd52309b286a698BC2A8b3A7424E52302a1",
         ethers.utils.parseEther("2000")
       )

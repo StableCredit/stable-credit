@@ -13,20 +13,20 @@ task(DEPOSIT_FEES, "Deposit fees into reserve pool")
 
     const stableCredit = await ethers.getContract(symbol + "_StableCredit")
     const reserve = await ethers.getContract("ReservePool")
-    const feeTokenFactory = await ethers.getContractFactory("ERC20")
-    const feeToken = new ethers.Contract(
-      await stableCredit.feeToken(),
-      feeTokenFactory.interface,
+    const referenceTokenFactory = await ethers.getContractFactory("ERC20")
+    const referenceToken = new ethers.Contract(
+      await stableCredit.referenceToken(),
+      referenceTokenFactory.interface,
       signer
     )
 
-    const allowance = (await feeToken.allowance(signer.address, reserve.address)) as BigNumber
+    const allowance = (await referenceToken.allowance(signer.address, reserve.address)) as BigNumber
 
     if (allowance.eq(0)) {
-      await (await feeToken.approve(reserve.address, ethers.constants.MaxUint256)).wait()
+      await (await referenceToken.approve(reserve.address, ethers.constants.MaxUint256)).wait()
     }
 
     await (await reserve.depositFees(stableCredit.address, parseEther("100"))).wait()
 
-    console.log("💵 " + symbol + " fees deposited to reserve pool")
+    console.log("💵 " + symbol + " reference token deposited to reserve pool")
   })

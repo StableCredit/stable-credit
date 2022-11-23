@@ -3,9 +3,9 @@ import { task } from "hardhat/config"
 import { send } from "../hardhat.config"
 const fs = require("fs")
 
-import { SEND_FEE_TOKENS } from "./task-names"
+import { SEND_REFERENCE_TOKENS } from "./task-names"
 
-task(SEND_FEE_TOKENS, "Send amount of fee tokens to address")
+task(SEND_REFERENCE_TOKENS, "Send amount of a deployed reference tokens to address")
   .addParam("amount", "Amount of ETH to send to wallet after generating")
   .addParam("address", "Address to fund")
   .setAction(async (taskArgs, { network, ethers }) => {

@@ -20,7 +20,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /* ========== STATE VARIABLES ========== */
 
     IAccessManager public access;
-    IERC20Upgradeable public feeToken;
+    IERC20Upgradeable public referenceToken;
     IRiskManager public riskManager;
     IFeeManager public feeManager;
 
@@ -30,23 +30,23 @@ contract StableCredit is MutualCredit, IStableCredit {
     /* ========== INITIALIZER ========== */
 
     function __StableCredit_init(
-        address _feeToken,
+        address _referenceToken,
         address _accessManager,
         string memory name_,
         string memory symbol_
     ) public virtual initializer {
         __MutualCredit_init(name_, symbol_);
         access = IAccessManager(_accessManager);
-        feeToken = IERC20Upgradeable(_feeToken);
+        referenceToken = IERC20Upgradeable(_referenceToken);
     }
 
     /* ========== VIEWS ========== */
 
-    /// @notice convert a credit amount to a fee token amount value
-    /// @return credit amount coverted to fee token value.
-    function convertCreditToFeeToken(uint256 amount) public view returns (uint256) {
+    /// @notice convert a credit amount to a reference token amount value
+    /// @return credit amount coverted to reference token value.
+    function convertCreditToReferenceToken(uint256 amount) public view returns (uint256) {
         if (amount == 0) return amount;
-        uint256 feeDecimals = IERC20Metadata(address(feeToken)).decimals();
+        uint256 feeDecimals = IERC20Metadata(address(referenceToken)).decimals();
         uint256 creditDecimals = decimals();
         return
             creditDecimals < feeDecimals
@@ -56,7 +56,7 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    /// @notice Caller must approve feeManager to spend fee tokens for transfer of credits.
+    /// @notice Caller must approve feeManager to spend reference tokens for transfer of credits.
     /// @dev Validates the caller's credit line and synchronizes demurrage balance.
     function _transfer(
         address _from,
@@ -79,18 +79,25 @@ contract StableCredit is MutualCredit, IStableCredit {
         riskManager.reservePool().reimburseMember(
             address(this),
             msg.sender,
-            convertCreditToFeeToken(amount)
+            convertCreditToReferenceToken(amount)
         );
         emit NetworkDebtBurned(msg.sender, amount);
     }
 
     /// @notice Repays referenced member's credit balance by amount.
-    /// @dev Caller must approve this contract to spend fee tokens in order to repay.
+    /// @dev Caller must approve this contract to spend reference tokens in order to repay.
     function repayCreditBalance(address member, uint128 amount) external {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid amount");
-        feeToken.transferFrom(msg.sender, address(this), convertCreditToFeeToken(amount));
-        riskManager.reservePool().depositReserve(address(this), convertCreditToFeeToken(amount));
+        referenceToken.transferFrom(
+            msg.sender,
+            address(this),
+            convertCreditToReferenceToken(amount)
+        );
+        riskManager.reservePool().depositPayment(
+            address(this),
+            convertCreditToReferenceToken(amount)
+        );
         networkDebt += amount;
         members[msg.sender].creditBalance -= amount;
         emit CreditBalanceRepayed(msg.sender, amount);
@@ -135,12 +142,12 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     function setRiskManager(address _riskManager) external onlyOwner {
         riskManager = IRiskManager(_riskManager);
-        feeToken.approve(address(riskManager.reservePool()), type(uint256).max);
+        referenceToken.approve(address(riskManager.reservePool()), type(uint256).max);
     }
 
     function setFeeManager(address _feeManager) external onlyOwner {
         feeManager = IFeeManager(_feeManager);
-        feeToken.approve(address(feeManager), type(uint256).max);
+        referenceToken.approve(address(feeManager), type(uint256).max);
     }
 
     /* ========== MODIFIERS ========== */

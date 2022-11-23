@@ -10,5 +10,5 @@ interface IReservePool {
 
     function depositFees(address network, uint256 credits) external;
 
-    function depositReserve(address network, uint256 amount) external;
+    function depositPayment(address network, uint256 amount) external;
 }

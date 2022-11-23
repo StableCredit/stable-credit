@@ -40,7 +40,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /// @notice Distributes collected fees to the reserve pool.
     function distributeFees() external {
-        IERC20Upgradeable(stableCredit.feeToken()).approve(
+        stableCredit.referenceToken().approve(
             address(stableCredit.riskManager().reservePool()),
             collectedFees
         );
@@ -50,7 +50,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     }
 
     /// @notice Called by a StableCredit instance to collect fees from the credit sender
-    /// @dev the sender must approve the feeManager to spend fee tokens on their behalf before
+    /// @dev the sender must approve the feeManager to spend reference tokens on their behalf before
     /// fees can be collected.
     /// @param sender stable credit sender address
     /// @param receiver stable credit receiver address
@@ -62,18 +62,18 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     ) external override {
         if (paused()) return;
         uint256 totalFee = calculateMemberFee(sender, amount);
-        stableCredit.feeToken().safeTransferFrom(sender, address(this), totalFee);
+        stableCredit.referenceToken().safeTransferFrom(sender, address(this), totalFee);
         collectedFees += totalFee;
         emit FeesCollected(sender, totalFee);
     }
 
-    /// @notice calculate fee to charge member in fee token value
+    /// @notice calculate fee to charge member in reference token value
     /// @param amount stable credit amount to base fee off of
-    /// @return fee token amount to charge given member
+    /// @return reference token amount to charge given member
     function calculateMemberFee(address member, uint256 amount) public view returns (uint256) {
         if (paused()) return 0;
         uint256 feeRate = getMemberFeeRate(member);
-        return stableCredit.convertCreditToFeeToken((feeRate * amount) / MAX_PPM);
+        return stableCredit.convertCreditToReferenceToken((feeRate * amount) / MAX_PPM);
     }
 
     /// @dev if the given member's fee rate is uninitialized, the target fee rate is returned

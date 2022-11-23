@@ -9,11 +9,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "../credit/interface/IStableCredit.sol";
 import "./interface/IReservePool.sol";
-import "./interface/ISwapSink.sol";
 
 /// @title ReservePool
 /// @author ReSource
-/// @notice Stores and transfers collected fee tokens according to network reserve
+/// @notice Stores and transfers collected reference tokens according to network reserve
 /// configurations set by the RiskManager.
 contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -24,51 +23,53 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     /* ========== STATE VARIABLES ========== */
 
-    ISwapSink public swapSink;
     address public riskManager;
     // network => reserve
     mapping(address => uint256) public reserve;
+    // network => paymentReserve
+    mapping(address => uint256) public paymentReserve;
+    // network => swapReserve
+    mapping(address => uint256) public swapReserve;
+    // network => operatorReserve
+    mapping(address => uint256) public operatorReserve;
     // network => targetRTD
     mapping(address => uint256) public targetRTD;
-    // network => operatorBalance
-    mapping(address => uint256) public operatorBalance;
     // network => operatorPercent
     mapping(address => uint256) public operatorPercent;
-    // network => swapSinkPercent
-    mapping(address => uint256) public swapSinkPercent;
+    // network => swapPercent
+    mapping(address => uint256) public swapPercent;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(address _riskManager, address _swapSink) public initializer {
+    function initialize(address _riskManager) public initializer {
         __ReentrancyGuard_init();
         __Ownable_init();
         riskManager = _riskManager;
-        swapSink = ISwapSink(_swapSink);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    /// @notice Deposits fee tokens as reserve
-    /// @dev caller must approve fee tokens to be spent
-    function depositReserve(address network, uint256 amount) public override nonReentrant {
-        require(amount > 0, "ReservePool: Cannot stake 0");
+    /// @notice Deposits reference tokens to a networks reserve
+    /// @dev caller must approve reference tokens to be spent by this contract
+    function depositReserve(address network, uint256 amount) public nonReentrant {
+        require(amount > 0, "ReservePool: Cannot deposit 0");
         reserve[network] += amount;
-        IERC20Upgradeable(IStableCredit(network).feeToken()).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+        IStableCredit(network).referenceToken().safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    /// @notice Deposits reference tokens to a networks paymentReserve
+    /// @dev caller must approve reference tokens to be spent by this contract
+    function depositPayment(address network, uint256 amount) public override nonReentrant {
+        require(amount > 0, "ReservePool: Cannot deposit 0");
+        paymentReserve[network] += amount;
+        IStableCredit(network).referenceToken().safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /// @dev Called by FeeManager when collected fees are distributed. Will
-    /// split deposited fees betweeen the reserve, operator balances and swapSink.
+    /// split deposited fees betweeen the reserve, operatorReserve and swapReserve.
     function depositFees(address network, uint256 amount) public override nonReentrant {
         require(amount > 0, "ReservePool: Cannot deposit 0");
-        IERC20Upgradeable(IStableCredit(network).feeToken()).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+        IStableCredit(network).referenceToken().safeTransferFrom(msg.sender, address(this), amount);
         uint256 neededReserves = getNeededReserves(network);
         if (neededReserves > amount) {
             reserve[network] += amount;
@@ -76,16 +77,9 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         }
         reserve[network] += neededReserves;
 
-        uint256 sinkAmount = (swapSinkPercent[network] * (amount - neededReserves)) / MAX_PPM;
-        if (sinkAmount > 0) {
-            IERC20Upgradeable(IStableCredit(network).feeToken()).approve(
-                address(swapSink),
-                sinkAmount
-            );
-            swapSink.depositFees(network, sinkAmount);
-        }
+        swapReserve[network] += (swapPercent[network] * (amount - neededReserves)) / MAX_PPM;
 
-        operatorBalance[network] +=
+        operatorReserve[network] +=
             (operatorPercent[network] * (amount - neededReserves)) /
             MAX_PPM;
     }
@@ -99,43 +93,45 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         onlyOperator(network)
     {
         require(amount > 0, "ReservePool: Cannot withdraw 0");
-        require(amount <= operatorBalance[network], "ReservePool: Insufficient operator balance");
-        operatorBalance[network] -= amount;
-        IERC20Upgradeable(IStableCredit(network).feeToken()).safeTransfer(msg.sender, amount);
+        require(amount <= operatorReserve[network], "ReservePool: Insufficient operator balance");
+        operatorReserve[network] -= amount;
+        IStableCredit(network).referenceToken().safeTransfer(msg.sender, amount);
     }
 
     /// @notice called by the stable credit contract when members burn away bad credits
     /// @param member member to reimburse
-    /// @param credits amount of credits to reimburse in fee tokens
+    /// @param amount amount of credits to reimburse in reference tokens
     function reimburseMember(
         address network,
         address member,
-        uint256 credits
+        uint256 amount
     ) external override onlyStableCredit(network) nonReentrant {
-        if (reserve[network] == 0) return;
-        IERC20Upgradeable feeToken = IERC20Upgradeable(IStableCredit(network).feeToken());
-        if (credits < reserve[network]) {
-            reserve[network] -= credits;
-            feeToken.transfer(member, credits);
+        if (reserveOf(network) == 0) return;
+        // if reimbursement can happen from just paymentReserve
+        if (amount < paymentReserve[network]) {
+            paymentReserve[network] -= amount;
+            IStableCredit(network).referenceToken().transfer(member, amount);
+        } else if (amount < reserveOf(network)) {
+            reserve[network] -= amount - paymentReserve[network];
+            paymentReserve[network] = 0;
+            IStableCredit(network).referenceToken().transfer(member, amount);
         } else {
-            feeToken.transfer(member, reserve[network]);
+            uint256 reserveAmount = reserveOf(network);
+            paymentReserve[network] = 0;
             reserve[network] = 0;
+            IStableCredit(network).referenceToken().transfer(member, reserveAmount);
         }
     }
 
-    function setSwapPercent(address network, uint256 swapPercent) external onlyRiskManager {
-        require(swapPercent <= MAX_PPM, "ReservePool: swap percent must be less than 100%");
-        swapSinkPercent[network] = swapPercent;
-        operatorPercent[network] = MAX_PPM - swapPercent;
+    function setSwapPercent(address network, uint256 _swapPercent) external onlyRiskManager {
+        require(_swapPercent <= MAX_PPM, "ReservePool: swap percent must be less than 100%");
+        swapPercent[network] = _swapPercent;
+        operatorPercent[network] = MAX_PPM - _swapPercent;
     }
 
     function setTargetRTD(address network, uint256 _targetRTD) external onlyRiskManager {
         require(_targetRTD <= MAX_PPM, "ReservePool: RTD must be less than 100%");
         targetRTD[network] = _targetRTD;
-    }
-
-    function setSwapSink(address _swapSink) external onlyOwner {
-        swapSink = ISwapSink(_swapSink);
     }
 
     /* ========== VIEW FUNCTIONS ========== */
@@ -146,9 +142,13 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         if (IERC20Upgradeable(network).totalSupply() == 0) return 0;
         return
             (reserve[network] * MAX_PPM) /
-            IStableCredit(network).convertCreditToFeeToken(
+            IStableCredit(network).convertCreditToReferenceToken(
                 IERC20Upgradeable(network).totalSupply()
             );
+    }
+
+    function reserveOf(address network) public view returns (uint256) {
+        return reserve[network] + paymentReserve[network];
     }
 
     /// @return The total value of reserve needed to fill the reserve to the target RTD
@@ -157,7 +157,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         if (currentRTD >= targetRTD[network]) return 0;
         return
             ((targetRTD[network] - currentRTD) *
-                IStableCredit(network).convertCreditToFeeToken(
+                IStableCredit(network).convertCreditToReferenceToken(
                     IERC20Upgradeable(network).totalSupply()
                 )) / MAX_PPM;
     }
