@@ -85,12 +85,9 @@ describe("Fee Manager Tests", function () {
     expect(
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("100000.0")
-    // expect(
-    //   formatEther(await contracts.mockReferenceToken.balanceOf(contracts.swapSink.address))
-    // ).to.equal("1.0")
     expect(
-      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
-    ).to.equal("3.0")
+      formatEther(await contracts.reservePool.operatorPool(contracts.stableCredit.address))
+    ).to.equal("4.0")
   })
 
   it("setTargetFeeRate updates average fee rate", async function () {

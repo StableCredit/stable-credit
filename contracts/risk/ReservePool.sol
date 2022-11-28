@@ -28,16 +28,10 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
     mapping(address => uint256) public reserve;
     // network => paymentReserve
     mapping(address => uint256) public paymentReserve;
-    // network => swapReserve
-    mapping(address => uint256) public swapReserve;
-    // network => operatorReserve
-    mapping(address => uint256) public operatorReserve;
+    // network => operatorPool
+    mapping(address => uint256) public operatorPool;
     // network => targetRTD
     mapping(address => uint256) public targetRTD;
-    // network => operatorPercent
-    mapping(address => uint256) public operatorPercent;
-    // network => swapPercent
-    mapping(address => uint256) public swapPercent;
 
     /* ========== INITIALIZER ========== */
 
@@ -76,12 +70,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
             return;
         }
         reserve[network] += neededReserves;
-
-        swapReserve[network] += (swapPercent[network] * (amount - neededReserves)) / MAX_PPM;
-
-        operatorReserve[network] +=
-            (operatorPercent[network] * (amount - neededReserves)) /
-            MAX_PPM;
+        operatorPool[network] += amount - neededReserves;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -93,8 +82,8 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
         onlyOperator(network)
     {
         require(amount > 0, "ReservePool: Cannot withdraw 0");
-        require(amount <= operatorReserve[network], "ReservePool: Insufficient operator balance");
-        operatorReserve[network] -= amount;
+        require(amount <= operatorPool[network], "ReservePool: Insufficient operator pool");
+        operatorPool[network] -= amount;
         IStableCredit(network).referenceToken().safeTransfer(msg.sender, amount);
     }
 
@@ -121,12 +110,6 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
             reserve[network] = 0;
             IStableCredit(network).referenceToken().transfer(member, reserveAmount);
         }
-    }
-
-    function setSwapPercent(address network, uint256 _swapPercent) external onlyRiskManager {
-        require(_swapPercent <= MAX_PPM, "ReservePool: swap percent must be less than 100%");
-        swapPercent[network] = _swapPercent;
-        operatorPercent[network] = MAX_PPM - _swapPercent;
     }
 
     function setTargetRTD(address network, uint256 _targetRTD) external onlyRiskManager {

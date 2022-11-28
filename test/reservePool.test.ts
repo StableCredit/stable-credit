@@ -26,25 +26,6 @@ describe("Reserve Pool Tests", function () {
     await ethers.provider.send("evm_mine", [])
   })
 
-  it("Configuring operator percent updates swapPercent", async function () {
-    expect(
-      await (await contracts.reservePool.swapPercent(contracts.stableCredit.address)).toNumber()
-    ).to.equal(250000)
-    expect(
-      await (await contracts.reservePool.operatorPercent(contracts.stableCredit.address)).toNumber()
-    ).to.equal(750000)
-
-    await expect(contracts.reservePool.setSwapPercent(contracts.stableCredit.address, 800000)).to
-      .not.be.reverted
-
-    expect(
-      await (await contracts.reservePool.swapPercent(contracts.stableCredit.address)).toNumber()
-    ).to.equal(800000)
-    expect(
-      await (await contracts.reservePool.operatorPercent(contracts.stableCredit.address)).toNumber()
-    ).to.equal(200000)
-  })
-
   it("depositing reserve updates reserve RTD", async function () {
     await expect(
       contracts.reservePool.depositReserve(contracts.stableCredit.address, parseEther("15.0"))
@@ -145,10 +126,7 @@ describe("Reserve Pool Tests", function () {
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("4.0")
     expect(
-      formatEther(await contracts.reservePool.swapReserve(contracts.stableCredit.address))
-    ).to.equal("0.0")
-    expect(
-      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorPool(contracts.stableCredit.address))
     ).to.equal("0.0")
   })
 
@@ -176,10 +154,7 @@ describe("Reserve Pool Tests", function () {
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("7.0")
     expect(
-      formatEther(await contracts.reservePool.swapReserve(contracts.stableCredit.address))
-    ).to.equal("0.0")
-    expect(
-      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorPool(contracts.stableCredit.address))
     ).to.equal("0.0")
 
     expect(formatEther(await contracts.feeManager.collectedFees())).to.equal("2.0")
@@ -191,11 +166,8 @@ describe("Reserve Pool Tests", function () {
       formatEther(await contracts.reservePool.reserve(contracts.stableCredit.address))
     ).to.equal("8.0")
     expect(
-      formatEther(await contracts.reservePool.swapReserve(contracts.stableCredit.address))
-    ).to.equal("0.25")
-    expect(
-      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
-    ).to.equal("0.75")
+      formatEther(await contracts.reservePool.operatorPool(contracts.stableCredit.address))
+    ).to.equal("1.0")
   })
 
   it("Withdrawing operator balance transfers and updates operator balance", async function () {
@@ -215,8 +187,8 @@ describe("Reserve Pool Tests", function () {
     ).to.not.be.reverted
 
     expect(
-      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
-    ).to.equal("75.0")
+      formatEther(await contracts.reservePool.operatorPool(contracts.stableCredit.address))
+    ).to.equal("100.0")
 
     expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberF.address))).to.equal(
       "0.0"
@@ -224,13 +196,13 @@ describe("Reserve Pool Tests", function () {
     await expect(
       contracts.reservePool
         .connect(memberF)
-        .withdrawOperator(contracts.stableCredit.address, parseEther("75"))
+        .withdrawOperator(contracts.stableCredit.address, parseEther("100"))
     ).to.not.be.reverted
     expect(formatEther(await contracts.mockReferenceToken.balanceOf(memberF.address))).to.equal(
-      "75.0"
+      "100.0"
     )
     expect(
-      formatEther(await contracts.reservePool.operatorReserve(contracts.stableCredit.address))
+      formatEther(await contracts.reservePool.operatorPool(contracts.stableCredit.address))
     ).to.equal("0.0")
   })
 

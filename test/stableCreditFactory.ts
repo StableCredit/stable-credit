@@ -134,7 +134,6 @@ const configure = async (contracts: NetworkContracts): Promise<NetworkContracts>
   await (await contracts.accessManager.grantOperator(contracts.stableCredit.address)).wait()
   // network risk configuration
   await await contracts.feeManager.setTargetFeeRate(200000)
-  await await contracts.reservePool.setSwapPercent(contracts.stableCredit.address, 250000)
   await await contracts.reservePool.setTargetRTD(contracts.stableCredit.address, 200000)
   return contracts
 }

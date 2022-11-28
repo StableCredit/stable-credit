@@ -131,7 +131,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await stableCredit.setRiskManager(riskManagerAddress)).wait()
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   await (await feeManager.setTargetFeeRate(50000)).wait()
-  await (await reservePool.setSwapPercent(stableCredit.address, 20000)).wait()
   await (await reservePool.setTargetRTD(stableCredit.address, 200000)).wait()
 }
 export default func
