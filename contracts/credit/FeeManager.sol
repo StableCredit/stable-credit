@@ -67,6 +67,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         emit FeesCollected(sender, totalFee);
     }
 
+    /* ========== VIEWS ========== */
+
     /// @notice calculate fee to charge member in reference token value
     /// @param amount stable credit amount to base fee off of
     /// @return reference token amount to charge given member

@@ -114,6 +114,17 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
 
     function setTargetRTD(address network, uint256 _targetRTD) external onlyRiskManager {
         require(_targetRTD <= MAX_PPM, "ReservePool: RTD must be less than 100%");
+        // realocate oporateorPool if any to reserve if targetRTD is increased
+        if (_targetRTD > targetRTD[network] && operatorPool[network] > 0) {
+            uint256 neededReserves = getNeededReserves(network);
+            if (neededReserves > operatorPool[network]) {
+                reserve[network] += operatorPool[network];
+                operatorPool[network] = 0;
+            } else {
+                reserve[network] += neededReserves;
+                operatorPool[network] -= neededReserves;
+            }
+        }
         targetRTD[network] = _targetRTD;
     }
 
@@ -130,6 +141,7 @@ contract ReservePool is IReservePool, OwnableUpgradeable, ReentrancyGuardUpgrade
             );
     }
 
+    /// @return The current value of given network's reserve
     function reserveOf(address network) public view returns (uint256) {
         return reserve[network] + paymentReserve[network];
     }

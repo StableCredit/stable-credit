@@ -65,7 +65,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     ) internal virtual override onlyMembers(_from, _to) {
         uint256 balanceFrom = balanceOf(_from);
         if (_amount > balanceFrom && !riskManager.validateCreditLine(address(this), _from)) return;
-        feeManager.collectFees(_from, _to, _amount);
+        if (address(feeManager) != address(0)) feeManager.collectFees(_from, _to, _amount);
         super._transfer(_from, _to, _amount);
     }
 
@@ -99,8 +99,8 @@ contract StableCredit is MutualCredit, IStableCredit {
             convertCreditToReferenceToken(amount)
         );
         networkDebt += amount;
-        members[msg.sender].creditBalance -= amount;
-        emit CreditBalanceRepayed(msg.sender, amount);
+        members[member].creditBalance -= amount;
+        emit CreditBalanceRepayed(member, amount);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
