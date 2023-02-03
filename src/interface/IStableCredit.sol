@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+
 import "./IAccessManager.sol";
 import "./IFeeManager.sol";
-import "../../risk/interface/IReservePool.sol";
-import "../../risk/interface/IRiskManager.sol";
+import "@resource-risk-management/interface/IRiskManager.sol";
+import "@resource-risk-management/interface/ICreditIssuer.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IStableCredit {
     function referenceToken() external view returns (IERC20Upgradeable);
 
-    function access() external view returns (IAccessManager);
-
     function riskManager() external view returns (IRiskManager);
 
     function feeManager() external view returns (IFeeManager);
+
+    function access() external view returns (IAccessManager);
+
+    function creditIssuer() external view returns (ICreditIssuer);
 
     function convertCreditToReferenceToken(uint256 amount) external view returns (uint256);
 
     function writeOffCreditLine(address member) external;
 
-    function createCreditLine(
-        address member,
-        uint256 _creditLimit,
-        uint256 _balance
-    ) external;
+    function createCreditLine(address member, uint256 _creditLimit, uint256 _balance) external;
 
     function updateCreditLimit(address member, uint256 creditLimit) external;
 

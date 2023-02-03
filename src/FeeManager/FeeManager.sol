@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "../credit/interface/IStableCredit.sol";
-import "./interface/IFeeManager.sol";
+import "../interface/IStableCredit.sol";
+import "../interface/IFeeManager.sol";
 
 /// @title FeeManager
 /// @author ReSource
@@ -23,13 +24,12 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     IStableCredit public stableCredit;
     // network => member => feeRate
     mapping(address => uint256) public memberFeeRate;
-    /// @notice The base rate that member fee rates are derived from
-    uint256 public targetFeeRate;
+
     uint256 public collectedFees;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(address _stableCredit) external virtual initializer {
+    function __FeeManager_init(address _stableCredit) external virtual onlyInitializing {
         __Ownable_init();
         __Pausable_init();
         _pause();
@@ -40,11 +40,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /// @notice Distributes collected fees to the reserve pool.
     function distributeFees() external {
-        stableCredit.referenceToken().approve(
-            address(stableCredit.riskManager().reservePool()),
-            collectedFees
-        );
-        stableCredit.riskManager().reservePool().depositFees(address(stableCredit), collectedFees);
+        stableCredit.referenceToken().approve(address(stableCredit.riskManager()), collectedFees);
+        stableCredit.riskManager().depositFees(address(stableCredit), collectedFees);
         emit FeesDistributed(collectedFees);
         collectedFees = 0;
     }
@@ -55,12 +52,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /// @param sender stable credit sender address
     /// @param receiver stable credit receiver address
     /// @param amount stable credit amount
-    function collectFees(
-        address sender,
-        address receiver,
-        uint256 amount
-    ) external override {
-        if (paused()) return;
+    function collectFees(address sender, address receiver, uint256 amount) external override {
+        if (paused()) {
+            return;
+        }
         uint256 totalFee = calculateMemberFee(sender, amount);
         stableCredit.referenceToken().safeTransferFrom(sender, address(this), totalFee);
         collectedFees += totalFee;
@@ -73,30 +68,24 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /// @param amount stable credit amount to base fee off of
     /// @return reference token amount to charge given member
     function calculateMemberFee(address member, uint256 amount) public view returns (uint256) {
-        if (paused()) return 0;
-        uint256 feeRate = getMemberFeeRate(member);
-        return stableCredit.convertCreditToReferenceToken((feeRate * amount) / MAX_PPM);
-    }
+        if (paused()) {
+            return 0;
+        }
+        uint256 feeRate =
+            stableCredit.riskManager().baseFeeRate(address(stableCredit)) + memberFeeRate[member];
 
-    /// @dev if the given member's fee rate is uninitialized, the target fee rate is returned
-    function getMemberFeeRate(address member) public view returns (uint256) {
-        return
-            memberFeeRate[member] == 0
-                ? targetFeeRate
-                : (targetFeeRate * memberFeeRate[member]) / MAX_PPM;
+        return stableCredit.convertCreditToReferenceToken((feeRate * amount) / MAX_PPM);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    /// @param feePercent percent above or bellow the target fee rate for the given member
-    function setMemberFeeRate(address member, uint256 feePercent) external override onlyAuthorized {
+    /// @param feePercent rate which to charge a given member on top of the base fee rate
+    function setMemberFeeRate(address member, uint256 feePercent)
+        external
+        override
+        onlyAuthorized
+    {
         memberFeeRate[member] = feePercent;
-    }
-
-    /// @param feePercent percent to charge members by default
-    function setTargetFeeRate(uint256 feePercent) external override onlyAuthorized {
-        require(feePercent <= MAX_PPM, "FeeManager: Fee percent must be less than 100%");
-        targetFeeRate = feePercent;
     }
 
     function pauseFees() public onlyOwner {
@@ -108,13 +97,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     }
 
     /* ========== MODIFIERS ========== */
-
-    /// @dev caller must be the risk manager contract, or have operator access
+    /// @dev caller must be the CreditIssuer contract, or have operator access
     modifier onlyAuthorized() {
         require(
-            msg.sender == address(stableCredit.riskManager()) ||
-                stableCredit.access().isOperator(msg.sender),
-            "FeeManager: Unauthorized caller"
+            msg.sender == address(stableCredit.creditIssuer()), "FeeManager: Unauthorized caller"
         );
         _;
     }

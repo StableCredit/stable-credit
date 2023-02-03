@@ -27,8 +27,6 @@ import "./tasks/depositFees"
 import "./tasks/validateCreditLine"
 import "./tasks/demoSetup"
 
-import { CeloProvider } from "@celo-tools/celo-ethers-wrapper"
-
 const { isAddress, getAddress, formatUnits, parseUnits } = utils
 
 //
@@ -114,9 +112,6 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0,
     },
-    "networkOperator-celo": "0x73e2fa1973e03abb3d49a1cb40d3364c6693c81a",
-    "networkOperator-celo-alfajores": "0xe105fb303e5ffee9e27726267e2db11c37260865",
-    "networkOperator-localhost": "0xe105fb303e5ffee9e27726267e2db11c37260865",
   },
   paths: {
     artifacts: "./artifacts",
@@ -127,7 +122,6 @@ const config: HardhatUserConfig = {
     deploy: "./deploy",
     imports: "./artifacts",
   },
-
   typechain: {
     outDir: "types",
     target: "ethers-v5",

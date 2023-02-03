@@ -16,14 +16,14 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         uint128 creditLimit;
     }
 
-    mapping(address => Member) internal members;
+    mapping(address => Member) private members;
 
     /* ========== INITIALIZER ========== */
 
     function __MutualCredit_init(string memory name_, string memory symbol_)
         public
         virtual
-        initializer
+        onlyInitializing
     {
         __ERC20_init(name_, symbol_);
         __Ownable_init();
@@ -51,11 +51,7 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         return _localMember.creditLimit - _localMember.creditBalance;
     }
 
-    function _transfer(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal virtual override {
+    function _transfer(address _from, address _to, uint256 _amount) internal virtual override {
         _beforeTransfer(_from, _amount);
         super._transfer(_from, _to, _amount);
         _afterTransfer(_to, _amount);
@@ -68,6 +64,12 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         emit CreditLimitUpdate(member, limit);
     }
 
+    function transferDebt(address _from, address _to, uint256 amount) internal virtual {
+        require(members[_from].creditBalance >= amount, "MutualCredit: Insufficient credit balance");
+        members[_from].creditBalance -= amount.toUInt128();
+        members[_to].creditBalance += amount.toUInt128();
+    }
+
     function _beforeTransfer(address _from, uint256 _amount) private {
         uint256 _balanceFrom = balanceOf(_from);
         if (_balanceFrom >= _amount) {
@@ -77,7 +79,10 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         Member memory _memberFrom = members[_from];
         uint256 _missingBalance = _amount - _balanceFrom;
         uint256 _creditLeft = creditLimitLeftOf(_from);
-        require(_creditLeft >= _missingBalance, "Insufficient credit");
+        // allow shared network debt to assume unlimited debt
+        if (_from != address(this)) {
+            require(_creditLeft >= _missingBalance, "Insufficient credit");
+        }
         members[_from].creditBalance = (_memberFrom.creditBalance + _missingBalance).toUInt128();
         _mint(_from, _missingBalance);
     }
@@ -95,7 +100,7 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
 
 library ExtraMath {
     function toUInt128(uint256 _a) internal pure returns (uint128) {
-        require(_a < 2**128 - 1, "uin128 overflow");
+        require(_a < 2 ** 128 - 1, "uin128 overflow");
         return uint128(_a);
     }
 }

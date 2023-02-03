@@ -4,10 +4,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@resource-risk-management/interface/IRiskManager.sol";
+import "@resource-risk-management/interface/ICreditIssuer.sol";
 import "./MutualCredit.sol";
 import "./interface/IAccessManager.sol";
+import "./interface/IFeeManager.sol";
 import "./interface/IStableCredit.sol";
-import "../risk/interface/IRiskManager.sol";
 
 /// @title StableCreditDemurrage contract
 /// @author ReSource
@@ -22,10 +24,8 @@ contract StableCredit is MutualCredit, IStableCredit {
     IAccessManager public access;
     IERC20Upgradeable public referenceToken;
     IRiskManager public riskManager;
+    ICreditIssuer public creditIssuer;
     IFeeManager public feeManager;
-
-    // debt owned by network
-    uint256 public networkDebt;
 
     /* ========== INITIALIZER ========== */
 
@@ -45,41 +45,42 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice convert a credit amount to a reference token amount value
     /// @return credit amount coverted to reference token value.
     function convertCreditToReferenceToken(uint256 amount) public view returns (uint256) {
-        if (amount == 0) return amount;
+        if (amount == 0) {
+            return amount;
+        }
         uint256 feeDecimals = IERC20Metadata(address(referenceToken)).decimals();
         uint256 creditDecimals = decimals();
-        return
-            creditDecimals < feeDecimals
-                ? ((amount * 10**(feeDecimals - creditDecimals)))
-                : ((amount / 10**(creditDecimals - feeDecimals)));
+        return creditDecimals < feeDecimals
+            ? ((amount * 10 ** (feeDecimals - creditDecimals)))
+            : ((amount / 10 ** (creditDecimals - feeDecimals)));
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
     /// @notice Caller must approve feeManager to spend reference tokens for transfer of credits.
     /// @dev Validates the caller's credit line and synchronizes demurrage balance.
-    function _transfer(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal virtual override onlyMembers(_from, _to) {
-        uint256 balanceFrom = balanceOf(_from);
-        if (_amount > balanceFrom && !riskManager.validateCreditLine(address(this), _from)) return;
+    function _transfer(address _from, address _to, uint256 _amount)
+        internal
+        virtual
+        override
+        senderIsMember(_from)
+    {
+        if (
+            address(creditIssuer) != address(0) && _amount > balanceOf(_from)
+                && !creditIssuer.validateCreditLine(address(this), _from)
+        ) return;
         if (address(feeManager) != address(0)) feeManager.collectFees(_from, _to, _amount);
         super._transfer(_from, _to, _amount);
     }
 
-    /// @notice Burns network debt in exchange for reserve reimbursement.
-    /// @dev Must have network debt to burn.
+    /// @notice Reduces network debt in exchange for reserve reimbursement.
+    /// @dev Must have sufficient network debt .
     function burnNetworkDebt(uint256 amount) public virtual {
         require(balanceOf(msg.sender) >= amount, "StableCredit: Insufficient balance");
-        require(amount <= networkDebt, "StableCredit: Insufficient network debt");
-        _burn(msg.sender, amount);
-        networkDebt -= amount;
-        riskManager.reservePool().reimburseMember(
-            address(this),
-            msg.sender,
-            convertCreditToReferenceToken(amount)
+        require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
+        transferFrom(msg.sender, address(this), amount);
+        riskManager.reimburseMember(
+            address(this), msg.sender, convertCreditToReferenceToken(amount)
         );
         emit NetworkDebtBurned(msg.sender, amount);
     }
@@ -90,16 +91,10 @@ contract StableCredit is MutualCredit, IStableCredit {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid amount");
         referenceToken.transferFrom(
-            msg.sender,
-            address(this),
-            convertCreditToReferenceToken(amount)
+            msg.sender, address(this), convertCreditToReferenceToken(amount)
         );
-        riskManager.reservePool().depositPayment(
-            address(this),
-            convertCreditToReferenceToken(amount)
-        );
-        networkDebt += amount;
-        members[member].creditBalance -= amount;
+        riskManager.depositPayment(address(this), convertCreditToReferenceToken(amount));
+        transferDebt(member, address(this), amount);
         emit CreditBalanceRepayed(member, amount);
     }
 
@@ -110,23 +105,26 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @param member address of line holder
     /// @param _creditLimit credit limit of new line
     /// @param _balance positive balance to initialize member with (will increment network debt)
-    function createCreditLine(
-        address member,
-        uint256 _creditLimit,
-        uint256 _balance
-    ) public virtual override onlyRiskManager {
-        if (!access.isMember(member)) access.grantMember(member);
+    function createCreditLine(address member, uint256 _creditLimit, uint256 _balance)
+        public
+        virtual
+        override
+        onlyCreditIssuer
+    {
+        if (!access.isMember(member)) {
+            access.grantMember(member);
+        }
         setCreditLimit(member, _creditLimit);
         if (_balance > 0) {
-            _mint(member, _balance);
-            networkDebt += _balance;
+            // approve(address(this), _balance); may need to add this
+            transferFrom(address(this), member, _balance);
         }
         emit CreditLineCreated(member, _creditLimit, _balance);
     }
 
     /// @notice Extend existing credit lines
     /// @param creditLimit must be greater than given member's outstanding debt
-    function updateCreditLimit(address member, uint256 creditLimit) external onlyRiskManager {
+    function updateCreditLimit(address member, uint256 creditLimit) external onlyCreditIssuer {
         require(creditLimitOf(member) > 0, "StableCredit: Credit line does not exist for member");
         require(creditLimit >= creditBalanceOf(member), "StableCredit: invalid credit limit");
         setCreditLimit(member, creditLimit);
@@ -134,15 +132,14 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     /// @notice transfer a given member's debt to the network
-    function writeOffCreditLine(address member) external onlyRiskManager {
+    function writeOffCreditLine(address member) external onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
-        delete members[member];
-        networkDebt += creditBalance;
+        transferDebt(member, address(this), creditBalance);
     }
 
     function setRiskManager(address _riskManager) external onlyOwner {
         riskManager = IRiskManager(_riskManager);
-        referenceToken.approve(address(riskManager.reservePool()), type(uint256).max);
+        referenceToken.approve(address(riskManager), type(uint256).max);
     }
 
     function setFeeManager(address _feeManager) external onlyOwner {
@@ -150,11 +147,16 @@ contract StableCredit is MutualCredit, IStableCredit {
         referenceToken.approve(address(feeManager), type(uint256).max);
     }
 
+    function setCreditIssuer(address _creditIssuer) external onlyOwner {
+        creditIssuer = ICreditIssuer(_creditIssuer);
+    }
+
     /* ========== MODIFIERS ========== */
 
-    modifier onlyMembers(address _from, address _to) {
-        require(access.isMember(_from) || access.isOperator(_from), "Sender is not network member");
-        require(access.isMember(_to) || access.isOperator(_to), "Recipient is not network member");
+    modifier senderIsMember(address sender) {
+        require(
+            access.isMember(sender) || access.isOperator(sender), "Sender is not network member"
+        );
         _;
     }
 
@@ -165,6 +167,11 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     modifier onlyRiskManager() {
         require(msg.sender == address(riskManager) || msg.sender == owner(), "Unauthorized caller");
+        _;
+    }
+
+    modifier onlyCreditIssuer() {
+        require(msg.sender == address(creditIssuer) || msg.sender == owner(), "Unauthorized caller");
         _;
     }
 }

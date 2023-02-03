@@ -23,8 +23,6 @@
     "typechain": "^5.0.0"
   },
   "dependencies": {
-    "@celo-tools/celo-ethers-wrapper": "^0.0.5",
-    "@celo-tools/use-contractkit": "^3.1.0",
     "@eth-optimism/hardhat-ovm": "^0.2.2",
     "@metamask/eth-sig-util": "^4.0.1",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
@@ -33,7 +31,6 @@
     "@openzeppelin/contracts-upgradeable": "^4.1.0",
     "@openzeppelin/hardhat-upgrades": "^1.8.2",
     "@tenderly/hardhat-tenderly": "^1.0.10",
-    "@uniswap/v3-periphery": "^1.4.1",
     "chalk": "^4.1.0",
     "ethereum-waffle": "^3.1.1",
     "ethers": "^5.4.4",

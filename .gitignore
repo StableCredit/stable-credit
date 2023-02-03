@@ -49,7 +49,7 @@ config.json
 coverage.json
 
 types
-
 network_config.json
-
 .vscode
+cache/
+out/
