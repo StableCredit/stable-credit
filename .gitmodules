@@ -13,3 +13,6 @@
 [submodule "lib/resource-risk-management"]
 	path = lib/resource-risk-management
 	url = https://github.com/ReSource-Network/resource-risk-management
+[submodule "lib/risk-management"]
+	path = lib/risk-management
+	url = https://github.com/ReSource-Network/risk-management
