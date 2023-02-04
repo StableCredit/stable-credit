@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@resource-risk-management/interface/IReSourceCreditIssuer.sol";
 import "../interface/IStableCredit.sol";
 import "../interface/IFeeManager.sol";
 
@@ -22,8 +23,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
-    // network => member => feeRate
-    mapping(address => uint256) public memberFeeRate;
 
     uint256 public collectedFees;
 
@@ -71,22 +70,15 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         if (paused()) {
             return 0;
         }
-        uint256 feeRate =
-            stableCredit.riskManager().baseFeeRate(address(stableCredit)) + memberFeeRate[member];
+        uint256 feeRate = stableCredit.riskManager().baseFeeRate(address(stableCredit))
+            + IReSourceCreditIssuer(address(stableCredit.creditIssuer())).creditTermsOf(
+                address(stableCredit), member
+            ).feeRate;
 
         return stableCredit.convertCreditToReferenceToken((feeRate * amount) / MAX_PPM);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
-
-    /// @param feePercent rate which to charge a given member on top of the base fee rate
-    function setMemberFeeRate(address member, uint256 feePercent)
-        external
-        override
-        onlyAuthorized
-    {
-        memberFeeRate[member] = feePercent;
-    }
 
     function pauseFees() public onlyOwner {
         _pause();

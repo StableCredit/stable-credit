@@ -11,7 +11,7 @@
 
 **Stable Credits** are the decentralized complementary currencies in on-chain mutual credit networks. Go [here](https://www.blog.resource.finance/chapter-1-what-is-mutual-credit) for more information on the properties and advantages of mutual credit clearing.
 
-A major issue with most credit networks is stability at scale and how to manage the risks associated with member default. To address this scaling problem, **Stable Credit** networks rely on the [**ReSource Risk Management**](https://github.com/ReSource-Network/risk-management) protocol (or the likes) to analyze and mitigate credit risks.
+A major issue with most credit networks is stability at scale and how to manage the risks associated with member default. To address this scaling problem, **Stable Credit** networks rely on external risk management protocols like the [**ReSource Risk Management**](https://github.com/ReSource-Network/risk-management) protocol to analyze and mitigate credit risks.
 
 📕 For more information on **ReSource Risk Management** go to https://github.com/ReSource-Network/risk-management.
 

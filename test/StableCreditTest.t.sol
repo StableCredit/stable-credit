@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "./ReSourceNetworkTest.t.sol";
+import "@resource-risk-management-test/ReSourceTest.t.sol";
 
-contract StableCreditTest is ReSourceNetworkTest {
+contract StableCreditTest is ReSourceTest {
     function setUp() public {
-        setUpStableCreditNetwork();
+        setUpReSourceTest();
     }
 
-    function testExtendCreditLimit() public {}
+    function testUpdateCreditLimit() public {}
 
     function testGrantCreditAndMembership() public {}
 

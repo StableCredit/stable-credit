@@ -17,8 +17,6 @@
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-gas-reporter": "^1.0.4",
     "mocha": "^8.4.0",
-    "solhint": "^3.3.6",
-    "solhint-plugin-prettier": "^0.0.5",
     "solidity-coverage": "^0.7.21",
     "typechain": "^5.0.0"
   },

@@ -32,12 +32,14 @@ contract StableCredit is MutualCredit, IStableCredit {
     function __StableCredit_init(
         address _referenceToken,
         address _accessManager,
+        address _creditIssuer,
         string memory name_,
         string memory symbol_
     ) public virtual initializer {
         __MutualCredit_init(name_, symbol_);
-        access = IAccessManager(_accessManager);
         referenceToken = IERC20Upgradeable(_referenceToken);
+        access = IAccessManager(_accessManager);
+        creditIssuer = ICreditIssuer(_creditIssuer);
     }
 
     /* ========== VIEWS ========== */
@@ -65,11 +67,10 @@ contract StableCredit is MutualCredit, IStableCredit {
         override
         senderIsMember(_from)
     {
-        if (
-            address(creditIssuer) != address(0) && _amount > balanceOf(_from)
-                && !creditIssuer.validateCreditLine(address(this), _from)
-        ) return;
-        if (address(feeManager) != address(0)) feeManager.collectFees(_from, _to, _amount);
+        if (!creditIssuer.validateTransaction(address(this), _from, _to, _amount)) return;
+        if (address(feeManager) != address(0)) {
+            feeManager.collectFees(_from, _to, _amount);
+        }
         super._transfer(_from, _to, _amount);
     }
 
@@ -122,7 +123,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditLineCreated(member, _creditLimit, _balance);
     }
 
-    /// @notice Extend existing credit lines
+    /// @notice update existing credit lines
     /// @param creditLimit must be greater than given member's outstanding debt
     function updateCreditLimit(address member, uint256 creditLimit) external onlyCreditIssuer {
         require(creditLimitOf(member) > 0, "StableCredit: Credit line does not exist for member");
@@ -146,11 +147,6 @@ contract StableCredit is MutualCredit, IStableCredit {
         feeManager = IFeeManager(_feeManager);
         referenceToken.approve(address(feeManager), type(uint256).max);
     }
-
-    function setCreditIssuer(address _creditIssuer) external onlyOwner {
-        creditIssuer = ICreditIssuer(_creditIssuer);
-    }
-
     /* ========== MODIFIERS ========== */
 
     modifier senderIsMember(address sender) {
