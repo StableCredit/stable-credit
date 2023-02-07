@@ -28,7 +28,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function __FeeManager_init(address _stableCredit) external virtual onlyInitializing {
+    function initialize(address _stableCredit) external virtual initializer {
         __Ownable_init();
         __Pausable_init();
         _pause();
@@ -70,6 +70,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         if (paused()) {
             return 0;
         }
+        // feeRate = baseFeeRate + member feeRate
         uint256 feeRate = stableCredit.riskManager().baseFeeRate(address(stableCredit))
             + IReSourceCreditIssuer(address(stableCredit.creditIssuer())).creditTermsOf(
                 address(stableCredit), member
