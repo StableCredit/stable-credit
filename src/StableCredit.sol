@@ -57,6 +57,10 @@ contract StableCredit is MutualCredit, IStableCredit {
             : ((amount / 10 ** (creditDecimals - feeDecimals)));
     }
 
+    function networkDebt() external view returns (uint256) {
+        return creditBalanceOf(address(this));
+    }
+
     /* ========== PUBLIC FUNCTIONS ========== */
 
     /// @notice Caller must approve feeManager to spend reference tokens for transfer of credits.
