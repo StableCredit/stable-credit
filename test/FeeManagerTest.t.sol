@@ -6,6 +6,7 @@ import "@resource-risk-management-test/ReSourceTest.t.sol";
 contract FeeManagerTest is ReSourceTest {
     function setUp() public {
         setUpReSourceTest();
+        vm.startPrank(deployer);
         // unpause fees
         feeManager.unpauseFees();
         // send alice 1000 reference tokens
