@@ -140,7 +140,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice transfer a given member's debt to the network
     function writeOffCreditLine(address member) external onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
-        transferFrom(address(this), member, creditBalance);
+        _transfer(address(this), member, creditBalance);
     }
 
     function setRiskManager(address _riskManager) external onlyOwner {
