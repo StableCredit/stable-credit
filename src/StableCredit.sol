@@ -11,6 +11,8 @@ import "./interface/IAccessManager.sol";
 import "./interface/IFeeManager.sol";
 import "./interface/IStableCredit.sol";
 
+import "forge-std/Test.sol";
+
 /// @title StableCreditDemurrage contract
 /// @author ReSource
 /// @notice Extends the ERC20 standard to include mutual credit functionality where users
@@ -99,7 +101,7 @@ contract StableCredit is MutualCredit, IStableCredit {
             msg.sender, address(this), convertCreditToReferenceToken(amount)
         );
         riskManager.depositPayment(address(this), convertCreditToReferenceToken(amount));
-        transferDebt(member, address(this), amount);
+        _transfer(address(this), member, amount);
         emit CreditBalanceRepayed(member, amount);
     }
 
@@ -121,8 +123,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         }
         setCreditLimit(member, _creditLimit);
         if (_balance > 0) {
-            // approve(address(this), _balance); may need to add this
-            transferFrom(address(this), member, _balance);
+            _transfer(address(this), member, _balance);
         }
         emit CreditLineCreated(member, _creditLimit, _balance);
     }
@@ -139,7 +140,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice transfer a given member's debt to the network
     function writeOffCreditLine(address member) external onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
-        transferDebt(member, address(this), creditBalance);
+        transferFrom(address(this), member, creditBalance);
     }
 
     function setRiskManager(address _riskManager) external onlyOwner {

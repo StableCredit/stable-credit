@@ -64,12 +64,6 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         emit CreditLimitUpdate(member, limit);
     }
 
-    function transferDebt(address _from, address _to, uint256 amount) internal virtual {
-        require(members[_from].creditBalance >= amount, "MutualCredit: Insufficient credit balance");
-        members[_from].creditBalance -= amount.toUInt128();
-        members[_to].creditBalance += amount.toUInt128();
-    }
-
     function _beforeTransfer(address _from, uint256 _amount) private {
         uint256 _balanceFrom = balanceOf(_from);
         if (_balanceFrom >= _amount) {
