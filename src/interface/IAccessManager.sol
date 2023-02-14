@@ -15,4 +15,6 @@ interface IAccessManager {
     function isOperator(address _operator) external view returns (bool);
 
     function grantMember(address _member) external;
+
+    function revokeMember(address _member) external;
 }

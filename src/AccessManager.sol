@@ -60,7 +60,7 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit OperatorRemoved(operator);
     }
 
-    function revokeMember(address member) external onlyOperatorAccess {
+    function revokeMember(address member) external override onlyOperatorAccess {
         require(member != owner(), "can't remove owner");
         revokeRole("MEMBER", member);
         emit MemberRemoved(member);
