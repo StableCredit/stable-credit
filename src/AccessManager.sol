@@ -19,7 +19,9 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole("OPERATOR", msg.sender);
         _setupRole("MEMBER", msg.sender);
+        _setupRole("AMBASSADOR", msg.sender);
         _setRoleAdmin("MEMBER", "OPERATOR");
+        _setRoleAdmin("AMBASSADOR", "OPERATOR");
 
         for (uint256 j = 0; j < operators.length; j++) {
             require(operators[j] != address(0), "AccessManager: invalid operator supplied");
@@ -50,6 +52,16 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit MemberAdded(member);
     }
 
+    function grantAmbassador(address ambassador)
+        external
+        onlyOperatorAccess
+        notNull(ambassador)
+        noAmbassadorAccess(ambassador)
+    {
+        grantRole("AMBASSADOR", ambassador);
+        emit AmbassadorAdded(ambassador);
+    }
+
     function revokeOperator(address operator)
         external
         onlyOperatorAccess
@@ -66,10 +78,20 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit MemberRemoved(member);
     }
 
+    function revokeAmbassador(address ambassador) external onlyOperatorAccess {
+        require(ambassador != owner(), "can't remove owner");
+        revokeRole("AMBASSADOR", ambassador);
+        emit AmbassadorRemoved(ambassador);
+    }
+
     /* ========== VIEWS ========== */
 
     function isMember(address member) public view override returns (bool) {
         return hasRole("MEMBER", member);
+    }
+
+    function isAmbassador(address ambassador) public view override returns (bool) {
+        return hasRole("AMBASSADOR", ambassador);
     }
 
     function isOperator(address operator) public view override returns (bool) {
@@ -95,6 +117,11 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
 
     modifier noMemberAccess(address member) {
         require(!isMember(member), "AccessManager: member access already granted");
+        _;
+    }
+
+    modifier noAmbassadorAccess(address ambassador) {
+        require(!isAmbassador(ambassador), "AccessManager: ambassador access already granted");
         _;
     }
 

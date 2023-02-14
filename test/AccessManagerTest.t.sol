@@ -40,4 +40,17 @@ contract AccessManagerTest is ReSourceTest {
         assertTrue(!accessManager.isMember(address(10)));
         vm.stopPrank();
     }
+
+    function testAmbassadorRoleAccess() public {
+        vm.startPrank(deployer);
+        // grant member
+        accessManager.grantAmbassador(address(10));
+        assertTrue(accessManager.isAmbassador(address(10)));
+        // revoke member
+        accessManager.revokeAmbassador(address(10));
+        assertTrue(!accessManager.isAmbassador(address(10)));
+        vm.stopPrank();
+    }
+
+    // TODO: add ambassador tests
 }
