@@ -102,9 +102,6 @@ contract StableCredit is MutualCredit, IStableCredit {
     function repayCreditBalance(address member, uint128 amount) external {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid amount");
-        referenceToken.transferFrom(
-            msg.sender, address(this), convertCreditToReferenceToken(amount)
-        );
         reservePool.depositIntoNeededReserve(
             address(this), address(referenceToken), convertCreditToReferenceToken(amount)
         );
