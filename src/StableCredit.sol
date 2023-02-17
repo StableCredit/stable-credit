@@ -42,8 +42,8 @@ contract StableCredit is MutualCredit, IStableCredit {
         __MutualCredit_init(name_, symbol_);
         referenceToken = IERC20Upgradeable(_referenceToken);
         access = IAccessManager(_accessManager);
-        reservePool = IReservePool(_reservePool);
         creditIssuer = ICreditIssuer(_creditIssuer);
+        setReservePool(_reservePool);
     }
 
     /* ========== VIEWS ========== */
@@ -150,7 +150,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         _transfer(address(this), member, creditBalance);
     }
 
-    function setReservePool(address _reservePool) external onlyOwner {
+    function setReservePool(address _reservePool) public onlyOwner {
         reservePool = IReservePool(_reservePool);
         referenceToken.approve(address(_reservePool), type(uint256).max);
     }
