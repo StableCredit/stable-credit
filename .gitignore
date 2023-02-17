@@ -53,3 +53,5 @@ types
 network_config.json
 
 .vscode
+
+out
