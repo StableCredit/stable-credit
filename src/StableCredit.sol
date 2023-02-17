@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@resource-risk-management/interface/IRiskManager.sol";
+import "@resource-risk-management/interface/IReservePool.sol";
 import "@resource-risk-management/interface/ICreditIssuer.sol";
 import "./MutualCredit.sol";
 import "./interface/IAccessManager.sol";
@@ -25,7 +25,7 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     IAccessManager public access;
     IERC20Upgradeable public referenceToken;
-    IRiskManager public riskManager;
+    IReservePool public reservePool;
     ICreditIssuer public creditIssuer;
     IFeeManager public feeManager;
 
@@ -34,6 +34,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     function __StableCredit_init(
         address _referenceToken,
         address _accessManager,
+        address _reservePool,
         address _creditIssuer,
         string memory name_,
         string memory symbol_
@@ -41,6 +42,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         __MutualCredit_init(name_, symbol_);
         referenceToken = IERC20Upgradeable(_referenceToken);
         access = IAccessManager(_accessManager);
+        reservePool = IReservePool(_reservePool);
         creditIssuer = ICreditIssuer(_creditIssuer);
     }
 
@@ -52,11 +54,11 @@ contract StableCredit is MutualCredit, IStableCredit {
         if (amount == 0) {
             return amount;
         }
-        uint256 feeDecimals = IERC20Metadata(address(referenceToken)).decimals();
+        uint256 referenceDecimals = IERC20Metadata(address(referenceToken)).decimals();
         uint256 creditDecimals = decimals();
-        return creditDecimals < feeDecimals
-            ? ((amount * 10 ** (feeDecimals - creditDecimals)))
-            : ((amount / 10 ** (creditDecimals - feeDecimals)));
+        return creditDecimals < referenceDecimals
+            ? ((amount * 10 ** (referenceDecimals - creditDecimals)))
+            : ((amount / 10 ** (creditDecimals - referenceDecimals)));
     }
 
     function networkDebt() external view returns (uint256) {
@@ -86,8 +88,11 @@ contract StableCredit is MutualCredit, IStableCredit {
         require(balanceOf(msg.sender) >= amount, "StableCredit: Insufficient balance");
         require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
         transferFrom(msg.sender, address(this), amount);
-        riskManager.reimburseMember(
-            address(this), msg.sender, convertCreditToReferenceToken(amount)
+        reservePool.reimburseAccount(
+            address(this),
+            address(referenceToken),
+            msg.sender,
+            convertCreditToReferenceToken(amount)
         );
         emit NetworkDebtBurned(msg.sender, amount);
     }
@@ -100,7 +105,9 @@ contract StableCredit is MutualCredit, IStableCredit {
         referenceToken.transferFrom(
             msg.sender, address(this), convertCreditToReferenceToken(amount)
         );
-        riskManager.depositPayment(address(this), convertCreditToReferenceToken(amount));
+        reservePool.depositIntoNeededReserve(
+            address(this), address(referenceToken), convertCreditToReferenceToken(amount)
+        );
         _transfer(address(this), member, amount);
         emit CreditBalanceRepayed(member, amount);
     }
@@ -143,9 +150,8 @@ contract StableCredit is MutualCredit, IStableCredit {
         _transfer(address(this), member, creditBalance);
     }
 
-    function setRiskManager(address _riskManager) external onlyOwner {
-        riskManager = IRiskManager(_riskManager);
-        referenceToken.approve(address(riskManager), type(uint256).max);
+    function setReservePool(address _reservePool) external onlyOwner {
+        reservePool = IReservePool(_reservePool);
     }
 
     function setFeeManager(address _feeManager) external onlyOwner {
@@ -163,11 +169,6 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     modifier onlyOperator() {
         require(access.isOperator(msg.sender) || msg.sender == owner(), "Unauthorized caller");
-        _;
-    }
-
-    modifier onlyRiskManager() {
-        require(msg.sender == address(riskManager) || msg.sender == owner(), "Unauthorized caller");
         _;
     }
 

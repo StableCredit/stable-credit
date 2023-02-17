@@ -39,8 +39,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /// @notice Distributes collected fees to the reserve pool.
     function distributeFees() external {
-        stableCredit.referenceToken().approve(address(stableCredit.riskManager()), collectedFees);
-        stableCredit.riskManager().depositFees(address(stableCredit), collectedFees);
+        stableCredit.referenceToken().approve(address(stableCredit.reservePool()), collectedFees);
+        stableCredit.reservePool().depositIntoNeededReserve(
+            address(stableCredit), address(stableCredit.referenceToken()), collectedFees
+        );
         emit FeesDistributed(collectedFees);
         collectedFees = 0;
     }
@@ -71,7 +73,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
             return 0;
         }
         // feeRate = baseFeeRate + member feeRate
-        uint256 feeRate = stableCredit.riskManager().baseFeeRate(address(stableCredit))
+        uint256 feeRate = stableCredit.reservePool().baseFeeRateOf(address(stableCredit))
             + IReSourceCreditIssuer(address(stableCredit.creditIssuer())).creditTermsOf(
                 address(stableCredit), member
             ).feeRate;

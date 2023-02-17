@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 interface IStableCredit {
     function referenceToken() external view returns (IERC20Upgradeable);
 
-    function riskManager() external view returns (IRiskManager);
+    function reservePool() external view returns (IReservePool);
 
     function feeManager() external view returns (IFeeManager);
 
