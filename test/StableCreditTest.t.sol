@@ -93,7 +93,7 @@ contract StableCreditTest is ReSourceTest {
         stableCredit.repayCreditBalance(alice, uint128(101 * (10 ** decimals)));
     }
 
-    function testReferenceCurrencyPaymentReserve() public {
+    function testReferenceCurrencyToPeripheralReserve() public {
         // create credit balance for alice
         vm.startPrank(alice);
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
@@ -109,7 +109,12 @@ contract StableCreditTest is ReSourceTest {
         stableCredit.repayCreditBalance(
             alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
         );
-        assertEq(reservePool.paymentReserve(address(stableCredit)), 100 * 1e18);
+        assertEq(
+            reservePool.peripheralReserve(
+                address(stableCredit), address(stableCredit.referenceToken())
+            ),
+            100 * 1e18
+        );
     }
 
     function testReferenceCurrencyPaymentCreditBalance() public {

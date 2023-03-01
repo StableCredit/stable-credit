@@ -17,3 +17,5 @@ cache/
 out/
 *.txt
 !remappings.txt
+
+lcov.info

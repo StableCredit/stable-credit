@@ -11,8 +11,6 @@ import "./interface/IAccessManager.sol";
 import "./interface/IFeeManager.sol";
 import "./interface/IStableCredit.sol";
 
-import "forge-std/Test.sol";
-
 /// @title StableCreditDemurrage contract
 /// @author ReSource
 /// @notice Extends the ERC20 standard to include mutual credit functionality where users
@@ -105,7 +103,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         referenceToken.transferFrom(
             msg.sender, address(this), convertCreditToReferenceToken(amount)
         );
-        reservePool.depositIntoNeededReserve(
+        reservePool.depositIntoPeripheralReserve(
             address(this), address(referenceToken), convertCreditToReferenceToken(amount)
         );
         _transfer(address(this), member, amount);

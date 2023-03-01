@@ -47,11 +47,21 @@ contract FeeManagerTest is ReSourceTest {
         stableCredit.referenceToken().approve(address(feeManager), 100 * 1e18);
         // alice transfer 100 stable credits to bob with 10 reference token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(reservePool.reserveOf(address(stableCredit)), 0);
+        assertEq(
+            reservePool.totalReserveOf(
+                address(stableCredit), address(stableCredit.referenceToken())
+            ),
+            0
+        );
         // distribute fees from fee manager to reserve pool
         feeManager.distributeFees();
         // check network's reserve size
-        assertEq(reservePool.reserveOf(address(stableCredit)), 10 * 1e18);
+        assertEq(
+            reservePool.totalReserveOf(
+                address(stableCredit), address(stableCredit.referenceToken())
+            ),
+            10 * 1e18
+        );
     }
 
     function testPauseFees() public {

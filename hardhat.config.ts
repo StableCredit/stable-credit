@@ -18,14 +18,6 @@ import "./tasks/accounts"
 import "./tasks/clean"
 import "./tasks/fundedwallet"
 import "./tasks/generate"
-import "./tasks/sendReferenceTokens"
-import "./tasks/depositReserve"
-import "./tasks/distributeFees"
-import "./tasks/toggleFees"
-import "./tasks/registerNetwork"
-import "./tasks/depositFees"
-import "./tasks/validateCreditLine"
-import "./tasks/demoSetup"
 
 const { isAddress, getAddress, formatUnits, parseUnits } = utils
 
@@ -78,12 +70,6 @@ const config: HardhatUserConfig = {
       chainId: chainIds.mainnet,
       saveDeployments: true,
       tags: ["production", "mainnet"],
-      timeout: 100000000,
-    },
-    "frame-celo-alfajores": {
-      url: "http://127.0.0.1:1248",
-      chainId: chainIds.testnet,
-      saveDeployments: true,
       timeout: 100000000,
     },
   },
