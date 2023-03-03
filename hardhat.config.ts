@@ -1,10 +1,10 @@
 const fs = require("fs")
 const chalk = require("chalk")
-
+import "hardhat-deploy"
+import "hardhat-preprocessor"
 import "@nomiclabs/hardhat-waffle"
 import "@typechain/hardhat"
 import "@tenderly/hardhat-tenderly"
-import "hardhat-deploy"
 import "@openzeppelin/hardhat-upgrades"
 import "hardhat-gas-reporter"
 import "solidity-coverage"
@@ -99,9 +99,23 @@ const config: HardhatUserConfig = {
       default: 0,
     },
   },
+  preprocess: {
+    eachLine: (hre) => ({
+      transform: (line) => {
+        if (line.match(/^\s*import /i)) {
+          getRemappings().forEach(([find, replace]) => {
+            if (line.match(find)) {
+              line = line.replace(find, replace)
+            }
+          })
+        }
+        return line
+      },
+    }),
+  },
   paths: {
     artifacts: "./artifacts",
-    cache: "./cache",
+    cache: "./cache_hardhat",
     sources: "./contracts",
     tests: "./test",
     deployments: "./deployments",
@@ -184,3 +198,11 @@ task("send", "Send ETH")
 
     return send(fromSigner, txRequest)
   })
+
+function getRemappings() {
+  return fs
+    .readFileSync("remappings.txt", "utf8")
+    .split("\n")
+    .filter(Boolean) // remove empty lines
+    .map((line) => line.trim().split("="))
+}

@@ -36,6 +36,7 @@
     "ganache-cli": "^6.12.2",
     "hardhat": "2.6.0",
     "hardhat-deploy": "^0.8.11",
+    "hardhat-preprocessor": "^0.1.5",
     "node-watch": "^0.7.0",
     "prettier": "^2.5.1",
     "ramda": "^0.27.1",
