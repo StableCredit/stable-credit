@@ -2,6 +2,5 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 @resource-risk-management-test/=lib/risk-management/test/
 @resource-risk-management/=lib/risk-management/contracts/
-@resource-stable-credit/=contracts/
 ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
