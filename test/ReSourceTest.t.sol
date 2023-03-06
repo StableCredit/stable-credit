@@ -16,9 +16,7 @@ contract ReSourceTest is Test {
     address deployer;
 
     // risk management contracts
-    RiskManager public riskManager;
     ReservePool public reservePool;
-    RiskOracle public riskOracle;
     ReSourceCreditIssuer public creditIssuer;
 
     // stable credit network contracts
@@ -34,21 +32,14 @@ contract ReSourceTest is Test {
         deployer = address(1);
         vm.startPrank(deployer);
 
-        // deploy riskManager
-        riskManager = new RiskManager();
-        riskManager.initialize();
         // deploy reservePool
         reservePool = new ReservePool();
-        reservePool.initialize(address(riskManager));
-        // deploy riskOracle
-        riskOracle = new RiskOracle();
-        riskOracle.initialize();
+        reservePool.initialize(address(5));
+
         // deploy creditIssuer
         creditIssuer = new ReSourceCreditIssuer();
         creditIssuer.initialize();
 
-        // set riskManager's reservePool
-        riskManager.setReservePool(address(reservePool));
         // deploy mock stable access manager and credit network
         accessManager = new AccessManager();
         accessManager.initialize(new address[](0));

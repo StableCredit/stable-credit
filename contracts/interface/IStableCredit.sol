@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./IAccessManager.sol";
 import "./IFeeManager.sol";
+import "./ICreditIssuer.sol";
 import "@resource-risk-management/interface/IRiskManager.sol";
-import "@resource-risk-management/interface/ICreditIssuer.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IStableCredit {

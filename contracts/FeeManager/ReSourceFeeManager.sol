@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@resource-risk-management/interface/IReSourceCreditIssuer.sol";
+import "../interface/IReSourceCreditIssuer.sol";
 import "./FeeManager.sol";
 
 /// @title ReSourceFeeManager

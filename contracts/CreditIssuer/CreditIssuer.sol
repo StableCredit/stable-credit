@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@resource-stable-credit/interface/IStableCredit.sol";
-import "@resource-stable-credit/interface/IMutualCredit.sol";
+import "../interface/IStableCredit.sol";
+import "../interface/IMutualCredit.sol";
 
 /// @title CreditIssuer
 /// @author ReSource
