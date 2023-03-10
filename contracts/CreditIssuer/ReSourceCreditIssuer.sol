@@ -8,12 +8,10 @@ import "../interface/IReSourceCreditIssuer.sol";
 /// @author ReSource
 /// @notice This contract enables authorized network participants to autonomously underwrite new
 /// and existing members in order to issue credit lines and their associated credit terms.
-/// @dev This contract inherits from the base CreditIssuer contract and implements the fundamental
+/// @dev This contract inherits from the base CreditIssuer contract and implements the foundational
 /// logic for credit periods and period expiration.
 contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /* ========== STATE VARIABLES ========== */
-    // minimum Income to Debt ratio threshold
-    uint256 minITD;
     // member => credit terms
     mapping(address => CreditTerm) public creditTerms;
 
@@ -46,7 +44,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// period
     function hasValidITD(address member) public view returns (bool) {
         if (itdOf(member) == -1) return true;
-        return itdOf(member) >= int256(minITD);
+        return itdOf(member) >= int256(creditTerms[member].minITD);
     }
 
     /// @notice fetches a given member's Income to Debt ratio within the current credit period.
@@ -73,9 +71,11 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         if (hasValidITD(member)) return 0;
         uint256 SCALING_FACTOR = stableCredit.reservePool().riskOracle().SCALING_FACTOR();
         return (
-            (minITD * IMutualCredit(address(stableCredit)).creditBalanceOf(member) / SCALING_FACTOR)
-                - creditTerms[member].periodIncome
-        ) * SCALING_FACTOR / ((minITD + SCALING_FACTOR)) + 1;
+            (
+                creditTerms[member].minITD
+                    * IMutualCredit(address(stableCredit)).creditBalanceOf(member) / SCALING_FACTOR
+            ) - creditTerms[member].periodIncome
+        ) * SCALING_FACTOR / ((creditTerms[member].minITD + SCALING_FACTOR)) + 1;
     }
 
     /// @notice fetches whether a given member's credit line is frozen due to non compliance with
@@ -107,6 +107,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         // TODO: use SBTs to get a starting point for creditLimit and feeRate
         // use risk oracle to add network context
         // initializeCreditLine(network, member, feeRate, creditLimit);
+        emit MemberUnderwritten(member);
     }
 
     /// @notice facilitates network operators to bypass the underwriting process and manually
@@ -116,6 +117,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     function initializeCreditLine(
         address member,
         uint256 feeRate,
+        uint256 minITD,
         uint256 creditLimit,
         uint256 balance
     ) public onlyOperator notNull(member) notInActivePeriod(member) {
@@ -123,15 +125,10 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         initializeCreditPeriod(member);
         // set member fee rate
         creditTerms[member].feeRate = feeRate;
+        creditTerms[member].minITD = minITD;
         // initialize credit line
         stableCredit.createCreditLine(member, creditLimit, balance);
-    }
-
-    /// @notice enables network operators to set the minimum Income to Debt ratio threshold.
-    /// @dev caller must have network operator role access.
-    /// @param _minITD ITD ratio threshold in Parts Per Million.
-    function setMinITD(uint256 _minITD) public onlyOperator {
-        minITD = _minITD;
+        emit CreditTermsCreated(member, feeRate);
     }
 
     /// @notice enables network operators to pause a given member's credit terms.
@@ -139,6 +136,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @param member address of member to pause terms for.
     function pauseTermsOf(address member) external onlyOperator {
         creditTerms[member].paused = true;
+        emit CreditTermsPaused(member);
     }
 
     /// @notice enables network operators to unpause a given member's credit terms.
@@ -146,6 +144,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @param member address of member to unpause terms for.
     function unpauseTermsOf(address member) external onlyOperator {
         creditTerms[member].paused = false;
+        emit CreditTermsUnpaused(member);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */

@@ -31,6 +31,8 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
+    /// @notice grants operator access to a given address
+    /// @dev caller must have operator access or be the owner
     function grantOperator(address operator)
         external
         onlyOperatorAccess
@@ -41,6 +43,8 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit OperatorAdded(operator);
     }
 
+    /// @notice grants member access to a given address
+    /// @dev caller must have operator access or be the owner
     function grantMember(address member)
         external
         override
@@ -52,6 +56,8 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit MemberAdded(member);
     }
 
+    /// @notice grants ambassador access to a given address
+    /// @dev caller must have operator access or be the owner
     function grantAmbassador(address ambassador)
         external
         onlyOperatorAccess
@@ -62,6 +68,8 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit AmbassadorAdded(ambassador);
     }
 
+    /// @notice revokes operator access to a given address
+    /// @dev caller must have operator access or be the owner
     function revokeOperator(address operator)
         external
         onlyOperatorAccess
@@ -72,12 +80,16 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit OperatorRemoved(operator);
     }
 
+    /// @notice revokes member access to a given address
+    /// @dev caller must have operator access or be the owner
     function revokeMember(address member) external override onlyOperatorAccess {
         require(member != owner(), "can't remove owner");
         revokeRole("MEMBER", member);
         emit MemberRemoved(member);
     }
 
+    /// @notice revokes ambassador access to a given address
+    /// @dev caller must have operator access or be the owner
     function revokeAmbassador(address ambassador) external onlyOperatorAccess {
         require(ambassador != owner(), "can't remove owner");
         revokeRole("AMBASSADOR", ambassador);
@@ -86,13 +98,16 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
 
     /* ========== VIEWS ========== */
 
+    /// @notice returns true if the given address has member access
     function isMember(address member) public view override returns (bool) {
         return hasRole("MEMBER", member);
     }
 
+    /// @notice returns true if the given address has ambassador access
     function isAmbassador(address ambassador) public view override returns (bool) {
         return hasRole("AMBASSADOR", ambassador);
     }
+    /// @notice returns true if the given address has operator access
 
     function isOperator(address operator) public view override returns (bool) {
         return hasRole("OPERATOR", operator);
@@ -122,11 +137,6 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
 
     modifier noAmbassadorAccess(address ambassador) {
         require(!isAmbassador(ambassador), "AccessManager: ambassador access already granted");
-        _;
-    }
-
-    modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "AccessManager: Only admin can call");
         _;
     }
 

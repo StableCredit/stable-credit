@@ -57,7 +57,7 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         _afterTransfer(_to, _amount);
     }
 
-    /* ========== RESTRICTED FUNCTIONS ========== */
+    /* ========== PRIVATE FUNCTIONS ========== */
 
     function setCreditLimit(address member, uint256 limit) internal virtual {
         members[member].creditLimit = limit.toUInt128();

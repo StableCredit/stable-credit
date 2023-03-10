@@ -140,6 +140,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     function writeOffCreditLine(address member) external onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
         _transfer(address(this), member, creditBalance);
+        emit CreditLineWrittenOff(member, creditBalance);
     }
 
     function setReservePool(address _reservePool) public onlyOwner {

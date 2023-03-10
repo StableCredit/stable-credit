@@ -15,9 +15,8 @@ import "../interface/IMutualCredit.sol";
 contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable {
     /* ========== STATE VARIABLES ========== */
 
-    // stable credit address
     IStableCredit public stableCredit;
-    // member => period
+    // member => credit period
     mapping(address => CreditPeriod) public creditPeriods;
     // period length in seconds
     uint256 public periodLength;
