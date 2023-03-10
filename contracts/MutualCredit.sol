@@ -73,10 +73,7 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         Member memory _memberFrom = members[_from];
         uint256 _missingBalance = _amount - _balanceFrom;
         uint256 _creditLeft = creditLimitLeftOf(_from);
-        // allow shared network debt to assume unlimited debt
-        if (_from != address(this)) {
-            require(_creditLeft >= _missingBalance, "Insufficient credit");
-        }
+        require(_creditLeft >= _missingBalance, "Insufficient credit");
         members[_from].creditBalance = (_memberFrom.creditBalance + _missingBalance).toUInt128();
         _mint(_from, _missingBalance);
     }

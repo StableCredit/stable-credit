@@ -9,8 +9,5 @@ interface IReSourceCreditIssuer {
         uint256 feeRate;
     }
 
-    function creditTermsOf(address network, address member)
-        external
-        view
-        returns (CreditTerm memory);
+    function creditTermsOf(address member) external view returns (CreditTerm memory);
 }

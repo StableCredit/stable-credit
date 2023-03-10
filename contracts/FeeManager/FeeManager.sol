@@ -15,11 +15,6 @@ import "../interface/IFeeManager.sol";
 contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /* ========== CONSTANTS ========== */
-
-    /// @dev Maximum parts per million
-    uint32 internal constant MAX_PPM = 1000000;
-
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
 
@@ -40,9 +35,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /// @dev intended to be overwritten in parent implementation to include custom fee distribution logic
     function distributeFees() external virtual {
         stableCredit.referenceToken().approve(address(stableCredit.reservePool()), collectedFees);
-        stableCredit.reservePool().depositIntoNeededReserve(
-            address(stableCredit), address(stableCredit.referenceToken()), collectedFees
-        );
+        stableCredit.reservePool().deposit(collectedFees);
         emit FeesDistributed(collectedFees);
         collectedFees = 0;
     }
@@ -76,13 +69,17 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         virtual
         returns (uint256)
     {
-        if (paused()) {
+        // if contract is paused or risk oracle is not set, return 0
+        if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
             return 0;
         }
-        // feeRate = baseFeeRate
-        uint256 feeRate = stableCredit.reservePool().baseFeeRateOf(address(stableCredit));
+        // feeRate = baseFeeRate of reserve pool
+        uint256 feeRate =
+            stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()));
 
-        return stableCredit.convertCreditToReferenceToken((feeRate * amount) / MAX_PPM);
+        return stableCredit.convertCreditToReferenceToken(
+            (feeRate * amount) / stableCredit.reservePool().riskOracle().SCALING_FACTOR()
+        );
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

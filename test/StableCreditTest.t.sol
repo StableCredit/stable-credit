@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "./ReSourceTest.t.sol";
+import "./ReSourceStableCreditTest.t.sol";
 
-contract StableCreditTest is ReSourceTest {
+contract StableCreditTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
         vm.startPrank(deployer);
@@ -11,11 +11,7 @@ contract StableCreditTest is ReSourceTest {
         stableCredit.referenceToken().transfer(alice, 1000 * (10e18));
         // initialize alice credit line
         creditIssuer.initializeCreditLine(
-            address(stableCredit),
-            alice,
-            50000,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            0
+            alice, 50000, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
         vm.stopPrank();
     }
@@ -109,12 +105,7 @@ contract StableCreditTest is ReSourceTest {
         stableCredit.repayCreditBalance(
             alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
         );
-        assertEq(
-            reservePool.peripheralReserve(
-                address(stableCredit), address(stableCredit.referenceToken())
-            ),
-            100 * 1e18
-        );
+        assertEq(reservePool.peripheralReserve(), 100 * 1e18);
     }
 
     function testReferenceCurrencyPaymentCreditBalance() public {

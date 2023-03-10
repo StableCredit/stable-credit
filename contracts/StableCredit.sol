@@ -32,16 +32,14 @@ contract StableCredit is MutualCredit, IStableCredit {
     function __StableCredit_init(
         address _referenceToken,
         address _accessManager,
-        address _reservePool,
-        address _creditIssuer,
         string memory name_,
         string memory symbol_
     ) public virtual initializer {
         __MutualCredit_init(name_, symbol_);
         referenceToken = IERC20Upgradeable(_referenceToken);
         access = IAccessManager(_accessManager);
-        creditIssuer = ICreditIssuer(_creditIssuer);
-        setReservePool(_reservePool);
+        // assign "network debt account" credit line
+        setCreditLimit(address(this), type(uint128).max - 1);
     }
 
     /* ========== VIEWS ========== */
@@ -52,11 +50,14 @@ contract StableCredit is MutualCredit, IStableCredit {
         if (amount == 0) {
             return amount;
         }
-        uint256 referenceDecimals = IERC20Metadata(address(referenceToken)).decimals();
-        uint256 creditDecimals = decimals();
-        return creditDecimals < referenceDecimals
-            ? ((amount * 10 ** (referenceDecimals - creditDecimals)))
-            : ((amount / 10 ** (creditDecimals - referenceDecimals)));
+        if (address(reservePool) == address(0)) {
+            uint256 referenceDecimals = IERC20Metadata(address(referenceToken)).decimals();
+            uint256 creditDecimals = decimals();
+            return creditDecimals < referenceDecimals
+                ? ((amount * 10 ** (referenceDecimals - creditDecimals)))
+                : ((amount / 10 ** (creditDecimals - referenceDecimals)));
+        }
+        return reservePool.convertCreditTokenToReserveToken(amount);
     }
 
     function networkDebt() external view returns (uint256) {
@@ -73,7 +74,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         override
         senderIsMember(_from)
     {
-        if (!creditIssuer.validateTransaction(address(this), _from, _to, _amount)) return;
+        if (!creditIssuer.validateTransaction(_from, _to, _amount)) return;
         if (address(feeManager) != address(0)) {
             feeManager.collectFees(_from, _to, _amount);
         }
@@ -83,16 +84,11 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt .
     function burnNetworkDebt(uint256 amount) public virtual {
-        require(balanceOf(msg.sender) >= amount, "StableCredit: Insufficient balance");
+        require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
         require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
-        transferFrom(msg.sender, address(this), amount);
-        reservePool.reimburseAccount(
-            address(this),
-            address(referenceToken),
-            msg.sender,
-            convertCreditToReferenceToken(amount)
-        );
-        emit NetworkDebtBurned(msg.sender, amount);
+        transferFrom(_msgSender(), address(this), amount);
+        reservePool.reimburseAccount(_msgSender(), convertCreditToReferenceToken(amount));
+        emit NetworkDebtBurned(_msgSender(), amount);
     }
 
     /// @notice Repays referenced member's credit balance by amount.
@@ -101,11 +97,9 @@ contract StableCredit is MutualCredit, IStableCredit {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid amount");
         referenceToken.transferFrom(
-            msg.sender, address(this), convertCreditToReferenceToken(amount)
+            _msgSender(), address(this), convertCreditToReferenceToken(amount)
         );
-        reservePool.depositIntoPeripheralReserve(
-            address(this), address(referenceToken), convertCreditToReferenceToken(amount)
-        );
+        reservePool.depositIntoPeripheralReserve(convertCreditToReferenceToken(amount));
         _transfer(address(this), member, amount);
         emit CreditBalanceRepayed(member, amount);
     }
@@ -157,6 +151,10 @@ contract StableCredit is MutualCredit, IStableCredit {
         feeManager = IFeeManager(_feeManager);
         referenceToken.approve(address(feeManager), type(uint256).max);
     }
+
+    function setCreditIssuer(address _creditIssuer) external onlyOwner {
+        creditIssuer = ICreditIssuer(_creditIssuer);
+    }
     /* ========== MODIFIERS ========== */
 
     modifier senderIsMember(address sender) {
@@ -167,12 +165,14 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     modifier onlyOperator() {
-        require(access.isOperator(msg.sender) || msg.sender == owner(), "Unauthorized caller");
+        require(access.isOperator(_msgSender()) || _msgSender() == owner(), "Unauthorized caller");
         _;
     }
 
     modifier onlyCreditIssuer() {
-        require(msg.sender == address(creditIssuer) || msg.sender == owner(), "Unauthorized caller");
+        require(
+            _msgSender() == address(creditIssuer) || _msgSender() == owner(), "Unauthorized caller"
+        );
         _;
     }
 }

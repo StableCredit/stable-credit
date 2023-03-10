@@ -31,10 +31,11 @@ contract ReSourceFeeManager is FeeManager {
             return 0;
         }
         uint256 memberFeeRate = IReSourceCreditIssuer(address(stableCredit.creditIssuer()))
-            .creditTermsOf(address(stableCredit), member).feeRate;
+            .creditTermsOf(member).feeRate;
 
-        uint256 memberFee =
-            stableCredit.convertCreditToReferenceToken((memberFeeRate * amount) / MAX_PPM);
+        uint256 memberFee = stableCredit.convertCreditToReferenceToken(
+            (memberFeeRate * amount) / stableCredit.reservePool().riskOracle().SCALING_FACTOR()
+        );
 
         return super.calculateMemberFee(member, amount) + memberFee;
     }

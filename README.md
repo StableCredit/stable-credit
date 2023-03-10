@@ -32,7 +32,8 @@ The following diagram depicts how **Stable Credit** networks interact with the *
 
 # 🏄‍♂️ Quick Start
 
-This project uses [Foundry](https://github.com/foundry-rs/foundry) as the development framework.
+This project uses [Foundry](https://github.com/foundry-rs/foundry) as the development framework and [Hardhat](https://github.com/NomicFoundation/hardhat) for the deployment framework.
+
 ####Dependencies
 
 ```bash

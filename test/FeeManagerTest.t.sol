@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "./ReSourceTest.t.sol";
+import "./ReSourceStableCreditTest.t.sol";
 
-contract FeeManagerTest is ReSourceTest {
+contract FeeManagerTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
         vm.startPrank(deployer);
@@ -11,13 +11,9 @@ contract FeeManagerTest is ReSourceTest {
         feeManager.unpauseFees();
         // send alice 1000 reference tokens
         stableCredit.referenceToken().transfer(alice, 1000 * (10e18));
-        // initialize alice credit line
+        // initialize alice credit line with 5% member fee and 1000 credit limit
         creditIssuer.initializeCreditLine(
-            address(stableCredit),
-            alice,
-            50000,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            0
+            alice, 5 * 10e8, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
         vm.stopPrank();
     }
@@ -28,7 +24,7 @@ contract FeeManagerTest is ReSourceTest {
             feeManager.calculateMemberFee(
                 alice, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
             ),
-            10 * 1e18
+            10 * (10 ** IERC20Metadata(address(referenceToken)).decimals())
         );
         vm.stopPrank();
     }
@@ -47,21 +43,11 @@ contract FeeManagerTest is ReSourceTest {
         stableCredit.referenceToken().approve(address(feeManager), 100 * 1e18);
         // alice transfer 100 stable credits to bob with 10 reference token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(
-            reservePool.totalReserveOf(
-                address(stableCredit), address(stableCredit.referenceToken())
-            ),
-            0
-        );
+        assertEq(reservePool.totalReserve(), 0);
         // distribute fees from fee manager to reserve pool
         feeManager.distributeFees();
         // check network's reserve size
-        assertEq(
-            reservePool.totalReserveOf(
-                address(stableCredit), address(stableCredit.referenceToken())
-            ),
-            10 * 1e18
-        );
+        assertEq(reservePool.totalReserve(), 10 * 1e18);
     }
 
     function testPauseFees() public {
