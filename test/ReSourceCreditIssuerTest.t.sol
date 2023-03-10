@@ -9,7 +9,11 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         setUpReSourceTest();
         vm.startPrank(deployer);
         creditIssuer.initializeCreditLine(
-            alice, 5 * 10e8, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
+            alice,
+            5 * 10e8,
+            10 * 10e8,
+            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
+            0
         );
         accessManager.grantMember(bob);
         vm.stopPrank();

@@ -68,7 +68,6 @@ contract ReSourceStableCreditTest is Test {
 
         creditIssuer.setPeriodLength(90 days); // set defaultCutoff to 90 days
         creditIssuer.setGracePeriodLength(30 days); // set gracePeriod to 30 days
-        creditIssuer.setMinITD(10 * 10e8); // set max income to debt ratio to 10%
         riskOracle.setBaseFeeRate(address(reservePool), 5 * 10e8); // set base fee rate to 5%
         stableCredit.setFeeManager(address(feeManager));
         vm.stopPrank();

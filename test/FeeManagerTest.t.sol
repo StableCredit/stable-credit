@@ -13,7 +13,11 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         stableCredit.referenceToken().transfer(alice, 1000 * (10e18));
         // initialize alice credit line with 5% member fee and 1000 credit limit
         creditIssuer.initializeCreditLine(
-            alice, 5 * 10e8, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
+            alice,
+            5 * 10e8,
+            10 * 10e8,
+            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
+            0
         );
         vm.stopPrank();
     }
