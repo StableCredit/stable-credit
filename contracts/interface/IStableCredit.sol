@@ -42,4 +42,8 @@ interface IStableCredit {
     event CreditBalanceRepayed(address member, uint128 amount);
     event NetworkDebtBurned(address member, uint256 amount);
     event CreditLineWrittenOff(address member, uint256 amount);
+    event AccessManagerUpdated(address accessManager);
+    event ReservePoolUpdated(address reservePool);
+    event FeeManagerUpdated(address feeManager);
+    event CreditIssuerUpdated(address creditIssuer);
 }

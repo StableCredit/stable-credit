@@ -141,22 +141,30 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditLineWrittenOff(member, creditBalance);
     }
 
+    /// @notice enables the contract owner to set the access manager address
     function setAccessManager(address _access) external onlyOwner {
         access = IAccessManager(_access);
+        emit AccessManagerUpdated(_access);
     }
 
+    /// @notice enables the contract owner to set the reserve pool address
     function setReservePool(address _reservePool) public onlyOwner {
         reservePool = IReservePool(_reservePool);
         referenceToken.approve(address(_reservePool), type(uint256).max);
+        emit ReservePoolUpdated(_reservePool);
     }
 
+    /// @notice enables the contract owner to set the fee manager address
     function setFeeManager(address _feeManager) external onlyOwner {
         feeManager = IFeeManager(_feeManager);
         referenceToken.approve(address(feeManager), type(uint256).max);
+        emit FeeManagerUpdated(_feeManager);
     }
 
+    /// @notice enables the contract owner to set the credit issuer address
     function setCreditIssuer(address _creditIssuer) external onlyOwner {
         creditIssuer = ICreditIssuer(_creditIssuer);
+        emit CreditIssuerUpdated(_creditIssuer);
     }
 
     /* ========== MODIFIERS ========== */
