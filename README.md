@@ -61,15 +61,17 @@ forge test
 > **Note**
 > This project uses the "Proxy Upgrade Pattern" from **OpenZeppelin**, and the deployer should be familiar with proxies in the ways that are described [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies).
 
-To deploy your own stable credit network, first, create a `.env` file with the same fields found in `.env.example`
+To deploy your own stable credit network, first, create a `.env` file with the same fields found in `.env.example`.
+
+Also be sure to add your desired networks, and wallet connections to the `hardhat.config.ts`.
 
 #### Deploy
 
 ```bash
-yarn deploy_network
+yarn deploy_network --<NETWORK_NAME>
 ```
 
-#### Deploy Local
+#### Deploy Local Mock Network
 
 ```bash
 yarn deploy_mock
