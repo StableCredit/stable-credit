@@ -22,7 +22,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function __CreditIssuer_init(address _stableCredit) public virtual onlyInitializing {
+    function __FeeManager_init(address _stableCredit) public virtual onlyInitializing {
         __Ownable_init();
         __Pausable_init();
         _pause();

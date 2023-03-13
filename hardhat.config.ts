@@ -1,5 +1,7 @@
 const fs = require("fs")
 const chalk = require("chalk")
+require('dotenv').config()
+
 import "hardhat-deploy"
 import "hardhat-preprocessor"
 import "@nomiclabs/hardhat-waffle"
@@ -8,6 +10,8 @@ import "@openzeppelin/hardhat-upgrades"
 import "hardhat-gas-reporter"
 import "solidity-coverage"
 import "hardhat-contract-sizer"
+import "hardhat-dependency-compiler"
+
 
 import { utils } from "ethers"
 
@@ -38,59 +42,36 @@ function mnemonic() {
   }
 }
 
-enum chainIds {
-  localhost = 31337,
-  ganache = 1337,
-  testnet = 44787,
-  mainnet = 42220,
-}
-
 const config: HardhatUserConfig = {
   defaultNetwork,
 
   networks: {
     localhost: {
       url: "http://localhost:8545",
-      chainId: chainIds.localhost,
+      chainId: 31337,
       saveDeployments: true,
       tags: ["local", "testing"],
       timeout: 100000000,
     },
+    celo: {
+      url: "http://127.0.0.1:1248",
+      chainId: 42220,
+      saveDeployments: true,
+      tags: ["production", "mainnet"],
+      timeout: 100000000,
+    },
     "celo-alfajores": {
       url: "https://alfajores-forno.celo-testnet.org",
-      chainId: chainIds.testnet,
+      chainId: 44787,
       accounts: { mnemonic: mnemonic() },
       saveDeployments: true,
       tags: ["alfajores", "staging"],
       timeout: 100000000,
     },
-    celo: {
-      url: "http://127.0.0.1:1248",
-      chainId: chainIds.mainnet,
-      saveDeployments: true,
-      tags: ["production", "mainnet"],
-      timeout: 100000000,
-    },
   },
   solidity: {
     compilers: [
-      { version: "0.8.9" },
-      { version: "0.8.0" },
-      { version: "0.8.7", settings: {} },
-      {
-        version: "0.5.13",
-        settings: {
-          evmVersion: "istanbul",
-        },
-      },
-      {
-        version: "0.6.11",
-        settings: {},
-      },
-      {
-        version: "0.7.6",
-        settings: {},
-      },
+      { version: "0.8.17" },
     ],
   },
   namedAccounts: {
@@ -114,16 +95,24 @@ const config: HardhatUserConfig = {
   },
   paths: {
     artifacts: "./artifacts",
-    cache: "./cache_hardhat",
+    cache: "./cache",
     sources: "./contracts",
     tests: "./test",
     deployments: "./deployments",
     deploy: "./deploy",
     imports: "./artifacts",
   },
+  dependencyCompiler: {
+    paths: [
+      'lib/risk-management/contracts/ReservePool.sol',
+      'lib/risk-management/contracts/RiskOracle.sol',
+      'test/MockERC20.sol'
+    ],
+  },
   typechain: {
     outDir: "types",
     target: "ethers-v5",
+    externalArtifacts: ["./lib/risk-management/artifacts/*.json"]
   },
 }
 

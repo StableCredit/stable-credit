@@ -40,14 +40,37 @@ This project uses [Foundry](https://github.com/foundry-rs/foundry) as the develo
 forge install
 ```
 
+```bash
+yarn install
+```
+
 ####Compilation
 
 ```bash
-forge build
+yarn compile
 ```
 
 ####Testing
 
 ```bash
 forge test
+```
+
+# 🚀 Deploy Your Own Network
+
+> **Note**
+> This project uses the "Proxy Upgrade Pattern" from **OpenZeppelin**, and the deployer should be familiar with proxies in the ways that are described [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies).
+
+To deploy your own stable credit network, first, create a `.env` file with the same fields found in `.env.example`.
+
+####Deploy
+
+```bash
+yarn deploy_network
+```
+
+####Deploy Local
+
+```bash
+yarn deploy_mock
 ```

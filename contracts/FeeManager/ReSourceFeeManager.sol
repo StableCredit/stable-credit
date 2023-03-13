@@ -11,7 +11,7 @@ contract ReSourceFeeManager is FeeManager {
     /* ========== INITIALIZER ========== */
 
     function initialize(address _stableCredit) external virtual initializer {
-        __CreditIssuer_init(_stableCredit);
+        __FeeManager_init(_stableCredit);
     }
 
     /* ========== VIEWS ========== */

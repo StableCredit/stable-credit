@@ -31,13 +31,11 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     function __StableCredit_init(
         address _referenceToken,
-        address _accessManager,
         string memory name_,
         string memory symbol_
     ) public virtual initializer {
         __MutualCredit_init(name_, symbol_);
         referenceToken = IERC20Upgradeable(_referenceToken);
-        access = IAccessManager(_accessManager);
         // assign "network debt account" credit line
         setCreditLimit(address(this), type(uint128).max - 1);
     }
@@ -143,6 +141,10 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditLineWrittenOff(member, creditBalance);
     }
 
+    function setAccessManager(address _access) external onlyOwner {
+        access = IAccessManager(_access);
+    }
+
     function setReservePool(address _reservePool) public onlyOwner {
         reservePool = IReservePool(_reservePool);
         referenceToken.approve(address(_reservePool), type(uint256).max);
@@ -156,6 +158,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     function setCreditIssuer(address _creditIssuer) external onlyOwner {
         creditIssuer = ICreditIssuer(_creditIssuer);
     }
+
     /* ========== MODIFIERS ========== */
 
     modifier senderIsMember(address sender) {

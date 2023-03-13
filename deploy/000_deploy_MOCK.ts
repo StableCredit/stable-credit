@@ -1,34 +1,60 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { DeployFunction } from "hardhat-deploy/types"
+import { deployProxyAndSave } from "../utils/utils"
+import { AccessManager__factory } from "../types/factories/AccessManager__factory"
 import { ethers } from "hardhat"
-import {
-  AccessManager__factory,
-  CreditIssuer__factory,
-  ReservePool__factory,
-  RiskOracle__factory,
-  StableCredit__factory,
-} from "../types"
-import { deployProxyAndSaveAs } from "../utils/utils"
+import { ERC20, StableCredit__factory } from "../types"
+import { ReservePool__factory } from "../types/factories/ReservePool__factory"
+import { CreditIssuer__factory } from "../types/factories/CreditIssuer__factory"
+import { RiskOracle__factory } from "../types/factories/RiskOracle__factory"
+import { parseEther } from "ethers/lib/utils"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
-  let referenceTokenAddress = process.env.REFERENCE_TOKEN_ADDRESS
-  let riskOracleAddress = process.env.RISK_ORACLE_ADDRESS
-  let name = process.env.STABLE_CREDIT_NAME
-  let symbol = process.env.STABLE_CREDIT_SYMBOL
+  // deploy mock reference token
+  let referenceTokenAddress = (await hardhat.deployments.getOrNull("ReferenceToken"))?.address
+  // deploy referenceToken
+  if (!referenceTokenAddress) {
+    // deploy referenceToken
+    const erc20Factory = await ethers.getContractFactory("MockERC20")
 
-  if (!referenceTokenAddress) throw new Error("Reference token address not provided")
-  if (!riskOracleAddress) throw new Error("Risk oracle address not provided")
-  if (!name) throw new Error("Name not provided")
-  if (!symbol) throw new Error("Symbol not provided")
+    const mockERC20Abi = (await hardhat.artifacts.readArtifact("MockERC20")).abi
 
-  let stableCreditAddress = (await hardhat.deployments.getOrNull(symbol + "_StableCredit"))?.address
+    const referenceToken = (await erc20Factory.deploy(
+      parseEther("100000000"),
+      "USD Coin",
+      "USDC"
+    )) as ERC20
+
+    let contractDeployment = {
+      address: referenceToken.address,
+      abi: mockERC20Abi,
+      receipt: await referenceToken.deployTransaction.wait(),
+    }
+
+    hardhat.deployments.save("ReferenceToken", contractDeployment)
+    referenceTokenAddress = referenceToken.address
+  }
+
+  let riskOracleAddress = (await hardhat.deployments.getOrNull("RiskOracle"))?.address
+  // deploy riskOracle
+  if (!riskOracleAddress) {
+    const riskOracleAbi = (await hardhat.artifacts.readArtifact("RiskOracle")).abi
+    const riskOracleArgs = []
+    riskOracleAddress = await deployProxyAndSave(
+      "RiskOracle",
+      riskOracleArgs,
+      hardhat,
+      riskOracleAbi
+    )
+  }
+
+  let stableCreditAddress = (await hardhat.deployments.getOrNull("StableCredit"))?.address
   // deploy stable credit
   if (!stableCreditAddress) {
     const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
-    const stableCreditArgs = [referenceTokenAddress, name, symbol]
-    stableCreditAddress = await deployProxyAndSaveAs(
+    const stableCreditArgs = [referenceTokenAddress, "mock", "MOCK"]
+    stableCreditAddress = await deployProxyAndSave(
       "StableCredit",
-      symbol + "_StableCredit",
       stableCreditArgs,
       hardhat,
       stableCreditAbi,
@@ -37,15 +63,13 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   }
 
   // deploy access manager
-  let accessManagerAddress = (await hardhat.deployments.getOrNull(symbol + "_AccessManager"))
-    ?.address
+  let accessManagerAddress = (await hardhat.deployments.getOrNull("AccessManager"))?.address
   // deploy access manager
   if (!accessManagerAddress) {
     const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
     const accessManagerArgs = [[(await hardhat.ethers.getSigners())[0].address]]
-    accessManagerAddress = await deployProxyAndSaveAs(
+    accessManagerAddress = await deployProxyAndSave(
       "AccessManager",
-      symbol + "_AccessManager",
       accessManagerArgs,
       hardhat,
       accessManagerAbi
@@ -53,7 +77,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   }
 
   // deploy reservePool
-  let reservePoolAddress = (await hardhat.deployments.getOrNull(symbol + "_ReservePool"))?.address
+  let reservePoolAddress = (await hardhat.deployments.getOrNull("ReservePool"))?.address
   // deploy reservePool
   if (!reservePoolAddress) {
     const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
@@ -63,9 +87,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       (await hardhat.ethers.getSigners())[0].address,
       riskOracleAddress,
     ]
-    reservePoolAddress = await deployProxyAndSaveAs(
+    reservePoolAddress = await deployProxyAndSave(
       "ReservePool",
-      symbol + "_ReservePool",
       reservePoolArgs,
       hardhat,
       reservePoolAbi
@@ -73,14 +96,13 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   }
 
   // deploy feeManager
-  let feeManagerAddress = (await hardhat.deployments.getOrNull(symbol + "_FeeManager"))?.address
+  let feeManagerAddress = (await hardhat.deployments.getOrNull("ReSourceFeeManager"))?.address
   // deploy feeManager
   if (!feeManagerAddress) {
     const feeManagerAbi = (await hardhat.artifacts.readArtifact("ReSourceFeeManager")).abi
     const feeManagerArgs = [stableCreditAddress]
-    feeManagerAddress = await deployProxyAndSaveAs(
+    feeManagerAddress = await deployProxyAndSave(
       "ReSourceFeeManager",
-      symbol + "_FeeManager",
       feeManagerArgs,
       hardhat,
       feeManagerAbi
@@ -88,14 +110,13 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   }
 
   // deploy creditIssuer
-  let creditIssuerAddress = (await hardhat.deployments.getOrNull(symbol + "_CreditIssuer"))?.address
+  let creditIssuerAddress = (await hardhat.deployments.getOrNull("ReSourceCreditIssuer"))?.address
   // deploy creditIssuer
   if (!creditIssuerAddress) {
     const creditIssuerAbi = (await hardhat.artifacts.readArtifact("ReSourceCreditIssuer")).abi
     const creditIssuerArgs = [stableCreditAddress]
-    creditIssuerAddress = await deployProxyAndSaveAs(
+    creditIssuerAddress = await deployProxyAndSave(
       "ReSourceCreditIssuer",
-      symbol + "_CreditIssuer",
       creditIssuerArgs,
       hardhat,
       creditIssuerAbi
@@ -143,6 +164,5 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // set base fee rate to 5%
   riskOracle.setBaseFeeRate(stableCredit.address, 5 * 10e8)
 }
-
 export default func
-func.tags = ["NETWORK"]
+func.tags = ["MOCK"]

@@ -37,15 +37,13 @@ contract ReSourceStableCreditTest is Test {
         // deploy riskOracle
         riskOracle = new RiskOracle();
         riskOracle.initialize();
-        // deploy mock stable access manager and credit network
+        // deploy mock StableCredit network
+        stableCredit = new StableCredit();
+        stableCredit.__StableCredit_init(address(referenceToken), "mock", "MOCK");
+        // deploy accessManager
         accessManager = new AccessManager();
         accessManager.initialize(new address[](0));
         referenceToken = new MockERC20(1000000 * (10e18), "Reference Token", "REF");
-        // deploy stable credit network
-        stableCredit = new StableCredit();
-        stableCredit.__StableCredit_init(
-            address(referenceToken), address(accessManager), "mock", "MOCK"
-        );
         // deploy reservePool
         reservePool = new ReservePool();
         reservePool.initialize(
@@ -58,18 +56,17 @@ contract ReSourceStableCreditTest is Test {
         creditIssuer = new ReSourceCreditIssuer();
         creditIssuer.initialize(address(stableCredit));
         // initialize contract variables
-        accessManager.grantOperator(address(stableCredit));
-        accessManager.grantOperator(address(creditIssuer));
+        accessManager.grantOperator(address(stableCredit)); // grant stableCredit operator access
+        accessManager.grantOperator(address(creditIssuer)); // grant creditIssuer operator access
+        stableCredit.setAccessManager(address(accessManager)); // set accessManager
         stableCredit.setFeeManager(address(feeManager)); // set feeManager
         stableCredit.setCreditIssuer(address(creditIssuer)); // set creditIssuer
+        stableCredit.setFeeManager(address(feeManager)); // set feeManager
         stableCredit.setReservePool(address(reservePool)); // set reservePool
-
         reservePool.setTargetRTD(20 * 10e8); // set targetRTD to 20%
-
-        creditIssuer.setPeriodLength(90 days); // set defaultCutoff to 90 days
+        creditIssuer.setPeriodLength(90 days); // set period length to 90 days
         creditIssuer.setGracePeriodLength(30 days); // set gracePeriod to 30 days
         riskOracle.setBaseFeeRate(address(reservePool), 5 * 10e8); // set base fee rate to 5%
-        stableCredit.setFeeManager(address(feeManager));
         vm.stopPrank();
     }
 }

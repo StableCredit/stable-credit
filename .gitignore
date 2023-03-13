@@ -8,7 +8,7 @@ coverage
 build
 # misc
 .DS_Store
-.env*
+.env
 coverage.json
 types
 network_config.json
@@ -19,3 +19,11 @@ out/
 !remappings.txt
 
 lcov.info
+
+types
+
+.env
+
+deployments/localhost
+
+.openzeppelin/unknown-31337.json
