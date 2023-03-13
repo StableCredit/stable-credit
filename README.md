@@ -17,12 +17,9 @@ The main problem most mutual credit networks face is achieving sustainable stabi
 
 ## Protocol Overview
 
----
-
-The following diagram depicts how **Stable Credit** networks interact with the **ReSource Risk Management** protocol to stabilize their credit currencies.
-![alt text](./Diagram.png)
-
----
+|                                                            ![alt text](./Diagram.png)                                                             |
+| :-----------------------------------------------------------------------------------------------------------------------------------------------: |
+| This diagram depicts how **Stable Credit** networks interact with the **ReSource Risk Management** protocol to stabilize their credit currencies. |
 
 ## Contracts:
 
