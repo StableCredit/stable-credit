@@ -34,6 +34,8 @@ contract ReSourceStableCreditTest is Test {
         vm.deal(bob, 100 ether);
         deployer = address(1);
         vm.startPrank(deployer);
+        // deploy reference token
+        referenceToken = new MockERC20(1000000 * (10e18), "Reference Token", "REF");
         // deploy riskOracle
         riskOracle = new RiskOracle();
         riskOracle.initialize();
@@ -43,7 +45,6 @@ contract ReSourceStableCreditTest is Test {
         // deploy accessManager
         accessManager = new AccessManager();
         accessManager.initialize(new address[](0));
-        referenceToken = new MockERC20(1000000 * (10e18), "Reference Token", "REF");
         // deploy reservePool
         reservePool = new ReservePool();
         reservePool.initialize(
@@ -61,7 +62,6 @@ contract ReSourceStableCreditTest is Test {
         stableCredit.setAccessManager(address(accessManager)); // set accessManager
         stableCredit.setFeeManager(address(feeManager)); // set feeManager
         stableCredit.setCreditIssuer(address(creditIssuer)); // set creditIssuer
-        stableCredit.setFeeManager(address(feeManager)); // set feeManager
         stableCredit.setReservePool(address(reservePool)); // set reservePool
         reservePool.setTargetRTD(20 * 10e8); // set targetRTD to 20%
         creditIssuer.setPeriodLength(90 days); // set period length to 90 days

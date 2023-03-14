@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./ReSourceStableCreditTest.t.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
+contract CreditIssuerTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
         vm.startPrank(deployer);
@@ -22,13 +22,24 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         vm.stopPrank();
     }
 
-    // test credict initialization called in setup
+    // test credit initialization called in setup
     function testInitializeCreditLine() public {
-        assertEq(creditIssuer.creditTermsOf(alice).feeRate, 5 * 10e8);
+        address joe = address(4);
+        vm.startPrank(deployer);
+        creditIssuer.initializeCreditLine(
+            joe,
+            5 * 10e8,
+            10 * 10e8,
+            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
+            0
+        );
+        assertEq(creditIssuer.creditTermsOf(joe).feeRate, 5 * 10e8);
         assertEq(
-            stableCredit.creditLimitOf(alice),
+            stableCredit.creditLimitOf(joe),
             1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
         );
+        // check member minimum Income to Debt ratio
+        assertEq(creditIssuer.creditTermsOf(joe).minITD, 10 * 10e8);
     }
 
     function testHasRebalanced() public {
@@ -119,7 +130,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10000000);
         // assert period is expired
         assertTrue(creditIssuer.periodExpired(alice));
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check that period income has been reset to 0
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 0);
@@ -143,7 +154,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         vm.startPrank(alice);
         // check that period is expired
         assertTrue(creditIssuer.periodExpired(alice));
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check that rebalanced has been reset
         assertTrue(!creditIssuer.creditTermsOf(alice).rebalanced);
@@ -166,7 +177,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         vm.startPrank(alice);
         // assert period is expired
         assertTrue(creditIssuer.periodExpired(alice));
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check that alice's credit period has been renewed
         assertEq(creditIssuer.periodExpirationOf(alice), aliceExpiration + 120 days + 1);
@@ -187,7 +198,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         vm.warp(block.timestamp + 90 days + 1);
         // assert in grace period
         assertTrue(creditIssuer.inGracePeriod(alice));
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check that alice's credit line is frozen
         assertEq(stableCredit.creditBalanceOf(alice), 20000000);
@@ -208,7 +219,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         vm.stopPrank();
         // advance time to expiration
         vm.warp(block.timestamp + 90 days + 1);
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check that alice is frozen
         assertTrue(creditIssuer.isFrozen(alice));
@@ -219,7 +230,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         assertTrue(creditIssuer.hasValidITD(alice));
         // check alice is no longer frozen
         assertTrue(!creditIssuer.isFrozen(alice));
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check that alice credit period renewed
         assertEq(creditIssuer.periodExpirationOf(alice), aliceExpiration + 90 days + 1);
@@ -273,9 +284,8 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
-        // check for alice's credit default
         // check network debt
         assertEq(
             stableCredit.networkDebt(),
@@ -294,7 +304,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check alice has not defaulted
         assertEq(
@@ -324,7 +334,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         vm.stopPrank();
         vm.startPrank(alice);
 
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check alice has not defaulted
         assertEq(
@@ -354,7 +364,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         vm.stopPrank();
         vm.startPrank(alice);
 
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check alice has not defaulted
         assertTrue(creditIssuer.isFrozen(alice));
@@ -379,7 +389,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.unpauseTermsOf(alice);
         vm.stopPrank();
         vm.startPrank(alice);
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check alice has not defaulted
         assertEq(
@@ -403,7 +413,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.unpauseTermsOf(alice);
         vm.stopPrank();
         vm.startPrank(alice);
-        // syncronize alice's credit line
+        // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check alice has defaulted
         assertEq(stableCredit.creditLimitOf(alice), 0);
@@ -414,7 +424,41 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         );
     }
 
-    // TODO: testDefaultRevokesMembership
+    function testTxValidationExpiredButNotUsingCredit() public {
+        vm.startPrank(deployer);
+        creditIssuer.initializeCreditLine(
+            bob,
+            5 * 10e8,
+            10 * 10e8,
+            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
+            0
+        );
+        vm.stopPrank();
+        vm.startPrank(alice);
+        // alice sends bob 10 credits
+        stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        vm.stopPrank();
+        // expire credit line
+        vm.warp(creditIssuer.periodExpirationOf(bob) + creditIssuer.gracePeriodLength() + 1);
+        vm.startPrank(bob);
+        // bob sends alice 10 credits
+        stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        vm.stopPrank();
+    }
+
+    function testSetPeriodLength() public {
+        vm.startPrank(deployer);
+        creditIssuer.setPeriodLength(100 days);
+        vm.stopPrank();
+        assertEq(creditIssuer.periodLength(), 100 days);
+    }
+
+    function testSetGracePeriod() public {
+        vm.startPrank(deployer);
+        creditIssuer.setGracePeriodLength(100 days);
+        vm.stopPrank();
+        assertEq(creditIssuer.gracePeriodLength(), 100 days);
+    }
 
     // TODO: testUnderwriteMember
 }
