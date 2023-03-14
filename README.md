@@ -24,8 +24,11 @@ The main problem most mutual credit networks face is achieving sustainable stabi
 ## Contracts:
 
 - **`StableCredit.sol`**: An extension of the base `MutualCredit.sol` and `ERC20.sol` contracts responsible for managing positive and negative balances of network members.
-- **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions.
+- **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions. (note: base implementation intended to be extended)
+- **`ReSourceFeeManager.sol`** Example extended **FeeManager** contract with custom member specific fee calculation.
 - **`AccessManager.sol`**: Responsible for role based access control of **Stable Credit** networks.
+- **`CreditIssuer.sol`**: Responsible for underwriting network participants to issue credit terms. (note: base implementation intended to be extended)
+- **`ReSourceCreditIssuer.sol`** Example extended **CreditIssuer** contract with custom credit terms including minimum ITD (Income to Debt ratio) and credit re-balancing.
 
 # 🏄‍♂️ Quick Start
 
