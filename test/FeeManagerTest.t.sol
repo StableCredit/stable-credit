@@ -79,10 +79,30 @@ contract FeeManagerTest is ReSourceStableCreditTest {
 
     function testCalculateFeesWithoutOracleSet() public {
         vm.startPrank(deployer);
-        // unpause fees
-        feeManager.unpauseFees();
         // set risk oracle to zero address
         reservePool.setRiskOracle(address(0));
         assertEq(feeManager.calculateMemberFee(alice, 100), 0);
+    }
+
+    function testUnpauseFees() public {
+        vm.startPrank(deployer);
+        // pause fees
+        feeManager.pauseFees();
+        vm.stopPrank();
+        vm.startPrank(alice);
+        stableCredit.referenceToken().approve(address(feeManager), 100 * 1e18);
+        // alice transfers 10 credits to bob
+        stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        // verify no fees charged
+        assertEq(stableCredit.referenceToken().balanceOf(alice), 10000 * 1e18);
+        vm.stopPrank();
+        vm.startPrank(deployer);
+        // unpause fees
+        feeManager.unpauseFees();
+        vm.stopPrank();
+        vm.startPrank(alice);
+        // alice transfer 100 stable credits to bob with 10 reference token fee
+        stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        assertEq(stableCredit.referenceToken().balanceOf(alice), 9990 * 1e18);
     }
 }

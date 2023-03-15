@@ -27,7 +27,8 @@ contract ReSourceFeeManager is FeeManager {
         override
         returns (uint256)
     {
-        if (paused()) {
+        // if contract is paused or risk oracle is not set, return 0
+        if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
             return 0;
         }
         uint256 memberFeeRate = IReSourceCreditIssuer(address(stableCredit.creditIssuer()))

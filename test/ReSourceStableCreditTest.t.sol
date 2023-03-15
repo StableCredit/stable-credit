@@ -38,7 +38,7 @@ contract ReSourceStableCreditTest is Test {
         referenceToken = new MockERC20(1000000 * (10e18), "Reference Token", "REF");
         // deploy riskOracle
         riskOracle = new RiskOracle();
-        riskOracle.initialize();
+        riskOracle.initialize(deployer);
         // deploy mock StableCredit network
         stableCredit = new StableCredit();
         stableCredit.__StableCredit_init(address(referenceToken), "mock", "MOCK");
@@ -69,4 +69,6 @@ contract ReSourceStableCreditTest is Test {
         riskOracle.setBaseFeeRate(address(reservePool), 5 * 10e8); // set base fee rate to 5%
         vm.stopPrank();
     }
+
+    function test() public {}
 }
