@@ -8,10 +8,7 @@ import "@resource-risk-management/interface/IReservePool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IStableCredit {
-    /// @dev a unit of value (such as a stable coin) which serves as the Stable Credits’ soft-pegged
-    /// value target and in which transaction fees are collected.
-    function referenceToken() external view returns (IERC20Upgradeable);
-    /// @dev the reserve pool contract which holds and manages reference tokens
+    /// @dev the reserve pool contract which holds and manages reserve tokens
     function reservePool() external view returns (IReservePool);
     /// @dev the fee manager contract which manages transaction fee collection and distribution
     function feeManager() external view returns (IFeeManager);
@@ -19,9 +16,6 @@ interface IStableCredit {
     function access() external view returns (IAccessManager);
     /// @dev the credit issuer contract which manages credit line issuance
     function creditIssuer() external view returns (ICreditIssuer);
-    /// @notice convert a credit amount to a reference token amount value
-    /// @return credit amount coverted to reference token value.
-    function convertCreditToReferenceToken(uint256 amount) external view returns (uint256);
     /// @notice transfer a given member's debt to the network
     function writeOffCreditLine(address member) external;
     /// @notice called by the underwriting layer to assign credit lines

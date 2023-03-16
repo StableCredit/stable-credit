@@ -16,11 +16,11 @@ contract ReSourceFeeManager is FeeManager {
 
     /* ========== VIEWS ========== */
 
-    /// @notice calculate fee to charge member in reference token value
+    /// @notice calculate fee to charge member in reserve token value
     /// @dev extends the base fee calculation to include a member fee rate provided by the
     /// ReSource credit issuer.
     /// @param amount stable credit amount to base fee off of
-    /// @return reference token amount to charge given member
+    /// @return reserve token amount to charge given member
     function calculateMemberFee(address member, uint256 amount)
         public
         view
@@ -34,7 +34,7 @@ contract ReSourceFeeManager is FeeManager {
         uint256 memberFeeRate = IReSourceCreditIssuer(address(stableCredit.creditIssuer()))
             .creditTermsOf(member).feeRate;
 
-        uint256 memberFee = stableCredit.convertCreditToReferenceToken(
+        uint256 memberFee = stableCredit.reservePool().convertCreditTokenToReserveToken(
             (memberFeeRate * amount) / stableCredit.reservePool().riskOracle().SCALING_FACTOR()
         );
 

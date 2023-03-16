@@ -34,35 +34,41 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /// @notice Distributes collected fees to the reserve pool.
     /// @dev intended to be overwritten in parent implementation to include custom fee distribution logic
     function distributeFees() external virtual {
-        stableCredit.referenceToken().approve(address(stableCredit.reservePool()), collectedFees);
+        stableCredit.reservePool().reserveToken().approve(
+            address(stableCredit.reservePool()), collectedFees
+        );
         stableCredit.reservePool().deposit(collectedFees);
         emit FeesDistributed(collectedFees);
         collectedFees = 0;
     }
 
     /// @notice Called by a StableCredit instance to collect fees from the credit sender
-    /// @dev the sender must approve the feeManager to spend reference tokens on their behalf before
+    /// @dev the sender must approve the feeManager to spend reserve tokens on their behalf before
     /// fees can be collected.
     /// @param sender stable credit sender address
     /// @param receiver stable credit receiver address
     /// @param amount stable credit amount
-    function collectFees(address sender, address receiver, uint256 amount) external override {
+    function collectFees(address sender, address receiver, uint256 amount)
+        external
+        override
+        onlyStableCredit
+    {
         if (paused()) {
             return;
         }
         uint256 totalFee = calculateMemberFee(sender, amount);
-        stableCredit.referenceToken().safeTransferFrom(sender, address(this), totalFee);
+        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), totalFee);
         collectedFees += totalFee;
         emit FeesCollected(sender, totalFee);
     }
 
     /* ========== VIEWS ========== */
 
-    /// @notice calculate fee to charge member in reference token value
+    /// @notice calculate fee to charge member in reserve token value
     /// @dev intended to be overwritten in parent implementation to include custom fee calculation logic
     /// @param member address of member to calculate fee for
     /// @param amount stable credit amount to base fee off of
-    /// @return reference token amount to charge given member
+    /// @return reserve token amount to charge given member
     function calculateMemberFee(address member, uint256 amount)
         public
         view
@@ -77,7 +83,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         uint256 feeRate =
             stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()));
 
-        return stableCredit.convertCreditToReferenceToken(
+        return stableCredit.reservePool().convertCreditTokenToReserveToken(
             (feeRate * amount) / stableCredit.reservePool().riskOracle().SCALING_FACTOR()
         );
     }
@@ -90,5 +96,12 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     function unpauseFees() public onlyOwner {
         _unpause();
+    }
+
+    /* ========== MODIFIERS ========== */
+
+    modifier onlyStableCredit() {
+        require(_msgSender() == address(stableCredit), "FeeManager: can only be called by network");
+        _;
     }
 }

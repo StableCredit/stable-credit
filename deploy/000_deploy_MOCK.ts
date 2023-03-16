@@ -10,36 +10,36 @@ import { RiskOracle__factory } from "../types/factories/RiskOracle__factory"
 import { parseEther } from "ethers/lib/utils"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
-  // deploy mock reference token
-  let referenceTokenAddress = (await hardhat.deployments.getOrNull("ReferenceToken"))?.address
-  // deploy referenceToken
-  if (!referenceTokenAddress) {
-    // deploy referenceToken
+  // deploy mock reserve token
+  let reserveTokenAddress = (await hardhat.deployments.getOrNull("ReserveToken"))?.address
+  // deploy reserveToken
+  if (!reserveTokenAddress) {
+    // deploy reserveToken
     const erc20Factory = await ethers.getContractFactory("MockERC20")
 
     const mockERC20Abi = (await hardhat.artifacts.readArtifact("MockERC20")).abi
 
-    const referenceToken = (await erc20Factory.deploy(
+    const reserveToken = (await erc20Factory.deploy(
       parseEther("100000000"),
       "USD Coin",
       "USDC"
     )) as ERC20
 
     let contractDeployment = {
-      address: referenceToken.address,
+      address: reserveToken.address,
       abi: mockERC20Abi,
-      receipt: await referenceToken.deployTransaction.wait(),
+      receipt: await reserveToken.deployTransaction.wait(),
     }
 
-    hardhat.deployments.save("ReferenceToken", contractDeployment)
-    referenceTokenAddress = referenceToken.address
+    hardhat.deployments.save("ReserveToken", contractDeployment)
+    reserveTokenAddress = reserveToken.address
   }
 
   let riskOracleAddress = (await hardhat.deployments.getOrNull("RiskOracle"))?.address
   // deploy riskOracle
   if (!riskOracleAddress) {
     const riskOracleAbi = (await hardhat.artifacts.readArtifact("RiskOracle")).abi
-    const riskOracleArgs = []
+    const riskOracleArgs = [(await hardhat.ethers.getSigners())[0].address]
     riskOracleAddress = await deployProxyAndSave(
       "RiskOracle",
       riskOracleArgs,
@@ -52,7 +52,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // deploy stable credit
   if (!stableCreditAddress) {
     const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
-    const stableCreditArgs = [referenceTokenAddress, "mock", "MOCK"]
+    const stableCreditArgs = ["mock", "MOCK"]
     stableCreditAddress = await deployProxyAndSave(
       "StableCredit",
       stableCreditArgs,
@@ -83,7 +83,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
     const reservePoolArgs = [
       stableCreditAddress,
-      referenceTokenAddress,
+      reserveTokenAddress,
       (await hardhat.ethers.getSigners())[0].address,
       riskOracleAddress,
     ]

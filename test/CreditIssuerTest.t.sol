@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./ReSourceStableCreditTest.t.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract CreditIssuerTest is ReSourceStableCreditTest {
+contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
         vm.startPrank(deployer);
@@ -18,7 +18,7 @@ contract CreditIssuerTest is ReSourceStableCreditTest {
         accessManager.grantMember(bob);
         vm.stopPrank();
         vm.startPrank(deployer);
-        stableCredit.referenceToken().transfer(alice, 1000 * (10e18));
+        reservePool.reserveToken().transfer(alice, 1000 * (10e18));
         vm.stopPrank();
     }
 
@@ -241,14 +241,14 @@ contract CreditIssuerTest is ReSourceStableCreditTest {
         );
     }
 
-    function testReferenceCurrencyRepaymentIncome() public {
+    function testReserveCurrencyRepaymentIncome() public {
         vm.startPrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice has no income
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 0);
         // approve
-        stableCredit.referenceToken().approve(address(stableCredit), type(uint256).max);
+        reservePool.reserveToken().approve(address(stableCredit), type(uint256).max);
         // alice make payment on credit balance
         stableCredit.repayCreditBalance(
             alice, uint128(10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
@@ -259,15 +259,15 @@ contract CreditIssuerTest is ReSourceStableCreditTest {
         );
     }
 
-    function referenceCurrencyRepaymentInGracePeriod() public {
+    function reserveCurrencyRepaymentInGracePeriod() public {
         vm.startPrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to expiration
         vm.warp(block.timestamp + 90 days + 1);
         assertTrue(creditIssuer.isFrozen(alice));
-        // approve reference token
-        stableCredit.referenceToken().approve(address(stableCredit), type(uint256).max);
+        // approve reserve token
+        reservePool.reserveToken().approve(address(stableCredit), type(uint256).max);
         // alice make payment on credit balance
         stableCredit.repayCreditBalance(
             alice, uint128(10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))

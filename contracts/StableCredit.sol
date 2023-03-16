@@ -22,49 +22,33 @@ contract StableCredit is MutualCredit, IStableCredit {
     /* ========== STATE VARIABLES ========== */
 
     IAccessManager public access;
-    IERC20Upgradeable public referenceToken;
     IReservePool public reservePool;
     ICreditIssuer public creditIssuer;
     IFeeManager public feeManager;
 
     /* ========== INITIALIZER ========== */
 
-    function __StableCredit_init(
-        address _referenceToken,
-        string memory name_,
-        string memory symbol_
-    ) public virtual initializer {
+    function __StableCredit_init(string memory name_, string memory symbol_)
+        public
+        virtual
+        initializer
+    {
         __MutualCredit_init(name_, symbol_);
-        referenceToken = IERC20Upgradeable(_referenceToken);
         // assign "network debt account" credit line
         setCreditLimit(address(this), type(uint128).max - 1);
     }
 
     /* ========== VIEWS ========== */
 
-    /// @notice convert a credit amount to a reference token amount value
-    /// @return credit amount coverted to reference token value.
-    function convertCreditToReferenceToken(uint256 amount) public view returns (uint256) {
-        if (amount == 0) {
-            return amount;
-        }
-        if (address(reservePool) == address(0)) {
-            uint256 referenceDecimals = IERC20Metadata(address(referenceToken)).decimals();
-            uint256 creditDecimals = decimals();
-            return creditDecimals < referenceDecimals
-                ? ((amount * 10 ** (referenceDecimals - creditDecimals)))
-                : ((amount / 10 ** (creditDecimals - referenceDecimals)));
-        }
-        return reservePool.convertCreditTokenToReserveToken(amount);
-    }
-
+    /// @notice Network account that manages the rectification of defaulted debt accounts.
+    /// @return amount of debt owned by the network.
     function networkDebt() external view returns (uint256) {
         return creditBalanceOf(address(this));
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    /// @notice Caller must approve feeManager to spend reference tokens for transfer of credits.
+    /// @notice Caller must approve feeManager to spend reserve tokens for transfer of credits.
     /// @dev Validates the caller's credit line and synchronizes demurrage balance.
     function _transfer(address _from, address _to, uint256 _amount)
         internal
@@ -85,19 +69,21 @@ contract StableCredit is MutualCredit, IStableCredit {
         require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
         require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
         _transfer(_msgSender(), address(this), amount);
-        reservePool.reimburseAccount(_msgSender(), convertCreditToReferenceToken(amount));
+        reservePool.reimburseAccount(
+            _msgSender(), reservePool.convertCreditTokenToReserveToken(amount)
+        );
         emit NetworkDebtBurned(_msgSender(), amount);
     }
 
     /// @notice Repays referenced member's credit balance by amount.
-    /// @dev Caller must approve this contract to spend reference tokens in order to repay.
+    /// @dev Caller must approve this contract to spend reserve tokens in order to repay.
     function repayCreditBalance(address member, uint128 amount) external {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid amount");
-        referenceToken.transferFrom(
-            _msgSender(), address(this), convertCreditToReferenceToken(amount)
-        );
-        reservePool.depositIntoPeripheralReserve(convertCreditToReferenceToken(amount));
+        uint256 reserveTokenAmount = reservePool.convertCreditTokenToReserveToken(amount);
+        reservePool.reserveToken().transferFrom(_msgSender(), address(this), reserveTokenAmount);
+        reservePool.reserveToken().approve(address(reservePool), reserveTokenAmount);
+        reservePool.depositIntoPeripheralReserve(reserveTokenAmount);
         _transfer(address(this), member, amount);
         emit CreditBalanceRepayed(member, amount);
     }
@@ -150,14 +136,12 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice enables the contract owner to set the reserve pool address
     function setReservePool(address _reservePool) public onlyOwner {
         reservePool = IReservePool(_reservePool);
-        referenceToken.approve(address(_reservePool), type(uint256).max);
         emit ReservePoolUpdated(_reservePool);
     }
 
     /// @notice enables the contract owner to set the fee manager address
     function setFeeManager(address _feeManager) external onlyOwner {
         feeManager = IFeeManager(_feeManager);
-        referenceToken.approve(address(feeManager), type(uint256).max);
         emit FeeManagerUpdated(_feeManager);
     }
 

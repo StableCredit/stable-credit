@@ -11,12 +11,12 @@ import {
 import { deployProxyAndSaveAs } from "../utils/utils"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
-  let referenceTokenAddress = process.env.REFERENCE_TOKEN_ADDRESS
+  let reserveTokenAddress = process.env.RESERVE_TOKEN_ADDRESS
   let riskOracleAddress = process.env.RISK_ORACLE_ADDRESS
   let name = process.env.STABLE_CREDIT_NAME
   let symbol = process.env.STABLE_CREDIT_SYMBOL
 
-  if (!referenceTokenAddress) throw new Error("Reference token address not provided")
+  if (!reserveTokenAddress) throw new Error("Reserve token address not provided")
   if (!riskOracleAddress) throw new Error("Risk oracle address not provided")
   if (!name) throw new Error("Name not provided")
   if (!symbol) throw new Error("Symbol not provided")
@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // deploy stable credit
   if (!stableCreditAddress) {
     const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
-    const stableCreditArgs = [referenceTokenAddress, name, symbol]
+    const stableCreditArgs = [name, symbol]
     stableCreditAddress = await deployProxyAndSaveAs(
       "StableCredit",
       symbol + "_StableCredit",
@@ -59,7 +59,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
     const reservePoolArgs = [
       stableCreditAddress,
-      referenceTokenAddress,
+      reserveTokenAddress,
       (await hardhat.ethers.getSigners())[0].address,
       riskOracleAddress,
     ]

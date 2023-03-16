@@ -9,8 +9,8 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         vm.startPrank(deployer);
         // unpause fees
         feeManager.unpauseFees();
-        // send alice 1000 reference tokens
-        stableCredit.referenceToken().transfer(alice, 1000 * (10e18));
+        // send alice 1000 reserve tokens
+        reservePool.reserveToken().transfer(alice, 1000 * (10e18));
         // initialize alice credit line with 5% member fee and 1000 credit limit
         creditIssuer.initializeCreditLine(
             alice,
@@ -28,36 +28,36 @@ contract FeeManagerTest is ReSourceStableCreditTest {
             feeManager.calculateMemberFee(
                 alice, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
             ),
-            10 * (10 ** IERC20Metadata(address(referenceToken)).decimals())
+            10 * (10 ** IERC20Metadata(address(reserveToken)).decimals())
         );
         vm.stopPrank();
     }
 
     function testFeeCollection() public {
         vm.startPrank(alice);
-        stableCredit.referenceToken().approve(address(feeManager), 100 * 1e18);
-        assertEq(stableCredit.referenceToken().balanceOf(alice), 10000 * 1e18);
-        // alice transfer 100 stable credits to bob with 10 reference token fee
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
+        // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(stableCredit.referenceToken().balanceOf(alice), 9990 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 9990 * 1e18);
     }
 
     function testFeeDistributionToReservePool() public {
         vm.startPrank(alice);
-        stableCredit.referenceToken().approve(address(feeManager), 100 * 1e18);
-        // alice transfer 100 stable credits to bob with 10 reference token fee
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
+        // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(reservePool.totalReserve(), 0);
+        assertEq(reservePool.reserveBalance(), 0);
         // distribute fees from fee manager to reserve pool
         feeManager.distributeFees();
         // check network's reserve size
-        assertEq(reservePool.totalReserve(), 10 * 1e18);
+        assertEq(reservePool.reserveBalance(), 10 * 1e18);
     }
 
     function testPauseFees() public {
         vm.startPrank(alice);
-        stableCredit.referenceToken().approve(address(feeManager), 100 * 1e18);
-        assertEq(stableCredit.referenceToken().balanceOf(alice), 10000 * 1e18);
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
         vm.stopPrank();
         vm.startPrank(deployer);
         // pause fees
@@ -67,7 +67,7 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         // alice transfer 100 stable credits to bob
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check no fees charged
-        assertEq(stableCredit.referenceToken().balanceOf(alice), 10000 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
     }
 
     function testCalculateFeesWhilePaused() public {
@@ -90,19 +90,19 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         feeManager.pauseFees();
         vm.stopPrank();
         vm.startPrank(alice);
-        stableCredit.referenceToken().approve(address(feeManager), 100 * 1e18);
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
         // alice transfers 10 credits to bob
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // verify no fees charged
-        assertEq(stableCredit.referenceToken().balanceOf(alice), 10000 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
         vm.stopPrank();
         vm.startPrank(deployer);
         // unpause fees
         feeManager.unpauseFees();
         vm.stopPrank();
         vm.startPrank(alice);
-        // alice transfer 100 stable credits to bob with 10 reference token fee
+        // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(stableCredit.referenceToken().balanceOf(alice), 9990 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 9990 * 1e18);
     }
 }

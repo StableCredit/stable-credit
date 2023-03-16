@@ -15,7 +15,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
 
     const riskManager = await ethers.getContract("RiskManager")
 
-    const referenceToken = await ethers.getContract("ReferenceToken")
+    const reserveToken = await ethers.getContract("ReserveToken")
 
     const feesPaused = await feeManager.paused()
 
@@ -50,10 +50,10 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
       send(ethers.provider.getSigner(), tx)
 
       await (
-        await referenceToken.transfer(signers[i].address, ethers.utils.parseEther("2000"))
+        await reserveToken.transfer(signers[i].address, ethers.utils.parseEther("2000"))
       ).wait()
       await (
-        await referenceToken
+        await reserveToken
           .connect(signers[i])
           .approve(feeManager.address, ethers.constants.MaxUint256)
       ).wait()
@@ -72,7 +72,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     send(ethers.provider.getSigner(), tx)
 
     await (
-      await referenceToken.transfer(
+      await reserveToken.transfer(
         "0x77dE279ee3dDfAEC727dDD2bb707824C795514EE",
         ethers.utils.parseEther("2000")
       )
@@ -96,9 +96,9 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     }
     send(ethers.provider.getSigner(), tx)
 
-    await (await referenceToken.transfer(account2.address, ethers.utils.parseEther("2000"))).wait()
+    await (await reserveToken.transfer(account2.address, ethers.utils.parseEther("2000"))).wait()
     await (
-      await referenceToken
+      await reserveToken
         .connect(account2)
         .approve(feeManager.address, ethers.constants.MaxUint256)
     ).wait()
@@ -128,7 +128,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     send(ethers.provider.getSigner(), tx)
 
     await (
-      await referenceToken.transfer(
+      await reserveToken.transfer(
         "0xc44deEd52309b286a698BC2A8b3A7424E52302a1",
         ethers.utils.parseEther("2000")
       )

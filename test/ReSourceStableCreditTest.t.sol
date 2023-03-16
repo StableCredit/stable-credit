@@ -22,7 +22,7 @@ contract ReSourceStableCreditTest is Test {
 
     // stable credit network contracts
     StableCredit public stableCredit;
-    MockERC20 public referenceToken;
+    MockERC20 public reserveToken;
     AccessManager public accessManager;
     ReSourceFeeManager public feeManager;
     ReSourceCreditIssuer public creditIssuer;
@@ -34,21 +34,21 @@ contract ReSourceStableCreditTest is Test {
         vm.deal(bob, 100 ether);
         deployer = address(1);
         vm.startPrank(deployer);
-        // deploy reference token
-        referenceToken = new MockERC20(1000000 * (10e18), "Reference Token", "REF");
+        // deploy reserve token
+        reserveToken = new MockERC20(1000000 * (10e18), "Reserve Token", "REZ");
         // deploy riskOracle
         riskOracle = new RiskOracle();
         riskOracle.initialize(deployer);
         // deploy mock StableCredit network
         stableCredit = new StableCredit();
-        stableCredit.__StableCredit_init(address(referenceToken), "mock", "MOCK");
+        stableCredit.__StableCredit_init("mock", "MOCK");
         // deploy accessManager
         accessManager = new AccessManager();
         accessManager.initialize(new address[](0));
         // deploy reservePool
         reservePool = new ReservePool();
         reservePool.initialize(
-            address(stableCredit), address(referenceToken), deployer, address(riskOracle)
+            address(stableCredit), address(reserveToken), deployer, address(riskOracle)
         );
         //deploy feeManager
         feeManager = new ReSourceFeeManager();
