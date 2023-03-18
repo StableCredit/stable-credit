@@ -120,7 +120,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         uint256 minITD,
         uint256 creditLimit,
         uint256 balance
-    ) public onlyOperator notNull(member) notInActivePeriod(member) {
+    ) public onlyAuthorized notNull(member) notInActivePeriod(member) {
         // initialize credit period
         initializeCreditPeriod(member);
         // set member fee rate

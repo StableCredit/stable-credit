@@ -19,9 +19,9 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole("OPERATOR", msg.sender);
         _setupRole("MEMBER", msg.sender);
-        _setupRole("AMBASSADOR", msg.sender);
+        _setupRole("ISSUER", msg.sender);
         _setRoleAdmin("MEMBER", "OPERATOR");
-        _setRoleAdmin("AMBASSADOR", "OPERATOR");
+        _setRoleAdmin("ISSUER", "OPERATOR");
 
         for (uint256 j = 0; j < operators.length; j++) {
             require(operators[j] != address(0), "AccessManager: invalid operator supplied");
@@ -56,16 +56,16 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit MemberAdded(member);
     }
 
-    /// @notice grants ambassador access to a given address
+    /// @notice grants issuer access to a given address
     /// @dev caller must have operator access or be the owner
-    function grantAmbassador(address ambassador)
+    function grantIssuer(address issuer)
         external
         onlyOperatorAccess
-        notNull(ambassador)
-        noAmbassadorAccess(ambassador)
+        notNull(issuer)
+        noIssuerAccess(issuer)
     {
-        grantRole("AMBASSADOR", ambassador);
-        emit AmbassadorAdded(ambassador);
+        grantRole("ISSUER", issuer);
+        emit IssuerAdded(issuer);
     }
 
     /// @notice revokes operator access to a given address
@@ -88,12 +88,12 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         emit MemberRemoved(member);
     }
 
-    /// @notice revokes ambassador access to a given address
+    /// @notice revokes issuer access to a given address
     /// @dev caller must have operator access or be the owner
-    function revokeAmbassador(address ambassador) external onlyOperatorAccess {
-        require(ambassador != owner(), "can't remove owner");
-        revokeRole("AMBASSADOR", ambassador);
-        emit AmbassadorRemoved(ambassador);
+    function revokeIssuer(address issuer) external onlyOperatorAccess {
+        require(issuer != owner(), "can't remove owner");
+        revokeRole("ISSUER", issuer);
+        emit IssuerRemoved(issuer);
     }
 
     /* ========== VIEWS ========== */
@@ -103,9 +103,9 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         return hasRole("MEMBER", member);
     }
 
-    /// @notice returns true if the given address has ambassador access
-    function isAmbassador(address ambassador) public view override returns (bool) {
-        return hasRole("AMBASSADOR", ambassador);
+    /// @notice returns true if the given address has issuer access
+    function isIssuer(address issuer) public view override returns (bool) {
+        return hasRole("ISSUER", issuer);
     }
     /// @notice returns true if the given address has operator access
 
@@ -135,8 +135,8 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
         _;
     }
 
-    modifier noAmbassadorAccess(address ambassador) {
-        require(!isAmbassador(ambassador), "AccessManager: ambassador access already granted");
+    modifier noIssuerAccess(address issuer) {
+        require(!isIssuer(issuer), "AccessManager: issuer access already granted");
         _;
     }
 

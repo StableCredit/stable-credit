@@ -183,7 +183,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     modifier onlyAuthorized() {
         require(
-            stableCredit.access().isAmbassador(_msgSender())
+            stableCredit.access().isIssuer(_msgSender())
                 || stableCredit.access().isOperator(_msgSender()) || owner() == _msgSender(),
             "FeeManager: Unauthorized caller"
         );
