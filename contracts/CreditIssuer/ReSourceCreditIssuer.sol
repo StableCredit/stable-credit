@@ -17,7 +17,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(address _stableCredit) public virtual initializer {
+    function initialize(address _stableCredit) public initializer {
         __CreditIssuer_init(_stableCredit);
     }
 
