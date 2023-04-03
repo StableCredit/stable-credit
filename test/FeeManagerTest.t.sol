@@ -20,22 +20,21 @@ contract FeeManagerTest is ReSourceStableCreditTest {
 
     function testCalculateFee() public {
         vm.startPrank(alice);
-        assertEq(
-            feeManager.calculateMemberFee(
-                alice, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-            ),
-            10 * (10 ** IERC20Metadata(address(reserveToken)).decimals())
-        );
+        // 100 credits
+        uint256 creditAmount = 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals());
+        // 10 reserve tokens
+        uint256 tokenAmount = 10 * (10 ** IERC20Metadata(address(reserveToken)).decimals());
+        assertEq(feeManager.calculateFee(alice, creditAmount), tokenAmount);
         vm.stopPrank();
     }
 
     function testFeeCollection() public {
         vm.startPrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
-        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
+        reservePool.reserveToken().approve(address(feeManager), 100e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 10000e18);
         // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(reservePool.reserveToken().balanceOf(alice), 9990 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 9990e18);
     }
 
     function testFeeDistributionToReservePool() public {
@@ -70,14 +69,14 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         vm.startPrank(deployer);
         // pause fees
         feeManager.pauseFees();
-        assertEq(feeManager.calculateMemberFee(alice, 100), 0);
+        assertEq(feeManager.calculateFee(alice, 100), 0);
     }
 
     function testCalculateFeesWithoutOracleSet() public {
         vm.startPrank(deployer);
         // set risk oracle to zero address
         reservePool.setRiskOracle(address(0));
-        assertEq(feeManager.calculateMemberFee(alice, 100), 0);
+        assertEq(feeManager.calculateFee(alice, 100), 0);
     }
 
     function testUnpauseFees() public {

@@ -56,7 +56,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         if (paused()) {
             return;
         }
-        uint256 totalFee = calculateMemberFee(sender, amount);
+        uint256 totalFee = calculateFee(sender, amount);
         stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), totalFee);
         collectedFees += totalFee;
         emit FeesCollected(sender, totalFee);
@@ -65,37 +65,20 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /* ========== VIEWS ========== */
 
     /// @notice calculate fee to charge member in reserve token value
-    /// @dev intended to be overwritten in parent implementation to include custom fee calculation logic
+    /// @dev intended to be overwritten in parent implementation to include custom fee calculation logic.
     /// @param member address of member to calculate fee for
     /// @param amount stable credit amount to base fee off of
     /// @return reserve token amount to charge given member
-    function calculateMemberFee(address member, uint256 amount)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
+    function calculateFee(address member, uint256 amount) public view virtual returns (uint256) {
         // if contract is paused or risk oracle is not set, return 0
         if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
             return 0;
         }
-        // feeRate = baseFeeRate of reserve pool
-        uint256 feeRate =
-            stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()));
 
-        return stableCredit.convertCreditsToReserveToken((feeRate * amount) / 1e18);
-    }
-
-    /// @notice calculate base fee to charge all members in reserve token value
-    /// @param amount stable credit amount to base fee off of
-    /// @return reserve token base amount to charge all members
-    function calculateBaseFee(uint256 amount) public view returns (uint256) {
+        // return base fee rate * amount
         return stableCredit.convertCreditsToReserveToken(
-            (
-                stableCredit.reservePool().riskOracle().baseFeeRate(
-                    address(stableCredit.reservePool())
-                ) * amount
-            ) / 1e18
+            stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()))
+                * amount / 1e18
         );
     }
 

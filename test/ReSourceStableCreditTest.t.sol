@@ -62,7 +62,7 @@ contract ReSourceStableCreditTest is Test {
         ambassador.initialize(address(stableCredit), 30 * 10e8, 50 * 10e8, 2 * 10e6);
         //deploy feeManager
         feeManager = new ReSourceFeeManager();
-        feeManager.initialize(address(stableCredit), address(ambassador));
+        feeManager.initialize(address(stableCredit));
         // deploy creditIssuer
         creditIssuer = new ReSourceCreditIssuer();
         creditIssuer.initialize(address(stableCredit));
@@ -76,7 +76,7 @@ contract ReSourceStableCreditTest is Test {
         reservePool.setTargetRTD(20e16); // set targetRTD to 20%
         creditIssuer.setPeriodLength(90 days); // set period length to 90 days
         creditIssuer.setGracePeriodLength(30 days); // set gracePeriod to 30 days
-        riskOracle.setBaseFeeRate(address(reservePool), 5 * 5e16); // set base fee rate to 5%
+        riskOracle.setBaseFeeRate(address(reservePool), 5e16); // set base fee rate to 5%
         vm.stopPrank();
     }
 

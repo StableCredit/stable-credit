@@ -25,13 +25,13 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.initializeCreditLine(
             joe, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
-        assertEq(creditIssuer.creditTermsOf(joe).feeRate, 5 * 10e8);
+        assertEq(creditIssuer.creditTermsOf(joe).feeRate, 5e16);
         assertEq(
             stableCredit.creditLimitOf(joe),
             1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
         );
         // check member minimum Income to Debt ratio
-        assertEq(creditIssuer.creditTermsOf(joe).minITD, 10 * 10e8);
+        assertEq(creditIssuer.creditTermsOf(joe).minITD, 10e16);
     }
 
     function testHasRebalanced() public {
@@ -56,7 +56,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // bob sends 5 credits to alice
         stableCredit.transfer(alice, 5 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice's ITD is 50% (10 debt / 5 income)
-        assertEq(creditIssuer.itdOf(alice), 50 * 10e8);
+        assertEq(creditIssuer.itdOf(alice), 50e16);
     }
 
     function testHasValidITD() public {
