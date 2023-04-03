@@ -9,11 +9,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         setUpReSourceTest();
         vm.startPrank(deployer);
         creditIssuer.initializeCreditLine(
-            alice,
-            5 * 10e8,
-            10 * 10e8,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            0
+            alice, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
         accessManager.grantMember(bob);
         vm.stopPrank();
@@ -27,11 +23,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         address joe = address(4);
         vm.startPrank(deployer);
         creditIssuer.initializeCreditLine(
-            joe,
-            5 * 10e8,
-            10 * 10e8,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            0
+            joe, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
         assertEq(creditIssuer.creditTermsOf(joe).feeRate, 5 * 10e8);
         assertEq(
@@ -427,11 +419,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testTxValidationExpiredButNotUsingCredit() public {
         vm.startPrank(deployer);
         creditIssuer.initializeCreditLine(
-            bob,
-            5 * 10e8,
-            10 * 10e8,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            0
+            bob, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
         vm.stopPrank();
         vm.startPrank(alice);

@@ -49,17 +49,15 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
 
     /// @notice fetches a given member's Income to Debt ratio within the current credit period.
     /// @param member address of member to fetch ITD for.
-    /// @return ITD ratio within the current credit period.
+    /// @return ITD ratio within the current credit period, where 1e18 == 100%.
     function itdOf(address member) public view returns (int256) {
         // if no income, return 0
         if (creditTerms[member].periodIncome == 0) return 0;
         // if no debt, return indeterminate
         if (IMutualCredit(address(stableCredit)).creditBalanceOf(member) == 0) return -1;
         // income / credit balance (in Parts Per Million)
-        return int256(
-            creditTerms[member].periodIncome
-                * stableCredit.reservePool().riskOracle().SCALING_FACTOR()
-        ) / int256(IMutualCredit(address(stableCredit)).creditBalanceOf(member));
+        return int256(creditTerms[member].periodIncome * 1e18)
+            / int256(IMutualCredit(address(stableCredit)).creditBalanceOf(member));
     }
 
     /// @notice fetches a given member's needed income to comply with the given network's minimum
@@ -69,13 +67,12 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     function neededIncomeOf(address member) external view returns (uint256) {
         // if ITD is valid, no income is needed
         if (hasValidITD(member)) return 0;
-        uint256 SCALING_FACTOR = stableCredit.reservePool().riskOracle().SCALING_FACTOR();
         return (
             (
                 creditTerms[member].minITD
-                    * IMutualCredit(address(stableCredit)).creditBalanceOf(member) / SCALING_FACTOR
+                    * IMutualCredit(address(stableCredit)).creditBalanceOf(member) / 1e18
             ) - creditTerms[member].periodIncome
-        ) * SCALING_FACTOR / ((creditTerms[member].minITD + SCALING_FACTOR)) + 1;
+        ) * 1e18 / ((creditTerms[member].minITD + 1e18)) + 1;
     }
 
     /// @notice fetches whether a given member's credit line is frozen due to non compliance with

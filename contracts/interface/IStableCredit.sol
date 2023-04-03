@@ -27,6 +27,7 @@ interface IStableCredit {
     /// @notice update existing credit lines
     /// @param creditLimit must be greater than given member's outstanding debt
     function updateCreditLimit(address member, uint256 creditLimit) external;
+    function convertCreditsToReserveToken(uint256 amount) external view returns (uint256);
 
     /* ========== EVENTS ========== */
 

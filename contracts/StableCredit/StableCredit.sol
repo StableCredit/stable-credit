@@ -6,10 +6,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@resource-risk-management/interface/IReservePool.sol";
 import "./MutualCredit.sol";
-import "./interface/ICreditIssuer.sol";
-import "./interface/IAccessManager.sol";
-import "./interface/IFeeManager.sol";
-import "./interface/IStableCredit.sol";
+import "../interface/ICreditIssuer.sol";
+import "../interface/IAccessManager.sol";
+import "../interface/IFeeManager.sol";
+import "../interface/IStableCredit.sol";
 
 /// @title StableCreditDemurrage contract
 /// @author ReSource
@@ -44,6 +44,12 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @return amount of debt owned by the network.
     function networkDebt() external view returns (uint256) {
         return creditBalanceOf(address(this));
+    }
+
+    /// @notice Calculates the a credit amount in reserve token value.
+    /// @param amount credit amount to convert
+    function convertCreditsToReserveToken(uint256 amount) external view returns (uint256) {
+        return reservePool.convertCreditTokenToReserveToken(amount);
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
@@ -121,7 +127,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     /// @notice transfer a given member's debt to the network
-    function writeOffCreditLine(address member) external onlyCreditIssuer {
+    function writeOffCreditLine(address member) public virtual onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
         _transfer(address(this), member, creditBalance);
         emit CreditLineWrittenOff(member, creditBalance);
@@ -155,19 +161,24 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     modifier senderIsMember(address sender) {
         require(
-            access.isMember(sender) || access.isOperator(sender), "Sender is not network member"
+            access.isMember(sender) || access.isOperator(sender),
+            "StableCredit: Sender is not network member"
         );
         _;
     }
 
     modifier onlyOperator() {
-        require(access.isOperator(_msgSender()) || _msgSender() == owner(), "Unauthorized caller");
+        require(
+            access.isOperator(_msgSender()) || _msgSender() == owner(),
+            "StableCredit: Unauthorized caller"
+        );
         _;
     }
 
     modifier onlyCreditIssuer() {
         require(
-            _msgSender() == address(creditIssuer) || _msgSender() == owner(), "Unauthorized caller"
+            _msgSender() == address(creditIssuer) || _msgSender() == owner(),
+            "StableCredit: Unauthorized caller"
         );
         _;
     }

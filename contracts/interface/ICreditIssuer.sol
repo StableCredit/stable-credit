@@ -16,6 +16,8 @@ interface ICreditIssuer {
         external
         returns (bool);
 
+    function underwriteMember(address member) external;
+
     /* ========== EVENTS ========== */
 
     event CreditLineDefaulted(address member);

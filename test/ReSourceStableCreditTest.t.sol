@@ -6,9 +6,11 @@ import "forge-std/Test.sol";
 import "@resource-risk-management/ReservePool.sol";
 import "@resource-risk-management/RiskOracle.sol";
 import "../contracts/CreditIssuer/ReSourceCreditIssuer.sol";
-import "../contracts/StableCredit.sol";
+import "../contracts/StableCredit/StableCredit.sol";
 import "../contracts/AccessManager.sol";
 import "../contracts/FeeManager/ReSourceFeeManager.sol";
+import "../contracts/CreditPool.sol";
+import "../contracts/Ambassador.sol";
 import "./MockERC20.sol";
 
 contract ReSourceStableCreditTest is Test {
@@ -26,6 +28,8 @@ contract ReSourceStableCreditTest is Test {
     AccessManager public accessManager;
     ReSourceFeeManager public feeManager;
     ReSourceCreditIssuer public creditIssuer;
+    Ambassador public ambassador;
+    CreditPool public creditPool;
 
     function setUpReSourceTest() public {
         alice = address(2);
@@ -50,9 +54,15 @@ contract ReSourceStableCreditTest is Test {
         reservePool.initialize(
             address(stableCredit), address(reserveToken), deployer, address(riskOracle)
         );
+        // deploy launch pool
+        creditPool = new CreditPool();
+        creditPool.initialize(address(stableCredit));
+        // deploy ambassador
+        ambassador = new Ambassador();
+        ambassador.initialize(address(stableCredit), 30 * 10e8, 50 * 10e8, 2 * 10e6);
         //deploy feeManager
         feeManager = new ReSourceFeeManager();
-        feeManager.initialize(address(stableCredit));
+        feeManager.initialize(address(stableCredit), address(ambassador));
         // deploy creditIssuer
         creditIssuer = new ReSourceCreditIssuer();
         creditIssuer.initialize(address(stableCredit));
@@ -63,10 +73,10 @@ contract ReSourceStableCreditTest is Test {
         stableCredit.setFeeManager(address(feeManager)); // set feeManager
         stableCredit.setCreditIssuer(address(creditIssuer)); // set creditIssuer
         stableCredit.setReservePool(address(reservePool)); // set reservePool
-        reservePool.setTargetRTD(20 * 10e8); // set targetRTD to 20%
+        reservePool.setTargetRTD(20e16); // set targetRTD to 20%
         creditIssuer.setPeriodLength(90 days); // set period length to 90 days
         creditIssuer.setGracePeriodLength(30 days); // set gracePeriod to 30 days
-        riskOracle.setBaseFeeRate(address(reservePool), 5 * 10e8); // set base fee rate to 5%
+        riskOracle.setBaseFeeRate(address(reservePool), 5 * 5e16); // set base fee rate to 5%
         vm.stopPrank();
     }
 

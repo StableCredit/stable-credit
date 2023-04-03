@@ -41,14 +41,14 @@ contract AccessManagerTest is ReSourceStableCreditTest {
         vm.stopPrank();
     }
 
-    function testAmbassadorRoleAccess() public {
+    function testIssuerRoleAccess() public {
         vm.startPrank(deployer);
-        // grant member
-        accessManager.grantAmbassador(address(10));
-        assertTrue(accessManager.isAmbassador(address(10)));
+        // grant issuer
+        accessManager.grantIssuer(address(10));
+        assertTrue(accessManager.isIssuer(address(10)));
         // revoke member
-        accessManager.revokeAmbassador(address(10));
-        assertTrue(!accessManager.isAmbassador(address(10)));
+        accessManager.revokeIssuer(address(10));
+        assertTrue(!accessManager.isIssuer(address(10)));
         vm.stopPrank();
     }
 

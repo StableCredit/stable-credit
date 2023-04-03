@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "./interface/IMutualCredit.sol";
+import "../interface/IMutualCredit.sol";
 
 contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgradeable {
     using ExtraMath for *;

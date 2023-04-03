@@ -17,7 +17,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
-
     uint256 public collectedFees;
 
     /* ========== INITIALIZER ========== */
@@ -49,7 +48,8 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /// @param receiver stable credit receiver address
     /// @param amount stable credit amount
     function collectFees(address sender, address receiver, uint256 amount)
-        external
+        public
+        virtual
         override
         onlyStableCredit
     {
@@ -83,8 +83,19 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         uint256 feeRate =
             stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()));
 
-        return stableCredit.reservePool().convertCreditTokenToReserveToken(
-            (feeRate * amount) / stableCredit.reservePool().riskOracle().SCALING_FACTOR()
+        return stableCredit.convertCreditsToReserveToken((feeRate * amount) / 1e18);
+    }
+
+    /// @notice calculate base fee to charge all members in reserve token value
+    /// @param amount stable credit amount to base fee off of
+    /// @return reserve token base amount to charge all members
+    function calculateBaseFee(uint256 amount) public view returns (uint256) {
+        return stableCredit.convertCreditsToReserveToken(
+            (
+                stableCredit.reservePool().riskOracle().baseFeeRate(
+                    address(stableCredit.reservePool())
+                ) * amount
+            ) / 1e18
         );
     }
 

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../interface/IStableCredit.sol";
 import "../interface/IMutualCredit.sol";
+import "../interface/ICreditIssuer.sol";
 
 /// @title CreditIssuer
 /// @author ReSource
@@ -99,8 +100,8 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice called by network authorized to issue credit.
     /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
     /// @param member address of member.
-    function underwriteMember(address member) public virtual onlyOperator {
-        require(!inActivePeriod(member), "RiskManager: member already in active credit period");
+    function underwriteMember(address member) public virtual override onlyOperator {
+        require(!inActivePeriod(member), "CreditIssuer: member already in active credit period");
     }
 
     /// @notice called by network operators to set the credit period length.
@@ -185,7 +186,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         require(
             stableCredit.access().isIssuer(_msgSender())
                 || stableCredit.access().isOperator(_msgSender()) || owner() == _msgSender(),
-            "FeeManager: Unauthorized caller"
+            "CreditIssuer: Unauthorized caller"
         );
         _;
     }
@@ -193,21 +194,20 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     modifier onlyOperator() {
         require(
             stableCredit.access().isOperator(_msgSender()) || owner() == _msgSender(),
-            "FeeManager: Unauthorized caller"
+            "CreditIssuer: Unauthorized caller"
         );
         _;
     }
 
     modifier onlyStableCredit() {
         require(
-            _msgSender() == address(stableCredit),
-            "ReSourceCreditIssuer: can only be called by network"
+            _msgSender() == address(stableCredit), "CreditIssuer: can only be called by network"
         );
         _;
     }
 
     modifier notInActivePeriod(address member) {
-        require(!inActivePeriod(member), "RiskManager: member in active credit period");
+        require(!inActivePeriod(member), "CreditIssuer: member in active credit period");
         _;
     }
 }

@@ -11,11 +11,7 @@ contract StableCreditTest is ReSourceStableCreditTest {
         reservePool.reserveToken().transfer(alice, 1000 * (10e18));
         // initialize alice credit line
         creditIssuer.initializeCreditLine(
-            alice,
-            5 * 10e8,
-            10 * 10e8,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            0
+            alice, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
         vm.stopPrank();
     }

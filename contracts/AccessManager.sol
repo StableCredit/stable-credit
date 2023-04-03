@@ -141,7 +141,7 @@ contract AccessManager is AccessControlUpgradeable, OwnableUpgradeable, IAccessM
     }
 
     modifier notNull(address _address) {
-        require(_address != address(0), "invalid operator address");
+        require(_address != address(0), "AccessManager: invalid operator address");
         _;
     }
 }
