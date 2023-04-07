@@ -9,8 +9,6 @@ import "./interface/ICreditPool.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/IMutualCredit.sol";
 
-import "forge-std/Test.sol";
-
 contract CreditPool is ICreditPool, OwnableUpgradeable, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -132,6 +130,7 @@ contract CreditPool is ICreditPool, OwnableUpgradeable, PausableUpgradeable {
     function convertCreditsToTokensWithDiscount(uint256 creditAmount)
         public
         view
+        override
         returns (uint256)
     {
         uint256 tokenAmount =

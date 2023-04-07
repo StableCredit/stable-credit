@@ -5,4 +5,9 @@ interface ICreditPool {
     function withdrawCredits(uint256 creditAmount) external;
 
     function totalCreditsDeposited() external view returns (uint256);
+
+    function convertCreditsToTokensWithDiscount(uint256 creditAmount)
+        external
+        view
+        returns (uint256);
 }

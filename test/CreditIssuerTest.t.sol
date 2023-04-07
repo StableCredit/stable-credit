@@ -7,15 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
-        vm.startPrank(deployer);
+        changePrank(deployer);
         accessManager.grantMember(bob);
-        vm.stopPrank();
     }
 
     // test credit initialization called in setup
     function testInitializeCreditLine() public {
         address joe = address(4);
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.initializeCreditLine(
             joe, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
@@ -29,24 +28,22 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testHasRebalanced() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice send 10 stable credits to bob
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends 10 stable credits back to alice, rebalancing her credit line
         stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         assertTrue(creditIssuer.creditTermsOf(alice).rebalanced);
     }
 
     function testItdOf() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 15 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 15 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice's ITD is 0
         assertEq(creditIssuer.itdOf(alice), 0);
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends 5 credits to alice
         stableCredit.transfer(alice, 5 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice's ITD is 50% (10 debt / 5 income)
@@ -54,11 +51,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testHasValidITD() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 15 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 15 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends 5 credits to alice causing her ITD to be 50% (10 debt / 5 income)
         stableCredit.transfer(alice, 5 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice's ITD is valid (50% > 10%)
@@ -66,11 +62,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testHasInvalidITD() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 100 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends 5 credits to alice causing her ITD to be 5.2% (95 debt / 5 income)
         stableCredit.transfer(alice, 5 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice's ITD is invalid (5.2% < 10%)
@@ -78,14 +73,13 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testNeededIncome() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 10 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         uint256 aliceNeededIncome = creditIssuer.neededIncomeOf(alice);
         // assert needed income is .909091 credits
         assertEq(aliceNeededIncome, 909091);
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends needed income to alice causing her ITD to be 10%
         stableCredit.transfer(alice, aliceNeededIncome);
         // assert alice's ITD is valid
@@ -95,23 +89,20 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testExpirationResetsPeriodIncome() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 10 credits to bob
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends 10 credits to alice
         stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
-        vm.startPrank(deployer);
+        changePrank(deployer);
         // assert period income is 10 credits
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10000000);
         // assert period is not expired
         assertTrue(!creditIssuer.periodExpired(alice));
         // advance time to expiration + grace period length (30 days)
         vm.warp(block.timestamp + 120 days + 1);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // assert period income is still 10 credits before member validation
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10000000);
         // assert period is expired
@@ -123,21 +114,18 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testExpirationResetsRebalanced() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 10 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends 10 credits to alice causing her ITD to be 100% (0 debt / 10 income)
         stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
-        vm.startPrank(deployer);
+        changePrank(deployer);
         assertTrue(creditIssuer.creditTermsOf(alice).rebalanced);
         assertTrue(!creditIssuer.periodExpired(alice));
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // check that period is expired
         assertTrue(creditIssuer.periodExpired(alice));
         // synchronize alice's credit line
@@ -147,20 +135,18 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testExpirationWithSufficientDTI() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         uint256 aliceExpiration = creditIssuer.periodExpirationOf(alice);
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends needed income to alice causing her ITD to be valid
         stableCredit.transfer(alice, creditIssuer.neededIncomeOf(alice));
         assertTrue(creditIssuer.hasValidITD(alice));
 
-        vm.stopPrank();
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
-        vm.startPrank(alice);
+        changePrank(alice);
         // assert period is expired
         assertTrue(creditIssuer.periodExpired(alice));
         // synchronize alice's credit line
@@ -175,7 +161,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testGracePeriodFreeze() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice's ITD is invalid
@@ -194,22 +180,20 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testGracePeriodCompliance() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         uint256 aliceExpiration = creditIssuer.periodExpirationOf(alice);
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends needed income - 1 to alice causing her ITD to remain invalid
         stableCredit.transfer(alice, creditIssuer.neededIncomeOf(alice) - 1);
-        vm.stopPrank();
         // advance time to expiration
         vm.warp(block.timestamp + 90 days + 1);
         // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check that alice is frozen
         assertTrue(creditIssuer.isFrozen(alice));
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends needed income to alice causing her ITD to be valid
         stableCredit.transfer(alice, creditIssuer.neededIncomeOf(alice));
         // check alice's ITD is valid
@@ -228,7 +212,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testReserveCurrencyRepaymentIncome() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check that alice has no income
@@ -246,7 +230,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function reserveCurrencyRepaymentInGracePeriod() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to expiration
@@ -265,7 +249,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testDefault() public {
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to expiration
@@ -282,10 +266,9 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testExpirationWithPausedTerms() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.pauseTermsOf(address(alice));
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to expiration
@@ -304,21 +287,18 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testUnpauseBeforeExpiration() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.pauseTermsOf(address(alice));
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to before expiration
         vm.warp(block.timestamp + 89 days);
 
         // unpause alice's terms
-        vm.stopPrank();
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.unpauseTermsOf(alice);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
 
         // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
@@ -334,21 +314,18 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testUnpauseDuringGrace() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.pauseTermsOf(address(alice));
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to before expiration
         vm.warp(block.timestamp + 91 days);
 
         // unpause alice's terms
-        vm.stopPrank();
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.unpauseTermsOf(alice);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
 
         // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
@@ -357,24 +334,20 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testUnpauseAfterExpirationAndCompliant() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.pauseTermsOf(address(alice));
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to after expiration
         vm.warp(block.timestamp + 120 days + 1);
         // bob sends needed income to alice
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         stableCredit.transfer(alice, stableCredit.creditBalanceOf(alice));
         // unpause alice's terms
-        vm.stopPrank();
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.unpauseTermsOf(alice);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check alice has not defaulted
@@ -386,19 +359,16 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testUnpauseAfterExpirationAndIncompliant() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.pauseTermsOf(address(alice));
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // advance time to after expiration
         vm.warp(block.timestamp + 120 days + 1);
-        vm.stopPrank();
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.unpauseTermsOf(alice);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // synchronize alice's credit line
         creditIssuer.syncCreditLine(alice);
         // check alice has defaulted
@@ -411,34 +381,29 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     }
 
     function testTxValidationExpiredButNotUsingCredit() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.initializeCreditLine(
             bob, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // alice sends bob 10 credits
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
         // expire credit line
         vm.warp(creditIssuer.periodExpirationOf(bob) + creditIssuer.gracePeriodLength() + 1);
-        vm.startPrank(bob);
+        changePrank(bob);
         // bob sends alice 10 credits
         stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
     }
 
     function testSetPeriodLength() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.setPeriodLength(100 days);
-        vm.stopPrank();
         assertEq(creditIssuer.periodLength(), 100 days);
     }
 
     function testSetGracePeriod() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         creditIssuer.setGracePeriodLength(100 days);
-        vm.stopPrank();
         assertEq(creditIssuer.gracePeriodLength(), 100 days);
     }
 

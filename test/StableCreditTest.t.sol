@@ -9,14 +9,13 @@ contract StableCreditTest is ReSourceStableCreditTest {
     }
 
     function testCreateCreditLineWithBalance() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         // initialize alice credit line
         stableCredit.createCreditLine(
             bob,
             1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
             100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
         );
-        vm.stopPrank();
         // check that bob's balance is +100 credits
         assertEq(
             stableCredit.balanceOf(bob),
@@ -31,7 +30,7 @@ contract StableCreditTest is ReSourceStableCreditTest {
 
     function testUpdateCreditLimit() public {
         // update alice's credit line to 500
-        vm.startPrank(deployer);
+        changePrank(deployer);
         stableCredit.updateCreditLimit(
             alice, 500 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
         );
@@ -46,7 +45,7 @@ contract StableCreditTest is ReSourceStableCreditTest {
         // check bob does not have membership
         assertTrue(!accessManager.isMember(bob));
         // assign bob credit line
-        vm.startPrank(deployer);
+        changePrank(deployer);
         stableCredit.createCreditLine(
             bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
@@ -56,14 +55,12 @@ contract StableCreditTest is ReSourceStableCreditTest {
 
     function testOverpayOutstandingCreditBalance() public {
         // create credit balance for alice
-        vm.startPrank(alice);
+        changePrank(alice);
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
         // give tokens for repayment
-        vm.startPrank(deployer);
+        changePrank(deployer);
         reservePool.reserveToken().transfer(alice, 100 * 1 ether);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // approve reserve tokens
         reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // check over repayment reverts
@@ -74,14 +71,12 @@ contract StableCreditTest is ReSourceStableCreditTest {
 
     function testReserveCurrencyToPeripheralReserve() public {
         // create credit balance for alice
-        vm.startPrank(alice);
+        changePrank(alice);
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
         // give tokens for repayment
-        vm.startPrank(deployer);
+        changePrank(deployer);
         reservePool.reserveToken().transfer(alice, 100 * 1 ether);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // approve reserve tokens
         reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
@@ -93,14 +88,12 @@ contract StableCreditTest is ReSourceStableCreditTest {
 
     function testReserveCurrencyPaymentCreditBalance() public {
         // create credit balance for alice
-        vm.startPrank(alice);
+        changePrank(alice);
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
         // give tokens for repayment
-        vm.startPrank(deployer);
+        changePrank(deployer);
         reservePool.reserveToken().transfer(alice, 100 * 1 ether);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // approve reserve tokens
         reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
@@ -112,14 +105,12 @@ contract StableCreditTest is ReSourceStableCreditTest {
 
     function testReserveCurrencyPaymentNetworkDebt() public {
         // create credit balance for alice
-        vm.startPrank(alice);
+        changePrank(alice);
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
         // give tokens for repayment
-        vm.startPrank(deployer);
+        changePrank(deployer);
         reservePool.reserveToken().transfer(alice, 100 * 1 ether);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // approve reserve tokens
         reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
@@ -134,15 +125,13 @@ contract StableCreditTest is ReSourceStableCreditTest {
 
     function testBurnNetworkDebt() public {
         // create credit balance for alice
-        vm.startPrank(alice);
+        changePrank(alice);
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        vm.stopPrank();
         // give tokens for repayment
-        vm.startPrank(deployer);
+        changePrank(deployer);
         accessManager.grantMember(bob);
         reservePool.reserveToken().transfer(alice, 100 * 1 ether);
-        vm.stopPrank();
-        vm.startPrank(alice);
+        changePrank(alice);
         // approve reserve tokens
         reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
@@ -153,41 +142,36 @@ contract StableCreditTest is ReSourceStableCreditTest {
             stableCredit.networkDebt(),
             100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
         );
-        vm.stopPrank();
-        vm.startPrank(bob);
+        changePrank(bob);
         // burn network debt
         stableCredit.burnNetworkDebt(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         assertEq(stableCredit.networkDebt(), 0);
     }
 
     function testSetAccessManager() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         stableCredit.setAccessManager(address(10));
-        vm.stopPrank();
         // verify access manager is set
         assertEq(address(stableCredit.access()), address(10));
     }
 
     function testSetReservePool() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         stableCredit.setReservePool(address(10));
-        vm.stopPrank();
         // verify reserve pool is set
         assertEq(address(stableCredit.reservePool()), address(10));
     }
 
     function testSetFeeManager() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         stableCredit.setFeeManager(address(10));
-        vm.stopPrank();
         // verify fee manager is set
         assertEq(address(stableCredit.feeManager()), address(10));
     }
 
     function testSetCreditIssuer() public {
-        vm.startPrank(deployer);
+        changePrank(deployer);
         stableCredit.setCreditIssuer(address(10));
-        vm.stopPrank();
         // verify credit issuer is set
         assertEq(address(stableCredit.creditIssuer()), address(10));
     }

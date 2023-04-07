@@ -34,7 +34,7 @@ contract ReSourceStableCreditTest is Test {
         vm.deal(alice, 100 ether);
         vm.deal(bob, 100 ether);
         deployer = address(1);
-        vm.startPrank(deployer);
+        changePrank(deployer);
         // deploy reserve token
         reserveToken = new MockERC20(1000000e18, "Reserve Token", "REZ");
         // deploy riskOracle

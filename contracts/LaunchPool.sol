@@ -33,7 +33,9 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    function launch() public onlyOwner notLaunched canLaunch {
+    function launch() public onlyOwner notLaunched _canLaunch {
+        // approve credit pool to transfer reserve tokens
+        stableCredit.reservePool().reserveToken().approve(address(creditPool), totalDeposited);
         // withdraw credits from credit pool, depositing collected reserve tokens
         creditPool.withdrawCredits(creditPool.totalCreditsDeposited());
         launched = true;
@@ -45,7 +47,7 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
         // deposit must not exceed credit pool balance
         require(
             totalDeposited + amount
-                <= stableCredit.convertCreditsToReserveToken(creditPool.totalCreditsDeposited()),
+                <= creditPool.convertCreditsToTokensWithDiscount(creditPool.totalCreditsDeposited()),
             "LaunchPool: deposit exceeds credit pool balance"
         );
         // update caller's deposit
@@ -63,6 +65,8 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
         );
         // withdraw amount cannot exceed deposit
         require(amount <= deposits[_msgSender()], "LaunchPool: withdraw amount exceeds deposit");
+        // update caller's deposit
+        deposits[_msgSender()] -= amount;
         // send caller reserve token amount
         stableCredit.reservePool().reserveToken().transfer(_msgSender(), amount);
     }
@@ -73,8 +77,7 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
         IERC20Upgradeable _stableCredit = IERC20Upgradeable(address(stableCredit));
         // calculate amount of credits to withdraw
         // creditsToWithdraw = deposit / totalDeposited * launch credits
-        uint256 creditsToWithdraw = deposits[_msgSender()] * 1 ether / totalDeposited
-            * _stableCredit.balanceOf(address(this)) / 1 ether;
+        uint256 creditsToWithdraw = withdrawableCredits();
         // transfer credits
         _stableCredit.transfer(_msgSender(), creditsToWithdraw);
         // reduce total deposited
@@ -99,6 +102,27 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
 
     function unpauseDeposits() external onlyOwner whenPaused {
         _unpause();
+    }
+
+    /* ========== VIEW FUNCTIONS ========== */
+
+    function canLaunch() public view returns (bool) {
+        uint256 creditPoolBalance = creditPool.totalCreditsDeposited();
+        bool sufficientDeposits =
+            totalDeposited >= creditPool.convertCreditsToTokensWithDiscount(creditPoolBalance);
+        bool hasExpired = block.timestamp < launchExpiration;
+        return sufficientDeposits && hasExpired;
+    }
+
+    function withdrawableCredits() public view returns (uint256) {
+        IERC20Upgradeable _stableCredit = IERC20Upgradeable(address(stableCredit));
+        return deposits[_msgSender()] * 1 ether / totalDeposited
+            * _stableCredit.balanceOf(address(this)) / 1 ether;
+    }
+
+    function depositsToLaunch() public view returns (uint256) {
+        return creditPool.convertCreditsToTokensWithDiscount(creditPool.totalCreditsDeposited())
+            - totalDeposited;
     }
 
     /* ========== MODIFIERS ========== */
@@ -129,13 +153,8 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
         _;
     }
 
-    modifier canLaunch() {
-        uint256 creditPoolBalance = creditPool.totalCreditsDeposited();
-        require(
-            totalDeposited >= stableCredit.convertCreditsToReserveToken(creditPoolBalance),
-            "LaunchPool: Not enough tokens deposited to launch"
-        );
-        require(block.timestamp < launchExpiration, "LaunchPool: launch period has expired");
+    modifier _canLaunch() {
+        require(canLaunch(), "LaunchPool: Unable to launch network");
         _;
     }
 }
