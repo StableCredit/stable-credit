@@ -6,14 +6,6 @@ import "./ReSourceStableCreditTest.t.sol";
 contract StableCreditTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
-        vm.startPrank(deployer);
-        // send alice 1000 reserve tokens
-        reservePool.reserveToken().transfer(alice, 1000 * (10e18));
-        // initialize alice credit line
-        creditIssuer.initializeCreditLine(
-            alice, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
-        );
-        vm.stopPrank();
     }
 
     function testCreateCreditLineWithBalance() public {
@@ -69,11 +61,11 @@ contract StableCreditTest is ReSourceStableCreditTest {
         vm.stopPrank();
         // give tokens for repayment
         vm.startPrank(deployer);
-        reservePool.reserveToken().transfer(alice, 100 * 1e18);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
         vm.stopPrank();
         vm.startPrank(alice);
         // approve reserve tokens
-        reservePool.reserveToken().approve(address(stableCredit), 100 * 1e18);
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // check over repayment reverts
         uint256 decimals = IERC20Metadata(address(stableCredit)).decimals();
         vm.expectRevert(bytes("StableCredit: invalid amount"));
@@ -87,16 +79,16 @@ contract StableCreditTest is ReSourceStableCreditTest {
         vm.stopPrank();
         // give tokens for repayment
         vm.startPrank(deployer);
-        reservePool.reserveToken().transfer(alice, 100 * 1e18);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
         vm.stopPrank();
         vm.startPrank(alice);
         // approve reserve tokens
-        reservePool.reserveToken().approve(address(stableCredit), 100 * 1e18);
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
         stableCredit.repayCreditBalance(
             alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
         );
-        assertEq(reservePool.peripheralBalance(), 100 * 1e18);
+        assertEq(reservePool.peripheralBalance(), 100 * 1 ether);
     }
 
     function testReserveCurrencyPaymentCreditBalance() public {
@@ -106,11 +98,11 @@ contract StableCreditTest is ReSourceStableCreditTest {
         vm.stopPrank();
         // give tokens for repayment
         vm.startPrank(deployer);
-        reservePool.reserveToken().transfer(alice, 100 * 1e18);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
         vm.stopPrank();
         vm.startPrank(alice);
         // approve reserve tokens
-        reservePool.reserveToken().approve(address(stableCredit), 100 * 1e18);
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
         stableCredit.repayCreditBalance(
             alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
@@ -125,11 +117,11 @@ contract StableCreditTest is ReSourceStableCreditTest {
         vm.stopPrank();
         // give tokens for repayment
         vm.startPrank(deployer);
-        reservePool.reserveToken().transfer(alice, 100 * 1e18);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
         vm.stopPrank();
         vm.startPrank(alice);
         // approve reserve tokens
-        reservePool.reserveToken().approve(address(stableCredit), 100 * 1e18);
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
         stableCredit.repayCreditBalance(
             alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
@@ -148,11 +140,11 @@ contract StableCreditTest is ReSourceStableCreditTest {
         // give tokens for repayment
         vm.startPrank(deployer);
         accessManager.grantMember(bob);
-        reservePool.reserveToken().transfer(alice, 100 * 1e18);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
         vm.stopPrank();
         vm.startPrank(alice);
         // approve reserve tokens
-        reservePool.reserveToken().approve(address(stableCredit), 100 * 1e18);
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // repay full credit balance
         stableCredit.repayCreditBalance(
             alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))

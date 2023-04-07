@@ -1,0 +1,297 @@
+// SPDX-License-Identifier: Unlicense
+pragma solidity ^0.8.0;
+
+import "./ReSourceStableCreditTest.t.sol";
+import "../contracts/CreditPool.sol";
+
+contract CreditPoolTest is ReSourceStableCreditTest {
+    CreditPool creditPool;
+    address carol;
+
+    function setUp() public {
+        carol = address(4);
+        setUpReSourceTest();
+        vm.startPrank(deployer);
+        reserveToken.transfer(bob, 100 ether);
+        reserveToken.transfer(carol, 100 ether);
+        // deploy credit pool
+        creditPool = new CreditPool();
+        creditPool.initialize(address(stableCredit));
+        // set credit pool limit to max
+        stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
+        // exempt credit pool from fees
+        feeManager.exemptAddress(address(creditPool));
+        accessManager.grantMember(bob);
+        vm.stopPrank();
+        vm.startPrank(alice);
+        stableCredit.approve(address(creditPool), type(uint256).max);
+        vm.stopPrank();
+    }
+
+    function testDepositCredits() public {
+        vm.startPrank(alice);
+        // deposit 100 credits into credit pool
+        creditPool.depositCredits(100e6);
+        (, uint256 depositAmount) = creditPool.creditDeposits(0);
+        assertEq(depositAmount, 100e6);
+    }
+
+    function testDepositCreditsWithPoolDebt() public {
+        vm.startPrank(carol);
+        reserveToken.approve(address(creditPool), 100 ether);
+        // carol withdraw 100 credits from credit pool creating a 100 credit pool debt
+        creditPool.withdrawCredits(100e6);
+        vm.stopPrank();
+        // check pool debt
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 100e6);
+        // check pool reserve token balance
+        assertEq(reserveToken.balanceOf(address(creditPool)), 100 ether);
+        vm.startPrank(alice);
+        // check alice reserve token balance
+        assertEq(reserveToken.balanceOf(alice), 1000 ether);
+        stableCredit.approve(address(creditPool), 100 ether);
+        // deposit 100 credits using alice's debt into credit pool
+        creditPool.depositCredits(100e6);
+        // check alice reserve token balance has increased by 100
+        assertEq(reserveToken.balanceOf(alice), 1100 ether);
+    }
+
+    function testDepositPositiveBalanceCreditsWithNoDebt() public {
+        vm.startPrank(alice);
+        // send bob 100 credits
+        stableCredit.transfer(bob, 100e6);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        // check bob reserve token balance
+        assertEq(reserveToken.balanceOf(bob), 100 ether);
+        stableCredit.approve(address(creditPool), 100 ether);
+        // bob deposits 100 credits into credit pool
+        vm.expectRevert(
+            bytes("CreditPool: can only deposit from positive balance to service pool debt")
+        );
+        creditPool.depositCredits(100e6);
+    }
+
+    function testDepositCreditsWithPositiveBalance() public {
+        vm.startPrank(carol);
+        reserveToken.approve(address(creditPool), 100 ether);
+        // carol withdraw 100 credits from credit pool creating a 100 credit pool debt
+        creditPool.withdrawCredits(100e6);
+        vm.stopPrank();
+        vm.startPrank(alice);
+        // send bob 100 credits
+        stableCredit.transfer(bob, 100e6);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        // check bob reserve token balance
+        assertEq(reserveToken.balanceOf(bob), 100 ether);
+        stableCredit.approve(address(creditPool), 100 ether);
+        // bob deposits 100 credits into credit pool
+        creditPool.depositCredits(100e6);
+        assertEq(reserveToken.balanceOf(bob), 200 ether);
+    }
+
+    function testDepositCreditsWithPartialPositiveBalance() public {
+        vm.startPrank(carol);
+        reserveToken.approve(address(creditPool), 100 ether);
+        // withdraw 50 credits from pool creating a 50 credit pool debt
+        creditPool.withdrawCredits(50e6);
+        vm.stopPrank();
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 50e6);
+        assertEq(reserveToken.balanceOf(address(creditPool)), 50 ether);
+        vm.startPrank(alice);
+        // alice sends bob 25 credits
+        stableCredit.transfer(bob, 25e6);
+        vm.stopPrank();
+        vm.startPrank(deployer);
+        // assign bob credit line
+        stableCredit.createCreditLine(bob, 100e6, 0);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        assertEq(reserveToken.balanceOf(bob), 100 ether);
+        stableCredit.approve(address(creditPool), 100 ether);
+        // deposit 50 credits into credit pool (servicing 25 credits and adding 25 credits to queue)
+        creditPool.depositCredits(50e6);
+        assertEq(reserveToken.balanceOf(bob), 150 ether);
+    }
+
+    function testDepositCreditsWithPartialPoolDebt() public {
+        vm.startPrank(carol);
+        reserveToken.approve(address(creditPool), 100 ether);
+        // withdraw 50 credits from pool creating a 50 credit pool debt
+        creditPool.withdrawCredits(25e6);
+        vm.stopPrank();
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 25e6);
+        assertEq(reserveToken.balanceOf(address(creditPool)), 25 ether);
+        vm.startPrank(alice);
+        // alice sends bob 25 credits
+        stableCredit.transfer(bob, 25e6);
+        vm.stopPrank();
+        vm.startPrank(deployer);
+        // assign bob credit line
+        stableCredit.createCreditLine(bob, 100e6, 0);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        assertEq(reserveToken.balanceOf(bob), 100 ether);
+        stableCredit.approve(address(creditPool), 100 ether);
+        // deposit 50 credits into credit pool (servicing 25 credits and adding 25 credits to queue)
+        creditPool.depositCredits(50e6);
+        assertEq(reserveToken.balanceOf(bob), 125 ether);
+        (, uint256 depositAmount) = creditPool.creditDeposits(0);
+        assertEq(depositAmount, 25e6);
+    }
+
+    function testWithdrawCreditDeposit() public {
+        vm.startPrank(alice);
+        // deposit 100 credits into credit pool
+        creditPool.depositCredits(100e6);
+        (, uint256 depositAmount) = creditPool.creditDeposits(0);
+        assertEq(depositAmount, 100e6);
+        assertEq(stableCredit.creditBalanceOf(alice), 100e6);
+        // withdraw newly created credit deposit
+        creditPool.withdrawCreditDeposit(0);
+        assertEq(stableCredit.creditBalanceOf(alice), 0);
+    }
+
+    function testWithdrawCreditsWithDeposits() public {
+        vm.startPrank(alice);
+        // deposit 100 credits into credit pool
+        creditPool.depositCredits(100e6);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        reserveToken.approve(address(creditPool), 100 ether);
+        creditPool.withdrawCredits(100e6);
+        assertEq(stableCredit.balanceOf(bob), 100e6);
+        assertEq(creditPool.totalCreditsDeposited(), 0);
+    }
+
+    function testWithdrawCreditsWithNoDeposits() public {
+        vm.startPrank(alice);
+        reserveToken.approve(address(creditPool), 100 ether);
+        creditPool.withdrawCredits(100e6);
+        assertEq(stableCredit.balanceOf(alice), 100e6);
+        assertEq(creditPool.totalCreditsDeposited(), 0);
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 100e6);
+    }
+
+    function testServiceDeposits() public {
+        vm.startPrank(alice);
+        // deposit 100 credits into credit pool
+        creditPool.depositCredits(100e6);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        // withdraw 100 credits from credit pool
+        reserveToken.approve(address(creditPool), 100 ether);
+        creditPool.withdrawCredits(100e6);
+        vm.stopPrank();
+        // service 1 deposit
+        creditPool.serviceDeposits(1);
+        assertEq(creditPool.totalCreditsDeposited(), 0);
+        assertEq(reserveToken.balanceOf(address(creditPool)), 100 ether);
+        assertEq(creditPool.balance(alice), 100 ether);
+    }
+
+    function testPartiallyServiceDeposits() public {
+        // create 10 deposits
+        for (uint256 i = 1; i <= 10; i++) {
+            address mockMember = address(uint160(20 + i));
+            vm.startPrank(deployer);
+            // assign credit line
+            stableCredit.createCreditLine(mockMember, 100e6, 0);
+            // send member reserve tokens
+            reserveToken.transfer(mockMember, 100 ether);
+            vm.stopPrank();
+            vm.startPrank(mockMember);
+            // approve credit pool to spend member reserve tokens
+            stableCredit.approve(address(creditPool), 100 ether);
+            // deposit 100 credits into credit pool
+            creditPool.depositCredits(i * 5e6);
+            vm.stopPrank();
+        }
+        assertEq(creditPool.totalCreditsDeposited(), 275e6);
+        vm.stopPrank();
+
+        //======== service 5 deposits =========//
+
+        vm.startPrank(bob);
+        // withdraw 100 credits from credit pool
+        reserveToken.approve(address(creditPool), 100 ether);
+        creditPool.withdrawCredits(100e6);
+        vm.stopPrank();
+        // service all serviceable deposits
+        creditPool.serviceDeposits(100);
+        // check total credits deposited
+        assertEq(creditPool.totalCreditsDeposited(), 175e6);
+        // check total reserve tokens in credit pool
+        assertEq(reserveToken.balanceOf(address(creditPool)), 100 ether);
+        // check 5 deposits are still in queue
+        assertEq(creditPool.totalDeposits(), 5);
+        // check balance of first 5 members serviced
+        for (uint256 i = 1; i <= 5; i++) {
+            address mockMember = address(uint160(20 + i));
+            assertEq(creditPool.balance(mockMember), i * 5 * 1 ether);
+        }
+    }
+
+    function testWithdrawBalance() public {
+        vm.startPrank(alice);
+        // deposit 100 credits into credit pool
+        creditPool.depositCredits(100e6);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        // withdraw 100 credits from credit pool
+        reserveToken.approve(address(creditPool), 100 ether);
+        creditPool.withdrawCredits(100e6);
+        vm.stopPrank();
+        // service 1 deposit
+        creditPool.serviceDeposits(1);
+        vm.stopPrank();
+        vm.startPrank(alice);
+        // withdraw balance
+        creditPool.withdrawBalance();
+        assertEq(reserveToken.balanceOf(alice), 1100 ether);
+    }
+
+    function testPauseWithdrawals() public {
+        vm.startPrank(deployer);
+        // pause withdrawals
+        creditPool.pauseWithdrawals();
+        vm.stopPrank();
+        // check withdrawals are paused
+        vm.startPrank(alice);
+        reserveToken.approve(address(creditPool), 100 ether);
+        vm.expectRevert(bytes("Pausable: paused"));
+        creditPool.withdrawCredits(100e6);
+        vm.stopPrank();
+        vm.startPrank(deployer);
+        // unpause withdrawals
+        creditPool.unPauseWithdrawals();
+        // check withdrawals are unpaused
+        vm.stopPrank();
+        vm.startPrank(alice);
+        creditPool.withdrawCredits(100e6);
+    }
+
+    function testSetDiscountRate() public {
+        vm.startPrank(deployer);
+        // set discount rate to 5%
+        creditPool.setDiscountRate(5e16);
+        assertEq(creditPool.discountRate(), 5e16);
+    }
+
+    function testWithdrawCreditsWithDiscount() public {
+        vm.startPrank(deployer);
+        // set discount rate
+        creditPool.setDiscountRate(10e16);
+        vm.stopPrank();
+        vm.startPrank(alice);
+        reserveToken.approve(address(creditPool), 100 ether);
+        creditPool.withdrawCredits(100e6);
+        assertEq(stableCredit.balanceOf(alice), 100e6);
+        assertEq(reserveToken.balanceOf(address(creditPool)), 90 ether);
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 100e6);
+        stableCredit.approve(address(creditPool), 100e6);
+        creditPool.depositCredits(100e6);
+        assertEq(reserveToken.balanceOf(alice), 1000 ether);
+    }
+}

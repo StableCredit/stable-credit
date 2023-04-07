@@ -9,12 +9,6 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         vm.startPrank(deployer);
         // unpause fees
         feeManager.unpauseFees();
-        // send alice 1000 reserve tokens
-        reservePool.reserveToken().transfer(alice, 1000 * (10e18));
-        // initialize alice credit line with 5% member fee and 1000 credit limit
-        creditIssuer.initializeCreditLine(
-            alice, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
-        );
         vm.stopPrank();
     }
 
@@ -31,28 +25,28 @@ contract FeeManagerTest is ReSourceStableCreditTest {
     function testFeeCollection() public {
         vm.startPrank(alice);
         reservePool.reserveToken().approve(address(feeManager), 100e18);
-        assertEq(reservePool.reserveToken().balanceOf(alice), 10000e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 1000e18);
         // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(reservePool.reserveToken().balanceOf(alice), 9990e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 990e18);
     }
 
     function testFeeDistributionToReservePool() public {
         vm.startPrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
         // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         assertEq(reservePool.reserveBalance(), 0);
         // distribute fees from fee manager to reserve pool
         feeManager.distributeFees();
         // check network's reserve size
-        assertEq(reservePool.reserveBalance(), 10 * 1e18);
+        assertEq(reservePool.reserveBalance(), 10 * 1 ether);
     }
 
     function testPauseFees() public {
         vm.startPrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
-        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
         vm.stopPrank();
         vm.startPrank(deployer);
         // pause fees
@@ -62,7 +56,7 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         // alice transfer 100 stable credits to bob
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // check no fees charged
-        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
     }
 
     function testCalculateFeesWhilePaused() public {
@@ -85,11 +79,11 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         feeManager.pauseFees();
         vm.stopPrank();
         vm.startPrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100 * 1e18);
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
         // alice transfers 10 credits to bob
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // verify no fees charged
-        assertEq(reservePool.reserveToken().balanceOf(alice), 10000 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
         vm.stopPrank();
         vm.startPrank(deployer);
         // unpause fees
@@ -98,6 +92,11 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         vm.startPrank(alice);
         // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        assertEq(reservePool.reserveToken().balanceOf(alice), 9990 * 1e18);
+        assertEq(reservePool.reserveToken().balanceOf(alice), 990 * 1 ether);
+    }
+
+    function testCalculateBaseFee() public {
+        // base fee is 5%
+        assertEq(feeManager.calculateFee(address(0), 100e6), 5 ether);
     }
 }

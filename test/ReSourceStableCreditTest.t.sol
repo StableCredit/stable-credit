@@ -10,7 +10,6 @@ import "../contracts/StableCredit/StableCredit.sol";
 import "../contracts/AccessManager.sol";
 import "../contracts/FeeManager/ReSourceFeeManager.sol";
 import "../contracts/CreditPool.sol";
-import "../contracts/Ambassador.sol";
 import "./MockERC20.sol";
 
 contract ReSourceStableCreditTest is Test {
@@ -28,8 +27,6 @@ contract ReSourceStableCreditTest is Test {
     AccessManager public accessManager;
     ReSourceFeeManager public feeManager;
     ReSourceCreditIssuer public creditIssuer;
-    Ambassador public ambassador;
-    CreditPool public creditPool;
 
     function setUpReSourceTest() public {
         alice = address(2);
@@ -39,7 +36,7 @@ contract ReSourceStableCreditTest is Test {
         deployer = address(1);
         vm.startPrank(deployer);
         // deploy reserve token
-        reserveToken = new MockERC20(1000000 * (10e18), "Reserve Token", "REZ");
+        reserveToken = new MockERC20(1000000e18, "Reserve Token", "REZ");
         // deploy riskOracle
         riskOracle = new RiskOracle();
         riskOracle.initialize(deployer);
@@ -54,12 +51,6 @@ contract ReSourceStableCreditTest is Test {
         reservePool.initialize(
             address(stableCredit), address(reserveToken), deployer, address(riskOracle)
         );
-        // deploy launch pool
-        creditPool = new CreditPool();
-        creditPool.initialize(address(stableCredit));
-        // deploy ambassador
-        ambassador = new Ambassador();
-        ambassador.initialize(address(stableCredit), 30 * 10e8, 50 * 10e8, 2 * 10e6);
         //deploy feeManager
         feeManager = new ReSourceFeeManager();
         feeManager.initialize(address(stableCredit));
@@ -77,6 +68,12 @@ contract ReSourceStableCreditTest is Test {
         creditIssuer.setPeriodLength(90 days); // set period length to 90 days
         creditIssuer.setGracePeriodLength(30 days); // set gracePeriod to 30 days
         riskOracle.setBaseFeeRate(address(reservePool), 5e16); // set base fee rate to 5%
+        // send alice 1000 reserve tokens
+        reservePool.reserveToken().transfer(alice, 1000 ether);
+        // initialize alice credit line
+        creditIssuer.initializeCreditLine(
+            alice, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
+        );
         vm.stopPrank();
     }
 

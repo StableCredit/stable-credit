@@ -37,30 +37,8 @@ contract ReSourceFeeManager is FeeManager {
             .creditTermsOf(member).feeRate;
 
         uint256 memberFee =
-            stableCredit.convertCreditsToReserveToken((memberFeeRate * amount) / 1e18);
+            stableCredit.convertCreditsToReserveToken((memberFeeRate * amount) / 1 ether);
 
         return super.calculateFee(member, amount) + memberFee;
-    }
-
-    /// @notice Called by a StableCredit instance to collect fees from the credit sender
-    /// @dev the sender must approve the feeManager to spend reserve tokens on their behalf before
-    /// fees can be collected.
-    /// @param sender stable credit sender address
-    /// @param receiver stable credit receiver address
-    /// @param amount stable credit amount
-    function collectFees(address sender, address receiver, uint256 amount)
-        public
-        override
-        onlyStableCredit
-    {
-        if (paused()) {
-            return;
-        }
-
-        // calculate member fee
-        uint256 totalFee = calculateFee(sender, amount);
-        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), totalFee);
-        collectedFees += totalFee;
-        emit FeesCollected(sender, totalFee);
     }
 }

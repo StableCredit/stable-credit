@@ -49,14 +49,14 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
 
     /// @notice fetches a given member's Income to Debt ratio within the current credit period.
     /// @param member address of member to fetch ITD for.
-    /// @return ITD ratio within the current credit period, where 1e18 == 100%.
+    /// @return ITD ratio within the current credit period, where 1 ether == 100%.
     function itdOf(address member) public view returns (int256) {
         // if no income, return 0
         if (creditTerms[member].periodIncome == 0) return 0;
         // if no debt, return indeterminate
         if (IMutualCredit(address(stableCredit)).creditBalanceOf(member) == 0) return -1;
         // income / credit balance (in Parts Per Million)
-        return int256(creditTerms[member].periodIncome * 1e18)
+        return int256(creditTerms[member].periodIncome * 1 ether)
             / int256(IMutualCredit(address(stableCredit)).creditBalanceOf(member));
     }
 
@@ -70,9 +70,9 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         return (
             (
                 creditTerms[member].minITD
-                    * IMutualCredit(address(stableCredit)).creditBalanceOf(member) / 1e18
+                    * IMutualCredit(address(stableCredit)).creditBalanceOf(member) / 1 ether
             ) - creditTerms[member].periodIncome
-        ) * 1e18 / ((creditTerms[member].minITD + 1e18)) + 1;
+        ) * 1 ether / ((creditTerms[member].minITD + 1 ether)) + 1;
     }
 
     /// @notice fetches whether a given member's credit line is frozen due to non compliance with

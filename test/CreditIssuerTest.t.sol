@@ -8,13 +8,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
         vm.startPrank(deployer);
-        creditIssuer.initializeCreditLine(
-            alice, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
-        );
         accessManager.grantMember(bob);
-        vm.stopPrank();
-        vm.startPrank(deployer);
-        reservePool.reserveToken().transfer(alice, 1000 * (10e18));
         vm.stopPrank();
     }
 

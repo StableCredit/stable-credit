@@ -8,6 +8,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../interface/IStableCredit.sol";
 import "../interface/IFeeManager.sol";
 
+import "forge-std/Test.sol";
+
 /// @title FeeManager
 /// @author ReSource
 /// @notice Collects fees from network members and distributes collected fees to the
@@ -18,6 +20,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
     uint256 public collectedFees;
+    mapping(address => bool) public exemptions;
 
     /* ========== INITIALIZER ========== */
 
@@ -53,7 +56,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         override
         onlyStableCredit
     {
-        if (paused()) {
+        if (paused() || exemptions[sender] || exemptions[receiver]) {
             return;
         }
         uint256 totalFee = calculateFee(sender, amount);
@@ -78,18 +81,22 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         // return base fee rate * amount
         return stableCredit.convertCreditsToReserveToken(
             stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()))
-                * amount / 1e18
+                * amount / 1 ether
         );
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function pauseFees() public onlyOwner {
+    function pauseFees() external onlyOwner {
         _pause();
     }
 
-    function unpauseFees() public onlyOwner {
+    function unpauseFees() external onlyOwner {
         _unpause();
+    }
+
+    function exemptAddress(address exemption) external onlyOwner {
+        exemptions[exemption] = true;
     }
 
     /* ========== MODIFIERS ========== */
