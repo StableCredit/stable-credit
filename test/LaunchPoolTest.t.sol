@@ -24,9 +24,6 @@ contract LaunchPoolTest is ReSourceStableCreditTest {
         launchPool.initialize(address(stableCredit), address(creditPool), 30 days);
         // set credit pool limit to max
         stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
-        // exempt credit pool from fees
-        feeManager.exemptAddress(address(creditPool));
-        feeManager.exemptAddress(address(launchPool));
         accessManager.grantMember(bob);
         accessManager.grantOperator(address(launchPool));
         accessManager.grantOperator(address(creditPool));

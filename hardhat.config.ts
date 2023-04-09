@@ -54,8 +54,9 @@ const config: HardhatUserConfig = {
       timeout: 100000000,
     },
     celo: {
-      url: "http://127.0.0.1:1248",
+      url: "https://forno.celo.org",
       chainId: 42220,
+      accounts: { mnemonic: mnemonic() },
       saveDeployments: true,
       tags: ["production", "mainnet"],
       timeout: 100000000,

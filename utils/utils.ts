@@ -88,3 +88,19 @@ export const formatStableCredits = (value: ethers.BigNumber) => {
 export const parseStableCredits = (value: string) => {
   return ethers.utils.parseUnits(value, "mwei")
 }
+
+export const getConfig = () => {
+  let adminOwner = process.env.ADMIN_OWNER_ADDRESS
+  let reserveTokenAddress = process.env.RESERVE_TOKEN_ADDRESS
+  let riskOracleAddress = process.env.RISK_ORACLE_ADDRESS
+  let name = process.env.STABLE_CREDIT_NAME
+  let symbol = process.env.STABLE_CREDIT_SYMBOL
+
+  if (!reserveTokenAddress) throw new Error("Reserve token address not provided")
+  if (!riskOracleAddress) throw new Error("Risk oracle address not provided")
+  if (!name) throw new Error("Name not provided")
+  if (!symbol) throw new Error("Symbol not provided")
+  if (!adminOwner) throw new Error("Admin owner not provided")
+
+  return {adminOwner, reserveTokenAddress, riskOracleAddress, name, symbol}
+}

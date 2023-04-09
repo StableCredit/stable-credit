@@ -8,8 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../interface/IStableCredit.sol";
 import "../interface/IFeeManager.sol";
 
-import "forge-std/Test.sol";
-
 /// @title FeeManager
 /// @author ReSource
 /// @notice Collects fees from network members and distributes collected fees to the
@@ -20,7 +18,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
     uint256 public collectedFees;
-    mapping(address => bool) public exemptions;
 
     /* ========== INITIALIZER ========== */
 
@@ -56,7 +53,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
         override
         onlyStableCredit
     {
-        if (paused() || exemptions[sender] || exemptions[receiver]) {
+        if (
+            paused() || stableCredit.access().isOperator(sender)
+                || stableCredit.access().isOperator(receiver)
+        ) {
             return;
         }
         uint256 totalFee = calculateFee(sender, amount);
@@ -93,10 +93,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     function unpauseFees() external onlyOwner {
         _unpause();
-    }
-
-    function exemptAddress(address exemption) external onlyOwner {
-        exemptions[exemption] = true;
     }
 
     /* ========== MODIFIERS ========== */

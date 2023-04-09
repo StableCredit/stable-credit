@@ -19,8 +19,6 @@ contract CreditPoolTest is ReSourceStableCreditTest {
         creditPool.initialize(address(stableCredit));
         // set credit pool limit to max
         stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
-        // exempt credit pool from fees
-        feeManager.exemptAddress(address(creditPool));
         accessManager.grantMember(bob);
         changePrank(alice);
         stableCredit.approve(address(creditPool), type(uint256).max);

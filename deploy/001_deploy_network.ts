@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { DeployFunction } from "hardhat-deploy/types"
-import { ethers } from "hardhat"
+import { ethers, upgrades } from "hardhat"
 import {
   AccessManager__factory,
   CreditIssuer__factory,
@@ -8,18 +8,13 @@ import {
   RiskOracle__factory,
   StableCredit__factory,
 } from "../types"
-import { deployProxyAndSaveAs } from "../utils/utils"
+import { deployProxyAndSaveAs, getConfig } from "../utils/utils"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
-  let reserveTokenAddress = process.env.RESERVE_TOKEN_ADDRESS
-  let riskOracleAddress = process.env.RISK_ORACLE_ADDRESS
-  let name = process.env.STABLE_CREDIT_NAME
-  let symbol = process.env.STABLE_CREDIT_SYMBOL
 
-  if (!reserveTokenAddress) throw new Error("Reserve token address not provided")
-  if (!riskOracleAddress) throw new Error("Risk oracle address not provided")
-  if (!name) throw new Error("Name not provided")
-  if (!symbol) throw new Error("Symbol not provided")
+  let {symbol, name, reserveTokenAddress, adminOwner, riskOracleAddress} = getConfig();
+
+  // ============ Deploy Contracts ============ //
 
   let stableCreditAddress = (await hardhat.deployments.getOrNull(symbol + "_StableCredit"))?.address
   // deploy stable credit
@@ -39,10 +34,9 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // deploy access manager
   let accessManagerAddress = (await hardhat.deployments.getOrNull(symbol + "_AccessManager"))
     ?.address
-  // deploy access manager
   if (!accessManagerAddress) {
     const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
-    const accessManagerArgs = [[(await hardhat.ethers.getSigners())[0].address]]
+    const accessManagerArgs = [[(await hardhat.ethers.getSigners())[0].address, adminOwner]]
     accessManagerAddress = await deployProxyAndSaveAs(
       "AccessManager",
       symbol + "_AccessManager",
@@ -54,7 +48,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   // deploy reservePool
   let reservePoolAddress = (await hardhat.deployments.getOrNull(symbol + "_ReservePool"))?.address
-  // deploy reservePool
   if (!reservePoolAddress) {
     const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
     const reservePoolArgs = [
@@ -74,7 +67,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   // deploy feeManager
   let feeManagerAddress = (await hardhat.deployments.getOrNull(symbol + "_FeeManager"))?.address
-  // deploy feeManager
   if (!feeManagerAddress) {
     const feeManagerAbi = (await hardhat.artifacts.readArtifact("ReSourceFeeManager")).abi
     const feeManagerArgs = [stableCreditAddress]
@@ -89,7 +81,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   // deploy creditIssuer
   let creditIssuerAddress = (await hardhat.deployments.getOrNull(symbol + "_CreditIssuer"))?.address
-  // deploy creditIssuer
   if (!creditIssuerAddress) {
     const creditIssuerAbi = (await hardhat.artifacts.readArtifact("ReSourceCreditIssuer")).abi
     const creditIssuerArgs = [stableCreditAddress]
@@ -102,7 +93,36 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     )
   }
 
-  // Initialize contract typechain objects
+  // deploy credit pool
+  let creditPoolAddress = (await hardhat.deployments.getOrNull(symbol + "_CreditPool"))?.address
+  if (!creditPoolAddress) {
+    const creditPoolAbi = (await hardhat.artifacts.readArtifact("CreditPool")).abi
+    const creditPoolArgs = [stableCreditAddress]
+    creditPoolAddress = await deployProxyAndSaveAs(
+      "CreditPool",
+      symbol + "_creditPool",
+      creditPoolArgs,
+      hardhat,
+      creditPoolAbi
+    )
+  }
+
+  // deploy launch pool
+  let launchPoolAddress = (await hardhat.deployments.getOrNull(symbol + "_LaunchPool"))?.address
+  if (!launchPoolAddress) {
+    const launchPoolAbi = (await hardhat.artifacts.readArtifact("LaunchPool")).abi
+    const launchPoolArgs = [stableCreditAddress, creditPoolAddress, 30 * 24 * 60 * 60]
+    launchPoolAddress = await deployProxyAndSaveAs(
+      "LaunchPool",
+      symbol + "_LaunchPool",
+      launchPoolArgs,
+      hardhat,
+      launchPoolAbi
+    )
+  }
+  
+  // ============ Initialize Contracts State ============ //
+
   const stableCredit = StableCredit__factory.connect(
     stableCreditAddress,
     (await ethers.getSigners())[0]
@@ -121,11 +141,14 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   )
   const riskOracle = RiskOracle__factory.connect(riskOracleAddress, (await ethers.getSigners())[0])
 
-  // Initialize contract state
   // grant stableCredit operator access
   accessManager.grantOperator(stableCreditAddress)
   // grant creditIssuer operator access
   accessManager.grantOperator(creditIssuerAddress)
+  // grant launchPool operator access
+  accessManager.grantOperator(launchPoolAddress)
+  // grant creditPool operator access
+  accessManager.grantOperator(creditPoolAddress)
   // set feeManager
   stableCredit.setFeeManager(feeManagerAddress)
   // set creditIssuer
@@ -135,13 +158,14 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // set reservePool
   stableCredit.setReservePool(reservePoolAddress)
   // set targetRTD to 20%
-  reservePool.setTargetRTD(20 * 10e8) // set targetRTD to 20%
+  reservePool.setTargetRTD(20e16)
   // set periodLength to 90 days
   creditIssuer.setPeriodLength(90 * 24 * 60 * 60)
   // set gracePeriod length to 30 days
   creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)
   // set base fee rate to 5%
-  riskOracle.setBaseFeeRate(stableCredit.address, 5 * 10e8)
+  riskOracle.setBaseFeeRate(stableCredit.address, 5e16)
+  await upgrades.admin.transferProxyAdminOwnership(adminOwner);
 }
 
 export default func

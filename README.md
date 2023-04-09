@@ -25,10 +25,10 @@ The main problem most mutual credit networks face is achieving sustainable stabi
 
 - **`StableCredit.sol`**: An extension of the base `MutualCredit.sol` and `ERC20.sol` contracts responsible for managing positive and negative balances of network members.
 - **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions. (note: base implementation intended to be extended)
-- **`ReSourceFeeManager.sol`** Example extended **FeeManager** contract with custom member specific fee calculation.
 - **`AccessManager.sol`**: Responsible for role based access control of **Stable Credit** networks.
 - **`CreditIssuer.sol`**: Responsible for underwriting network participants to issue credit terms. (note: base implementation intended to be extended)
-- **`ReSourceCreditIssuer.sol`** Example extended **CreditIssuer** contract with custom credit terms including minimum ITD (Income to Debt ratio) and credit re-balancing.
+- **`CreditPool`**:
+- **`LaunchPool`**:
 
 # 🏄‍♂️ Quick Start
 
@@ -59,20 +59,29 @@ forge test
 # 🚀 Deploy A Network
 
 > **Note**
-> This project uses the "Proxy Upgrade Pattern" from **OpenZeppelin**, and the deployer should be familiar with proxies in the ways that are described [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies).
+> This project enables upgradeability by via the **OpenZeppelin Hardhat Upgrades** method. More info on upgradable contracts can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies). For details on ownership and upgrading, follow [this](https://forum.openzeppelin.com/t/openzeppelin-upgrades-step-by-step-tutorial-for-hardhat) tutorial.
 
-To deploy a stable credit network, first, create a `.env` file with the same fields found in `.env.example`.
+#### Configure
 
-Also be sure to add your desired networks, and wallet connections to the `hardhat.config.ts`.
+Generate your local deployer account that will be used to deploy your contracts.
+
+```bash
+yarn generate
+```
+
+This will create a `.txt` file containing the seed phrase of your deploy account. The file's name is the account's address. Be sure to fund this account before proceeding.
+
+Next, duplicate the `.env.example` file and rename it to `.env`. Replace each `<<insert ... here>>` with the necessary inputs.
+
+To deploy to a specific network, be sure to update the `networks` field in the hardhat.config.ts file.
 
 #### Deploy
 
 ```bash
-yarn deploy_network --<NETWORK_NAME>
+yarn deploy-network --<NETWORK_NAME>
 ```
 
-#### Deploy Local Mock Network
+This will run the openzeppelin hardhat upgrades plugin script that deploys the proxies and implementation contracts that make up the new network.
 
-```bash
-yarn deploy_mock
-```
+> **Note**
+> During deployment, an admin contract is also deployed. Only the owner of the admin contract has the ability to upgrade the deployed contracts. Ownership is transferred to the address supplied in the `ADMIN_OWNER_ADDRESS` field in your configured `.env`. For increased security, you should transfer control of upgrades to a **Gnosis Safe**.
