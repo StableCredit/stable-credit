@@ -1,12 +1,15 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { DeployFunction } from "hardhat-deploy/types"
 import { deployProxyAndSave } from "../utils/utils"
-import { AccessManager__factory } from "../types/factories/AccessManager__factory"
+import {
+  AccessManager__factory,
+  ReservePool__factory,
+  StableCredit__factory,
+  ReSourceCreditIssuer__factory,
+  ERC20,
+  RiskOracle__factory
+} from "../types"
 import { ethers } from "hardhat"
-import { ERC20, StableCredit__factory } from "../types"
-import { ReservePool__factory } from "../types/factories/ReservePool__factory"
-import { CreditIssuer__factory } from "../types/factories/CreditIssuer__factory"
-import { RiskOracle__factory } from "../types/factories/RiskOracle__factory"
 import { parseEther } from "ethers/lib/utils"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
@@ -150,14 +153,14 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
   const accessManager = AccessManager__factory.connect(
-    reservePoolAddress,
+    accessManagerAddress,
     (await ethers.getSigners())[0]
   )
   const reservePool = ReservePool__factory.connect(
     reservePoolAddress,
     (await ethers.getSigners())[0]
   )
-  const creditIssuer = CreditIssuer__factory.connect(
+  const creditIssuer = ReSourceCreditIssuer__factory.connect(
     creditIssuerAddress,
     (await ethers.getSigners())[0]
   )
@@ -165,29 +168,31 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
 
   // grant stableCredit operator access
-  accessManager.grantOperator(stableCreditAddress)
+  await (await accessManager.grantOperator(stableCreditAddress)).wait()
   // grant creditIssuer operator access
-  accessManager.grantOperator(creditIssuerAddress)
+  await (await accessManager.grantOperator(creditIssuerAddress)).wait()
   // grant launchPool operator access
-  accessManager.grantOperator(launchPoolAddress)
+  await (await accessManager.grantOperator(launchPoolAddress)).wait()
   // grant creditPool operator access
-  accessManager.grantOperator(creditPoolAddress)
+  await (await accessManager.grantOperator(creditPoolAddress)).wait()
+  // set accessManager
+  await (await stableCredit.setAccessManager(accessManagerAddress)).wait()
   // set feeManager
-  stableCredit.setFeeManager(feeManagerAddress)
+  await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set creditIssuer
-  stableCredit.setCreditIssuer(creditIssuerAddress)
+  await (await stableCredit.setCreditIssuer(creditIssuerAddress)).wait()
   // set feeManager
-  stableCredit.setFeeManager(feeManagerAddress)
+  await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set reservePool
-  stableCredit.setReservePool(reservePoolAddress)
+  await (await stableCredit.setReservePool(reservePoolAddress)).wait()
   // set targetRTD to 20%
-  reservePool.setTargetRTD(20e16)
+  await (await reservePool.setTargetRTD(20e16.toString())).wait()
   // set periodLength to 90 days
-  creditIssuer.setPeriodLength(90 * 24 * 60 * 60)
+  await (await creditIssuer.setPeriodLength(90 * 24 * 60 * 60)).wait()
   // set gracePeriod length to 30 days
-  creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)
+  await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
   // set base fee rate to 5%
-  riskOracle.setBaseFeeRate(stableCredit.address, 5e16)
+  await (await riskOracle.setBaseFeeRate(stableCredit.address, 5e16.toString())).wait()
 }
 export default func
 func.tags = ["MOCK"]

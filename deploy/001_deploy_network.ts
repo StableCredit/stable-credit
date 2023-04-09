@@ -3,10 +3,9 @@ import { DeployFunction } from "hardhat-deploy/types"
 import { ethers, upgrades } from "hardhat"
 import {
   AccessManager__factory,
-  CreditIssuer__factory,
   ReservePool__factory,
-  RiskOracle__factory,
   StableCredit__factory,
+  ReSourceCreditIssuer__factory
 } from "../types"
 import { deployProxyAndSaveAs, getConfig } from "../utils/utils"
 
@@ -128,43 +127,43 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
   const accessManager = AccessManager__factory.connect(
-    reservePoolAddress,
+    accessManagerAddress,
     (await ethers.getSigners())[0]
   )
   const reservePool = ReservePool__factory.connect(
     reservePoolAddress,
     (await ethers.getSigners())[0]
   )
-  const creditIssuer = CreditIssuer__factory.connect(
+  const creditIssuer = ReSourceCreditIssuer__factory.connect(
     creditIssuerAddress,
     (await ethers.getSigners())[0]
   )
-  const riskOracle = RiskOracle__factory.connect(riskOracleAddress, (await ethers.getSigners())[0])
 
   // grant stableCredit operator access
-  accessManager.grantOperator(stableCreditAddress)
+  await (await accessManager.grantOperator(stableCreditAddress)).wait()
   // grant creditIssuer operator access
-  accessManager.grantOperator(creditIssuerAddress)
+  await (await accessManager.grantOperator(creditIssuerAddress)).wait()
   // grant launchPool operator access
-  accessManager.grantOperator(launchPoolAddress)
+  await (await accessManager.grantOperator(launchPoolAddress)).wait()
   // grant creditPool operator access
-  accessManager.grantOperator(creditPoolAddress)
+  await (await accessManager.grantOperator(creditPoolAddress)).wait()
+  // set accessManager
+  await (await stableCredit.setAccessManager(accessManagerAddress)).wait()
   // set feeManager
-  stableCredit.setFeeManager(feeManagerAddress)
+  await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set creditIssuer
-  stableCredit.setCreditIssuer(creditIssuerAddress)
+  await (await stableCredit.setCreditIssuer(creditIssuerAddress)).wait()
   // set feeManager
-  stableCredit.setFeeManager(feeManagerAddress)
+  await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set reservePool
-  stableCredit.setReservePool(reservePoolAddress)
+  await (await stableCredit.setReservePool(reservePoolAddress)).wait()
   // set targetRTD to 20%
-  reservePool.setTargetRTD(20e16)
+  await (await reservePool.setTargetRTD(20e16.toString())).wait()
   // set periodLength to 90 days
-  creditIssuer.setPeriodLength(90 * 24 * 60 * 60)
+  await (await creditIssuer.setPeriodLength(90 * 24 * 60 * 60)).wait()
   // set gracePeriod length to 30 days
-  creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)
-  // set base fee rate to 5%
-  riskOracle.setBaseFeeRate(stableCredit.address, 5e16)
+  await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
+  // transfer admin ownership to adminOwner address
   await upgrades.admin.transferProxyAdminOwnership(adminOwner);
 }
 
