@@ -30,6 +30,13 @@ The main problem most mutual credit networks face is achieving sustainable stabi
 - **`CreditPool`**:
 - **`LaunchPool`**:
 
+## Role Access
+
+1. Admin - TODO:
+2. Operator - TODO:
+3. Issuer - TODO:
+4. Member - TODO:
+
 # 🏄‍♂️ Quick Start
 
 This project uses [Foundry](https://github.com/foundry-rs/foundry) as the development framework and [Hardhat](https://github.com/NomicFoundation/hardhat) for the deployment framework.

@@ -28,7 +28,7 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /* ========== INITIALIZER ========== */
 
-    function __StableCredit_init(string memory name_, string memory symbol_)
+    function __StableCredit_init(string memory name_, string memory symbol_, address access_)
         public
         virtual
         initializer
@@ -36,6 +36,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         __MutualCredit_init(name_, symbol_);
         // assign "network debt account" credit line
         setCreditLimit(address(this), type(uint128).max - 1);
+        access = IAccessManager(access_);
     }
 
     /* ========== VIEWS ========== */
@@ -133,31 +134,36 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditLineWrittenOff(member, creditBalance);
     }
 
-    /// @notice enables the contract owner to set the access manager address
-    function setAccessManager(address _access) external onlyOwner {
+    /// @notice enables network admin to set the access manager address
+    function setAccessManager(address _access) external onlyAdmin {
         access = IAccessManager(_access);
         emit AccessManagerUpdated(_access);
     }
 
-    /// @notice enables the contract owner to set the reserve pool address
-    function setReservePool(address _reservePool) public onlyOwner {
+    /// @notice enables network admin to set the reserve pool address
+    function setReservePool(address _reservePool) public onlyAdmin {
         reservePool = IReservePool(_reservePool);
         emit ReservePoolUpdated(_reservePool);
     }
 
-    /// @notice enables the contract owner to set the fee manager address
-    function setFeeManager(address _feeManager) external onlyOwner {
+    /// @notice enables network admin to set the fee manager address
+    function setFeeManager(address _feeManager) external onlyAdmin {
         feeManager = IFeeManager(_feeManager);
         emit FeeManagerUpdated(_feeManager);
     }
 
-    /// @notice enables the contract owner to set the credit issuer address
-    function setCreditIssuer(address _creditIssuer) external onlyOwner {
+    /// @notice enables network admin to set the credit issuer address
+    function setCreditIssuer(address _creditIssuer) external onlyAdmin {
         creditIssuer = ICreditIssuer(_creditIssuer);
         emit CreditIssuerUpdated(_creditIssuer);
     }
 
     /* ========== MODIFIERS ========== */
+
+    modifier onlyAdmin() {
+        require(access.isAdmin(_msgSender()), "StableCredit: Unauthorized caller");
+        _;
+    }
 
     modifier senderIsMember(address sender) {
         require(
@@ -168,18 +174,12 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     modifier onlyOperator() {
-        require(
-            access.isOperator(_msgSender()) || _msgSender() == owner(),
-            "StableCredit: Unauthorized caller"
-        );
+        require(access.isOperator(_msgSender()), "StableCredit: Unauthorized caller");
         _;
     }
 
     modifier onlyCreditIssuer() {
-        require(
-            _msgSender() == address(creditIssuer) || _msgSender() == owner(),
-            "StableCredit: Unauthorized caller"
-        );
+        require(access.isIssuer(_msgSender()), "StableCredit: Unauthorized caller");
         _;
     }
 }

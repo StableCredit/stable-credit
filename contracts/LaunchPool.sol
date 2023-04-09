@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./interface/ICreditPool.sol";
 import "./interface/IStableCredit.sol";
 
-contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
+contract LaunchPool is PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /* ========== STATE VARIABLES ========== */
@@ -24,7 +23,6 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
         virtual
         initializer
     {
-        __Ownable_init();
         __Pausable_init();
         stableCredit = IStableCredit(_stableCredit);
         creditPool = ICreditPool(_creditPool);
@@ -33,7 +31,7 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    function launch() public onlyOwner notLaunched _canLaunch {
+    function launch() public onlyOperator notLaunched _canLaunch {
         // approve credit pool to transfer reserve tokens
         stableCredit.reservePool().reserveToken().approve(address(creditPool), totalDeposited);
         // withdraw credits from credit pool, depositing collected reserve tokens
@@ -88,7 +86,7 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function setLaunchExpiration(uint256 _launchExpiration) external onlyOwner {
+    function setLaunchExpiration(uint256 _launchExpiration) external onlyOperator {
         require(
             _launchExpiration > launchExpiration,
             "LaunchPool: expiration must be greater than current expiration"
@@ -96,11 +94,11 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
         launchExpiration = _launchExpiration;
     }
 
-    function pauseDeposits() external onlyOwner whenNotPaused {
+    function pauseDeposits() external onlyOperator whenNotPaused {
         _pause();
     }
 
-    function unpauseDeposits() external onlyOwner whenPaused {
+    function unpauseDeposits() external onlyOperator whenPaused {
         _unpause();
     }
 
@@ -128,18 +126,12 @@ contract LaunchPool is OwnableUpgradeable, PausableUpgradeable {
     /* ========== MODIFIERS ========== */
 
     modifier onlyOperator() {
-        require(
-            stableCredit.access().isOperator(_msgSender()) || _msgSender() == owner(),
-            "LaunchPool: Unauthorized caller"
-        );
+        require(stableCredit.access().isOperator(_msgSender()), "LaunchPool: Unauthorized caller");
         _;
     }
 
     modifier onlyIssuer() {
-        require(
-            stableCredit.access().isIssuer(_msgSender()) || _msgSender() == owner(),
-            "LaunchPool: Unauthorized caller"
-        );
+        require(stableCredit.access().isIssuer(_msgSender()), "LaunchPool: Unauthorized caller");
         _;
     }
 

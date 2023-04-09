@@ -99,7 +99,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// to members.
     /// @dev Caller must be authorized by network to underwrite members.
     /// @param member address of member to underwrite.
-    function underwriteMember(address member) public override onlyAuthorized notNull(member) {
+    function underwriteMember(address member) public override onlyIssuer notNull(member) {
         super.underwriteMember(member);
         // TODO: use SBTs to get a starting point for creditLimit and feeRate
         // use risk oracle to add network context
@@ -117,7 +117,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         uint256 minITD,
         uint256 creditLimit,
         uint256 balance
-    ) public onlyAuthorized notNull(member) notInActivePeriod(member) {
+    ) public onlyIssuer notNull(member) notInActivePeriod(member) {
         // initialize credit period
         initializeCreditPeriod(member);
         // set member fee rate

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -9,7 +8,7 @@ import "./interface/ICreditPool.sol";
 import "./interface/IStableCredit.sol";
 import "./interface/IMutualCredit.sol";
 
-contract CreditPool is ICreditPool, OwnableUpgradeable, PausableUpgradeable {
+contract CreditPool is ICreditPool, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct CreditDeposit {
@@ -28,7 +27,6 @@ contract CreditPool is ICreditPool, OwnableUpgradeable, PausableUpgradeable {
 
     function initialize(address _stableCredit) public virtual initializer {
         stableCredit = IStableCredit(_stableCredit);
-        __Ownable_init();
         __Pausable_init();
     }
 
@@ -159,10 +157,7 @@ contract CreditPool is ICreditPool, OwnableUpgradeable, PausableUpgradeable {
     /* ========== MODIFIERS ========== */
 
     modifier onlyOperator() {
-        require(
-            stableCredit.access().isOperator(_msgSender()) || _msgSender() == owner(),
-            "CreditPool: Unauthorized caller"
-        );
+        require(stableCredit.access().isOperator(_msgSender()), "CreditPool: Unauthorized caller");
         _;
     }
 }

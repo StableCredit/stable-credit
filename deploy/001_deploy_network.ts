@@ -15,11 +15,26 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   // ============ Deploy Contracts ============ //
 
+  // deploy access manager
+  let accessManagerAddress = (await hardhat.deployments.getOrNull(symbol + "_AccessManager"))
+    ?.address
+  if (!accessManagerAddress) {
+    const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
+    const accessManagerArgs = [(await hardhat.ethers.getSigners())[0].address]
+    accessManagerAddress = await deployProxyAndSaveAs(
+      "AccessManager",
+      symbol + "_AccessManager",
+      accessManagerArgs,
+      hardhat,
+      accessManagerAbi
+    )
+  }
+
   let stableCreditAddress = (await hardhat.deployments.getOrNull(symbol + "_StableCredit"))?.address
   // deploy stable credit
   if (!stableCreditAddress) {
     const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
-    const stableCreditArgs = [name, symbol]
+    const stableCreditArgs = [name, symbol, accessManagerAddress]
     stableCreditAddress = await deployProxyAndSaveAs(
       "StableCredit",
       symbol + "_StableCredit",
@@ -27,21 +42,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       hardhat,
       stableCreditAbi,
       { initializer: "__StableCredit_init" }
-    )
-  }
-
-  // deploy access manager
-  let accessManagerAddress = (await hardhat.deployments.getOrNull(symbol + "_AccessManager"))
-    ?.address
-  if (!accessManagerAddress) {
-    const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
-    const accessManagerArgs = [[(await hardhat.ethers.getSigners())[0].address, adminOwner]]
-    accessManagerAddress = await deployProxyAndSaveAs(
-      "AccessManager",
-      symbol + "_AccessManager",
-      accessManagerArgs,
-      hardhat,
-      accessManagerAbi
     )
   }
 
@@ -99,7 +99,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     const creditPoolArgs = [stableCreditAddress]
     creditPoolAddress = await deployProxyAndSaveAs(
       "CreditPool",
-      symbol + "_creditPool",
+      symbol + "_CreditPool",
       creditPoolArgs,
       hardhat,
       creditPoolAbi
@@ -139,6 +139,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
 
+  // grant adminOwner admin access
+  await (await accessManager.grantAdmin(adminOwner)).wait()
   // grant stableCredit operator access
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   // grant creditIssuer operator access
@@ -165,6 +167,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
   // transfer admin ownership to adminOwner address
   await upgrades.admin.transferProxyAdminOwnership(adminOwner);
+  // revoke signer admin access
+  await (await accessManager.revokeAdmin((await hardhat.ethers.getSigners())[0].address)).wait()
 }
 
 export default func

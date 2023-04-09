@@ -100,7 +100,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice called by network authorized to issue credit.
     /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
     /// @param member address of member.
-    function underwriteMember(address member) public virtual override onlyOperator {
+    function underwriteMember(address member) public virtual override onlyIssuer {
         require(!inActivePeriod(member), "CreditIssuer: member already in active credit period");
     }
 
@@ -182,20 +182,13 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyAuthorized() {
-        require(
-            stableCredit.access().isIssuer(_msgSender())
-                || stableCredit.access().isOperator(_msgSender()) || owner() == _msgSender(),
-            "CreditIssuer: Unauthorized caller"
-        );
+    modifier onlyIssuer() {
+        require(stableCredit.access().isIssuer(_msgSender()), "CreditIssuer: Unauthorized caller");
         _;
     }
 
     modifier onlyOperator() {
-        require(
-            stableCredit.access().isOperator(_msgSender()) || owner() == _msgSender(),
-            "CreditIssuer: Unauthorized caller"
-        );
+        require(stableCredit.access().isOperator(_msgSender()), "CreditIssuer: Unauthorized caller");
         _;
     }
 

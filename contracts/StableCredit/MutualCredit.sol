@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "../interface/IMutualCredit.sol";
 
-contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgradeable {
+contract MutualCredit is IMutualCredit, ERC20BurnableUpgradeable {
     using ExtraMath for *;
 
     /* ========== STATE VARIABLES ========== */
@@ -26,7 +26,6 @@ contract MutualCredit is IMutualCredit, OwnableUpgradeable, ERC20BurnableUpgrade
         onlyInitializing
     {
         __ERC20_init(name_, symbol_);
-        __Ownable_init();
     }
 
     /* ========== VIEWS ========== */

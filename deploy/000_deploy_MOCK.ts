@@ -48,31 +48,31 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       riskOracleAbi
     )
   }
+  
+    // deploy access manager
+    let accessManagerAddress = (await hardhat.deployments.getOrNull("AccessManager"))?.address
+    if (!accessManagerAddress) {
+      const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
+      const accessManagerArgs = [(await hardhat.ethers.getSigners())[0].address]
+      accessManagerAddress = await deployProxyAndSave(
+        "AccessManager",
+        accessManagerArgs,
+        hardhat,
+        accessManagerAbi
+      )
+    }
 
   // deploy stable credit
   let stableCreditAddress = (await hardhat.deployments.getOrNull("StableCredit"))?.address
   if (!stableCreditAddress) {
     const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
-    const stableCreditArgs = ["mock", "MOCK"]
+    const stableCreditArgs = ["mock", "MOCK", accessManagerAddress]
     stableCreditAddress = await deployProxyAndSave(
       "StableCredit",
       stableCreditArgs,
       hardhat,
       stableCreditAbi,
       { initializer: "__StableCredit_init" }
-    )
-  }
-
-  // deploy access manager
-  let accessManagerAddress = (await hardhat.deployments.getOrNull("AccessManager"))?.address
-  if (!accessManagerAddress) {
-    const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
-    const accessManagerArgs = [[(await hardhat.ethers.getSigners())[0].address]]
-    accessManagerAddress = await deployProxyAndSave(
-      "AccessManager",
-      accessManagerArgs,
-      hardhat,
-      accessManagerAbi
     )
   }
 
@@ -165,7 +165,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
   const riskOracle = RiskOracle__factory.connect(riskOracleAddress, (await ethers.getSigners())[0])
-
 
   // grant stableCredit operator access
   await (await accessManager.grantOperator(stableCreditAddress)).wait()

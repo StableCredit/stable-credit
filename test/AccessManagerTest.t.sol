@@ -11,10 +11,8 @@ contract AccessManagerTest is ReSourceStableCreditTest {
     function testAccessInitializer() public {
         changePrank(address(1));
         AccessManager testAccessManager = new AccessManager();
-        address[] memory operators = new address[](1);
-        operators[0] = address(2);
         // initialize with operators
-        testAccessManager.initialize(operators);
+        testAccessManager.initialize(address(2));
         assertTrue(testAccessManager.isOperator(address(2)));
     }
 
@@ -47,6 +45,4 @@ contract AccessManagerTest is ReSourceStableCreditTest {
         accessManager.revokeIssuer(address(10));
         assertTrue(!accessManager.isIssuer(address(10)));
     }
-
-    // TODO: add ambassador tests
 }

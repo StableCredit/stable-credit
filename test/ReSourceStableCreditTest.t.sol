@@ -40,12 +40,12 @@ contract ReSourceStableCreditTest is Test {
         // deploy riskOracle
         riskOracle = new RiskOracle();
         riskOracle.initialize(deployer);
-        // deploy mock StableCredit network
-        stableCredit = new StableCredit();
-        stableCredit.__StableCredit_init("mock", "MOCK");
         // deploy accessManager
         accessManager = new AccessManager();
-        accessManager.initialize(new address[](0));
+        accessManager.initialize(deployer);
+        // deploy mock StableCredit network
+        stableCredit = new StableCredit();
+        stableCredit.__StableCredit_init("mock", "MOCK", address(accessManager));
         // deploy reservePool
         reservePool = new ReservePool();
         reservePool.initialize(

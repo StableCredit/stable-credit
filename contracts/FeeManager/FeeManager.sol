@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -12,7 +11,7 @@ import "../interface/IFeeManager.sol";
 /// @author ReSource
 /// @notice Collects fees from network members and distributes collected fees to the
 /// network's reserve pool.
-contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
+contract FeeManager is IFeeManager, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /* ========== STATE VARIABLES ========== */
@@ -22,7 +21,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
     /* ========== INITIALIZER ========== */
 
     function __FeeManager_init(address _stableCredit) public virtual onlyInitializing {
-        __Ownable_init();
         __Pausable_init();
         _pause();
         stableCredit = IStableCredit(_stableCredit);
@@ -87,15 +85,20 @@ contract FeeManager is IFeeManager, PausableUpgradeable, OwnableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function pauseFees() external onlyOwner {
+    function pauseFees() external onlyAdmin {
         _pause();
     }
 
-    function unpauseFees() external onlyOwner {
+    function unpauseFees() external onlyAdmin {
         _unpause();
     }
 
     /* ========== MODIFIERS ========== */
+
+    modifier onlyAdmin() {
+        require(stableCredit.access().isAdmin(_msgSender()), "StableCredit: Unauthorized caller");
+        _;
+    }
 
     modifier onlyStableCredit() {
         require(_msgSender() == address(stableCredit), "FeeManager: can only be called by network");
