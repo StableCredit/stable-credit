@@ -7,7 +7,7 @@
   |_|  \_\___|_____/ \___/ \__,_|_|  \___\___|
 ```
 
-# 𐄷 ReSource Stable Credit
+# 𐄷 ReSource Stable Credits
 
 **Stable Credits** are decentralized complementary currencies within on-chain mutual credit networks. For more information on the properties and advantages of mutual credit clearing, visit our [docs](https://www.blog.resource.finance/chapter-1-what-is-mutual-credit).
 
@@ -101,4 +101,4 @@ yarn deploy-network --<NETWORK_NAME>
 This will run the openzeppelin hardhat upgrades plugin script that deploys the proxies and implementation contracts that make up the new network.
 
 > **Note**
-> During deployment, an admin contract is also deployed. Only the owner of the admin contract has the ability to upgrade the deployed contracts. Ownership is transferred to the address supplied in the `ADMIN_OWNER_ADDRESS` field in your configured `.env`. For increased security, you should transfer control of upgrades to a **Gnosis Safe**.
+> During deployment, an admin contract is also deployed. Only the owner of the admin contract has the ability to upgrade the deployed contracts. Ownership is transferred to the address supplied to the `ADMIN_OWNER_ADDRESS` field in your configured `.env` file. For increased security, you should transfer control of upgrades to a **Gnosis Safe**.
