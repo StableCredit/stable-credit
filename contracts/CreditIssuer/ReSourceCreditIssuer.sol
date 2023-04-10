@@ -132,7 +132,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @notice enables network operators to pause a given member's credit terms.
     /// @dev caller must have network operator role access.
     /// @param member address of member to pause terms for.
-    function pauseTermsOf(address member) external onlyOperator {
+    function pauseTermsOf(address member) external onlyIssuer {
         creditTerms[member].paused = true;
         emit CreditTermsPaused(member);
     }
@@ -140,9 +140,25 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @notice enables network operators to unpause a given member's credit terms.
     /// @dev caller must have network operator role access.
     /// @param member address of member to unpause terms for.
-    function unpauseTermsOf(address member) external onlyOperator {
+    function unpauseTermsOf(address member) external onlyIssuer {
         creditTerms[member].paused = false;
         emit CreditTermsUnpaused(member);
+    }
+
+    /// @notice enables network operators to update a given member's minimum ITD.
+    /// @dev caller must have network operator role access.
+    /// @param member address of member to update minimum ITD for.
+    function updateMinItd(address member, uint256 minItd) external onlyIssuer {
+        creditTerms[member].minITD = minItd;
+        emit MinITDUpdated(member, minItd);
+    }
+
+    /// @notice enables network operators to update a given member's rebalanced status.
+    /// @dev caller must have network operator role access.
+    /// @param member address of member to update rebalanced status for.
+    function updateRebalanced(address member, bool rebalanced) external onlyIssuer {
+        creditTerms[member].rebalanced = rebalanced;
+        emit RebalancedUpdated(member, rebalanced);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */

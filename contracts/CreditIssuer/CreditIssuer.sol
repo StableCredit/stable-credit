@@ -107,14 +107,14 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice called by network operators to set the credit period length.
     /// @dev only callable by network operators.
     /// @param _periodLength length of credit period in seconds.
-    function setPeriodLength(uint256 _periodLength) public onlyOperator {
+    function setPeriodLength(uint256 _periodLength) public onlyIssuer {
         periodLength = _periodLength;
     }
 
     /// @notice called by network operators to set the grace period length.
     /// @dev only callable by network operators.
     /// @param _gracePeriodLength length of grace period in seconds.
-    function setGracePeriodLength(uint256 _gracePeriodLength) public onlyOperator {
+    function setGracePeriodLength(uint256 _gracePeriodLength) public onlyIssuer {
         gracePeriodLength = _gracePeriodLength;
     }
 

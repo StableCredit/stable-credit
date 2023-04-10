@@ -130,11 +130,6 @@ contract LaunchPool is PausableUpgradeable {
         _;
     }
 
-    modifier onlyIssuer() {
-        require(stableCredit.access().isIssuer(_msgSender()), "LaunchPool: Unauthorized caller");
-        _;
-    }
-
     modifier notLaunched() {
         require(!launched, "LaunchPool: Pool already launched");
         _;

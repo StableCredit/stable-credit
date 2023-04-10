@@ -21,4 +21,6 @@ interface IReSourceCreditIssuer {
     event CreditTermsCreated(address member, uint256 feeRate);
     event CreditTermsPaused(address member);
     event CreditTermsUnpaused(address member);
+    event MinITDUpdated(address member, uint256 minItd);
+    event RebalancedUpdated(address member, bool rebalanced);
 }

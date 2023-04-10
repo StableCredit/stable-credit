@@ -85,18 +85,18 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function pauseFees() external onlyAdmin {
+    function pauseFees() external onlyOperator {
         _pause();
     }
 
-    function unpauseFees() external onlyAdmin {
+    function unpauseFees() external onlyOperator {
         _unpause();
     }
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyAdmin() {
-        require(stableCredit.access().isAdmin(_msgSender()), "StableCredit: Unauthorized caller");
+    modifier onlyOperator() {
+        require(stableCredit.access().isOperator(_msgSender()), "StableCredit: Unauthorized caller");
         _;
     }
 

@@ -13,29 +13,39 @@
 
 The main problem most mutual credit networks face is achieving sustainable stability at scale. To address this problem, **Stable Credit** networks rely on the [**ReSource Risk Management**](https://github.com/ReSource-Network/risk-management) infrastructure to analyze and mitigate credit risks.
 
-📕 For more information on **ReSource Risk Management** check out our [docs](https://github.com/ReSource-Network/risk-management).
+📕 For more information on **ReSource Risk Management** check out the [docs](https://github.com/ReSource-Network/risk-management).
 
 ## Protocol Overview
 
-|                                                            ![alt text](./Diagram.png)                                                             |
-| :-----------------------------------------------------------------------------------------------------------------------------------------------: |
-| This diagram depicts how **Stable Credit** networks interact with the **ReSource Risk Management** protocol to stabilize their credit currencies. |
+|                                                         ![alt text](./Diagram.png)                                                          |
+| :-----------------------------------------------------------------------------------------------------------------------------------------: |
+| This diagram depicts the mechanisms **Stable Credit** networks utilize to enable stabilization via proper underwriting and risk management. |
 
 ## Contracts:
 
 - **`StableCredit.sol`**: An extension of the base `MutualCredit.sol` and `ERC20.sol` contracts responsible for managing positive and negative balances of network members.
-- **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions. (note: base implementation intended to be extended)
+- **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions.
 - **`AccessManager.sol`**: Responsible for role based access control of **Stable Credit** networks.
-- **`CreditIssuer.sol`**: Responsible for underwriting network participants to issue credit terms. (note: base implementation intended to be extended)
-- **`CreditPool`**:
-- **`LaunchPool`**:
+- **`CreditIssuer.sol`**: Responsible for underwriting network participants to issue credit terms.
+- **`CreditPool.sol`**: Enables network participants to take on mutual credit debt in exchange for reserve currency supplied by third parties at a discounted rate.
+- **`LaunchPool.sol`**: Enables external parties to pool reserve currency deposits in order to service all deposits within the credit pool simultaneously, effectively "launching" the network.
 
-## Role Access
+## Roles
 
-1. Admin - TODO:
-2. Operator - TODO:
-3. Issuer - TODO:
-4. Member - TODO:
+1. **Admin** - Capable of granting/revoking _operator_ and _issuer_ role access. Addresses granted this role should be as limited as possible (ideally a **Gnosis Safe**). The provided `ADMIN_OWNER_ADDRESS` is granted this role by default.
+2. **Issuer** - Capable of granting/revoking _member_ access as well as the following:
+   - initializing new credit lines
+   - updating default credit terms
+   - updating member credit terms
+3. **Operator** - Extends issuer capabilities to include the following:
+   - launching the network
+   - managing the launch expiration
+   - managing the credit pool discount rate
+   - pausing/unpausing fees
+   - pausing/unpausing member credit terms
+   - pausing/unpausing launch pool deposits
+   - pausing/unpausing credit pool withdrawals
+4. **Member** - Capable of transferring credits.
 
 # 🏄‍♂️ Quick Start
 
@@ -66,7 +76,7 @@ forge test
 # 🚀 Deploy A Network
 
 > **Note**
-> This project enables upgradeability by via the **OpenZeppelin Hardhat Upgrades** method. More info on upgradable contracts can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies). For details on ownership and upgrading, follow [this](https://forum.openzeppelin.com/t/openzeppelin-upgrades-step-by-step-tutorial-for-hardhat) tutorial.
+> This project enables upgradeability via the **OpenZeppelin Hardhat Upgrades** method. More info on upgradable contracts can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies). For details on ownership and upgrading, follow [this](https://forum.openzeppelin.com/t/openzeppelin-upgrades-step-by-step-tutorial-for-hardhat) tutorial.
 
 #### Configure
 
