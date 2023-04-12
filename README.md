@@ -47,15 +47,22 @@ The main problem most mutual credit networks face is achieving sustainable stabi
    - pausing/unpausing credit pool withdrawals
 4. **Member** - Capable of transferring credits.
 
+> **Note**
+> Example automation infrastructure [OpenZeppelin Defender](https://www.openzeppelin.com/defender) or [Gelato](https://www.gelato.network/automate)
+
 # 🏄‍♂️ Quick Start
 
 This project uses [Foundry](https://github.com/foundry-rs/foundry) as the development framework and [Hardhat](https://github.com/NomicFoundation/hardhat) for the deployment framework.
 
 #### Dependencies
 
+1. Install **foundry** dependencies
+
 ```bash
 forge install
 ```
+
+2. Install **node** dependencies
 
 ```bash
 yarn install
@@ -63,14 +70,25 @@ yarn install
 
 #### Compilation
 
+To compile the contracts, run:
+
 ```bash
 yarn compile
 ```
+
+> **Note**
+> After compilation, the hardhat _**TypeChain**_ extension automatically generates TypeScript bindings for each contract. These bindings can be found in the `/types` directory.
 
 #### Testing
 
 ```bash
 forge test
+```
+
+#### Coverage
+
+```bash
+forge coverage
 ```
 
 # 🚀 Deploy A Network
@@ -102,3 +120,12 @@ This will run the openzeppelin hardhat upgrades plugin script that deploys the p
 
 > **Note**
 > During deployment, an admin contract is also deployed. Only the owner of the admin contract has the ability to upgrade the deployed contracts. Ownership is transferred to the address supplied to the `ADMIN_OWNER_ADDRESS` field in your configured `.env` file. For increased security, you should transfer control of upgrades to a **Gnosis Safe**.
+
+## Automated State Sync
+
+In order to reduce the cost of gas for network participants, some state synchronization is delayed. In order to ensure that state stays synchronized in a predictable and timely manner, the following functions should be called on configured time intervals:
+|Function|Contract|Details|
+|-----------|-----------|-----------|
+|`syncCreditLine(address member)`|**CreditIssuer.sol**|Should be called at the end of the provided member's credit period in order to prompt renewal or credit default.|
+|`distributeFees()`|**FeeManager.sol**|Distributes collected fees to the network reserve. Should at least be called daily.|
+|`serviceDeposits(uint256 quantity)`|**CreditPool.sol**|Uses deposited reserve tokens from credit withdrawals to service deposits. Provided quantity depends on gas limitations.|
