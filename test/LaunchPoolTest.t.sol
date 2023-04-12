@@ -81,7 +81,7 @@ contract LaunchPoolTest is ReSourceStableCreditTest {
         // update credit pool discount
         changePrank(deployer);
         // set discount rate to 10%
-        creditPool.setDiscountRate(10e16);
+        creditPool.increaseDiscountRate(10e16);
         // deposit tokens from 9 random addresses
         for (uint256 i = 0; i < 9; i++) {
             address mockAddress = address(uint160(20 + i));
@@ -127,9 +127,9 @@ contract LaunchPoolTest is ReSourceStableCreditTest {
         assertEq(launchPool.totalDeposited(), 0);
     }
 
-    function testPauseDeposits() public {
+    function testPauseLaunch() public {
         changePrank(deployer);
-        launchPool.pauseDeposits();
+        launchPool.pauseLaunch();
         changePrank(bob);
         reserveToken.approve(address(launchPool), type(uint256).max);
         vm.expectRevert(bytes("Pausable: paused"));

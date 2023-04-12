@@ -13,6 +13,5 @@ interface IFeeManager {
     /* ========== EVENTS ========== */
 
     event FeesCollected(address member, uint256 totalFee);
-
     event FeesDistributed(uint256 totalFee);
 }

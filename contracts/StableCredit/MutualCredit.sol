@@ -16,7 +16,7 @@ contract MutualCredit is IMutualCredit, ERC20BurnableUpgradeable {
         uint128 creditLimit;
     }
 
-    mapping(address => Member) private members;
+    mapping(address => Member) internal members;
 
     /* ========== INITIALIZER ========== */
 

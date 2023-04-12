@@ -16,13 +16,14 @@ interface ICreditIssuer {
         external
         returns (bool);
 
+    /// @notice called by network authorized to issue credit.
+    /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
+    /// @param member address of member.
     function underwriteMember(address member) external;
 
     /* ========== EVENTS ========== */
 
     event CreditLineDefaulted(address member);
-
     event CreditPeriodExpired(address member);
-
     event CreditPeriodCreated(address member, uint256 defaultTime);
 }

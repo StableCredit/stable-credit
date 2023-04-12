@@ -6,10 +6,11 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@resource-risk-management/interface/IReservePool.sol";
 import "./MutualCredit.sol";
-import "../interface/ICreditIssuer.sol";
+import "../interface/IStableCredit.sol";
 import "../interface/IAccessManager.sol";
 import "../interface/IFeeManager.sol";
-import "../interface/IStableCredit.sol";
+import "../interface/ICreditIssuer.sol";
+import "../Ambassador.sol";
 
 /// @title StableCreditDemurrage contract
 /// @author ReSource
@@ -23,8 +24,9 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     IAccessManager public access;
     IReservePool public reservePool;
-    ICreditIssuer public creditIssuer;
     IFeeManager public feeManager;
+    ICreditIssuer public creditIssuer;
+    IAmbassador public ambassador;
 
     /* ========== INITIALIZER ========== */
 
@@ -128,31 +130,46 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     /// @notice transfer a given member's debt to the network
+    /// @param member address of member to write off
     function writeOffCreditLine(address member) public virtual onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
+        if (address(ambassador) != address(0)) {
+            ambassador.transferDebt(member, creditBalanceOf(member));
+        }
         _transfer(address(this), member, creditBalance);
         emit CreditLineWrittenOff(member, creditBalance);
     }
 
     /// @notice enables network admin to set the access manager address
+    /// @param _access address of access manager contract
     function setAccessManager(address _access) external onlyAdmin {
         access = IAccessManager(_access);
         emit AccessManagerUpdated(_access);
     }
 
     /// @notice enables network admin to set the reserve pool address
+    /// @param _reservePool address of reserve pool contract
     function setReservePool(address _reservePool) public onlyAdmin {
         reservePool = IReservePool(_reservePool);
         emit ReservePoolUpdated(_reservePool);
     }
 
     /// @notice enables network admin to set the fee manager address
+    /// @param _feeManager address of fee manager contract
     function setFeeManager(address _feeManager) external onlyAdmin {
         feeManager = IFeeManager(_feeManager);
         emit FeeManagerUpdated(_feeManager);
     }
 
+    /// @notice enables network admin to set the ambassador address
+    /// @param _ambassador address of ambassador contract
+    function setAmbassador(address _ambassador) external onlyAdmin {
+        ambassador = IAmbassador(_ambassador);
+        emit AmbassadorUpdated(_ambassador);
+    }
+
     /// @notice enables network admin to set the credit issuer address
+    /// @param _creditIssuer address of credit issuer contract
     function setCreditIssuer(address _creditIssuer) external onlyAdmin {
         creditIssuer = ICreditIssuer(_creditIssuer);
         emit CreditIssuerUpdated(_creditIssuer);
