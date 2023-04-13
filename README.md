@@ -124,7 +124,7 @@ This will run the openzeppelin hardhat upgrades plugin script that deploys the p
 ## Automated State Sync
 
 In order to reduce the cost of gas for network participants, some state synchronization is delayed. In order to ensure that state stays synchronized in a predictable and timely manner, the following functions should be called on configured time intervals:
-|Function|Contract|Details|
+|Function &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Contract|Details|
 |-----------|-----------|-----------|
 |`syncCreditLine(address member)`|**CreditIssuer.sol**|Should be called at the end of the provided member's credit period in order to prompt renewal or credit default.|
 |`distributeFees()`|**FeeManager.sol**|Distributes collected fees to the network reserve. Should at least be called daily.|
