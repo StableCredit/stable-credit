@@ -16,6 +16,8 @@ interface IStableCredit {
     function access() external view returns (IAccessManager);
     /// @dev the credit issuer contract which manages credit line issuance
     function creditIssuer() external view returns (ICreditIssuer);
+    /// @dev the ambassador contract which manages the network's ambassador program
+    function ambassador() external view returns (IAmbassador);
     /// @notice transfer a given member's debt to the network
     function writeOffCreditLine(address member) external;
     /// @notice called by the underwriting layer to assign credit lines
@@ -36,9 +38,10 @@ interface IStableCredit {
     event CreditLineCreated(address member, uint256 creditLimit, uint256 balance);
     event CreditLimitUpdated(address member, uint256 creditLimit);
     event MembersDemurraged(uint256 amount);
-    event CreditBalanceRepayed(address member, uint128 amount);
+    event CreditBalanceRepaid(address member, uint128 amount);
     event NetworkDebtBurned(address member, uint256 amount);
     event CreditLineWrittenOff(address member, uint256 amount);
+
     event AccessManagerUpdated(address accessManager);
     event ReservePoolUpdated(address reservePool);
     event FeeManagerUpdated(address feeManager);

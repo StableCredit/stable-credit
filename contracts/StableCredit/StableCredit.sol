@@ -94,7 +94,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         reservePool.reserveToken().approve(address(reservePool), reserveTokenAmount);
         reservePool.depositIntoPeripheralReserve(reserveTokenAmount);
         _transfer(address(this), member, amount);
-        emit CreditBalanceRepayed(member, amount);
+        emit CreditBalanceRepaid(member, amount);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
