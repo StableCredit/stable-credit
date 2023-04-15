@@ -238,6 +238,7 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
         creditsDeposited -= creditDeposits[depositId].amount;
         // delete deposit
         delete creditDeposits[depositId];
+        emit DepositDestroyed(depositId);
         // decrement total deposits
         totalDeposits--;
     }
@@ -261,6 +262,7 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
         else creditDeposits[listTail].next = id;
         // update listTail to new deposit
         listTail = id;
+        emit DepositCreated(id, depositor, amount);
         return id;
     }
 

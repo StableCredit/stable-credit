@@ -25,5 +25,5 @@ interface ICreditIssuer {
 
     event CreditLineDefaulted(address member);
     event CreditPeriodExpired(address member);
-    event CreditPeriodCreated(address member, uint256 defaultTime);
+    event CreditPeriodCreated(address member, uint256 periodExpiration);
 }

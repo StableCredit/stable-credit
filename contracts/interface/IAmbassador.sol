@@ -19,14 +19,15 @@ interface IAmbassador {
 
     /* ========== EVENTS ========== */
 
-    event AmbassadorCompensated(address ambassador, uint256 amount);
+    event AmbassadorCompensated(address member, address ambassador, uint256 amount);
     event PromotionReceived(address member, uint256 amount);
-    event DebtTransferred(address ambassador, uint256 amount);
+    event DebtTransferred(address member, address ambassador, uint256 amount);
+    event DebtServiced(address member, address ambassador, uint256 amount);
     event AmbassadorAdded(address ambassador);
     event AmbassadorRemoved(address ambassador);
+    event MembershipAssigned(address member, address ambassador);
     event CompensationRateUpdated(uint256 rate);
     event DefaultPenaltyRateUpdated(uint256 rate);
     event PenaltyServiceRateUpdated(uint256 rate);
     event PromotionAmountUpdated(uint256 amount);
-    event MembershipAssigned(address member, address ambassador);
 }

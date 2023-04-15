@@ -34,4 +34,6 @@ interface ICreditPool {
     event DiscountRateDecreased(uint256 rate);
     event DiscountRateIncreased(uint256 rate);
     event DepositsCanceled(uint256 amount);
+    event DepositCreated(bytes32 depositId, address depositor, uint256 amount);
+    event DepositDestroyed(bytes32 depositId);
 }

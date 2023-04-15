@@ -58,6 +58,7 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
     {
         require(baseAmount > 0, "Ambassador: deposit must be greater than 0");
         address ambassador = memberships[member];
+        require(ambassadors[ambassador], "Ambassador: ambassador not found");
         // calculate compensation
         uint256 compensationAmount = baseAmount * compensationRate / 1 ether;
         // calculate amount of compensation to service debt balance
@@ -71,6 +72,7 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
                 : servicingCredits;
             // update ambassador debt balance
             debtBalances[ambassador] -= debtToService;
+            emit DebtServiced(member, ambassador, debtToService);
         }
         // update ambassador compensation balance
         compensationBalance[ambassador] += compensationAmount - debtToService;
@@ -78,7 +80,7 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
         stableCredit.reservePool().reserveToken().transferFrom(
             _msgSender(), address(this), compensationAmount
         );
-        emit AmbassadorCompensated(ambassador, compensationAmount);
+        emit AmbassadorCompensated(member, ambassador, compensationAmount);
         return compensationAmount;
     }
 
@@ -103,7 +105,7 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
         uint256 debtAmount = creditAmount * defaultPenaltyRate / 1 ether;
         address ambassador = memberships[member];
         debtBalances[ambassador] += stableCredit.convertCreditsToReserveToken(debtAmount);
-        emit DebtTransferred(ambassador, debtAmount);
+        emit DebtTransferred(member, ambassador, debtAmount);
     }
 
     /// @notice enables operators to add new ambassadors

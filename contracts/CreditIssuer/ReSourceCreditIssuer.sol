@@ -118,14 +118,14 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         uint256 creditLimit,
         uint256 balance
     ) public onlyIssuer notNull(member) notInActivePeriod(member) {
-        // initialize credit period
-        initializeCreditPeriod(member);
         // set member fee rate
         creditTerms[member].feeRate = feeRate;
         // set member minimum Income to Debt ratio
         creditTerms[member].minITD = minITD;
         // initialize credit line
         stableCredit.createCreditLine(member, creditLimit, balance);
+        // initialize credit period
+        initializeCreditPeriod(member);
         emit CreditTermsCreated(member, feeRate);
     }
 
