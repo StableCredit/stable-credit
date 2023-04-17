@@ -134,7 +134,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice called when a member's credit period has expired and is not in good standing.
     /// @dev deletes credit terms and emits a default event if caller has outstanding debt.
     /// @param member address of member to expire.
-    function expireCreditLine(address member) internal virtual {
+    function expireCreditPeriod(address member) internal virtual {
         require(!inGoodStanding(member), "RiskManager: member in good standing");
         uint256 creditBalance = IMutualCredit(address(stableCredit)).creditBalanceOf(member);
         delete creditPeriods[member];
@@ -173,7 +173,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         if (inGracePeriod(from)) return false;
         // if end of active credit period, handle expiration
         if (periodExpired(from)) {
-            expireCreditLine(from);
+            expireCreditPeriod(from);
             return false;
         }
         // validate transaction

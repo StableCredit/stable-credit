@@ -195,16 +195,19 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     }
 
     /// @notice called when a member's credit period has expired and is not in good standing.
-    /// @dev deletes credit terms and emits a default event if caller has outstanding debt.
+    /// @dev resets credit terms and emits a default event if caller has outstanding debt.
     /// @param member address of member to expire.
-    function expireCreditLine(address member) internal override {
+    function expireCreditPeriod(address member) internal override {
         // if member has rebalanced or has a valid ITD, re-initialize credit line, and try re-underwrite
         if (inGoodStanding(member)) {
-            delete creditTerms[member];
+            // reset terms
+            creditTerms[member].rebalanced = false;
+            creditTerms[member].periodIncome = 0;
+            // start new credit period
             initializeCreditPeriod(member);
             return;
         }
-        super.expireCreditLine(member);
+        super.expireCreditPeriod(member);
     }
 
     /// @notice updates a given member's credit terms states: income and rebalanced.
