@@ -43,18 +43,15 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /// @dev the sender must approve the feeManager to spend reserve tokens on their behalf before
     /// fees can be collected.
     /// @param sender stable credit sender address
-    /// @param receiver stable credit receiver address
+    /// @param recipient stable credit receiver address
     /// @param amount stable credit amount
-    function collectFees(address sender, address receiver, uint256 amount)
+    function collectFees(address sender, address recipient, uint256 amount)
         public
         virtual
         override
         onlyStableCredit
     {
-        if (
-            paused() || stableCredit.access().isOperator(sender)
-                || stableCredit.access().isOperator(receiver)
-        ) {
+        if (!shouldChargeTx(sender, recipient)) {
             return;
         }
         uint256 totalFee = calculateFee(sender, amount);
@@ -75,12 +72,23 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
         if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
             return 0;
         }
-
         // return base fee rate * amount
         return stableCredit.convertCreditsToReserveToken(
             stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()))
                 * amount / 1 ether
         );
+    }
+
+    /// @notice check if sender should be charged fee for tx
+    /// @param sender stable credit sender address
+    /// @param recipient stable credit recipient address
+    /// @return true if tx should be charged fees, false otherwise
+    function shouldChargeTx(address sender, address recipient) public view virtual returns (bool) {
+        if (
+            paused() || stableCredit.access().isOperator(sender)
+                || stableCredit.access().isOperator(recipient)
+        ) return false;
+        return true;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

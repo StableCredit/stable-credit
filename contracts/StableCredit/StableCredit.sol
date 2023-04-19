@@ -102,22 +102,20 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice called by the underwriting layer to assign credit lines
     /// @dev If the member address is not a current member, then the address is granted membership
     /// @param member address of line holder
-    /// @param _creditLimit credit limit of new line
-    /// @param _balance positive balance to initialize member with (will increment network debt)
-    function createCreditLine(address member, uint256 _creditLimit, uint256 _balance)
+    /// @param limit credit limit of new line
+    /// @param initialBalance positive balance to initialize member with (will increment network debt)
+    function createCreditLine(address member, uint256 limit, uint256 initialBalance)
         public
         virtual
         override
         onlyCreditIssuer
     {
-        if (!access.isMember(member)) {
-            access.grantMember(member);
-        }
-        setCreditLimit(member, _creditLimit);
-        if (_balance > 0) {
-            _transfer(address(this), member, _balance);
-        }
-        emit CreditLineCreated(member, _creditLimit, _balance);
+        // if member is not a current member, then grant membership
+        if (!access.isMember(member)) access.grantMember(member);
+        setCreditLimit(member, limit);
+        // if initial balance is greater than zero, then transfer to member
+        if (initialBalance > 0) _transfer(address(this), member, initialBalance);
+        emit CreditLineCreated(member, limit, initialBalance);
     }
 
     /// @notice update existing credit lines

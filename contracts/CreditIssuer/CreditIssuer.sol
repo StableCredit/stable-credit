@@ -100,8 +100,21 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice called by network authorized to issue credit.
     /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
     /// @param member address of member.
-    function underwriteMember(address member) public virtual override onlyIssuer {
+    function underwriteMember(address member)
+        public
+        virtual
+        override
+        notNull(member)
+        canIssueCreditTo(member)
+    {
         require(!inActivePeriod(member), "CreditIssuer: member already in active credit period");
+    }
+
+    /// @notice called by network authorized to issue credit.
+    /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
+    /// @param member address of member.
+    function grantMember(address member) public virtual notNull(member) canIssueCreditTo(member) {
+        require(!stableCredit.access().isMember(member), "CreditIssuer: member already exists");
     }
 
     /// @notice called by network operators to set the credit period length.
@@ -187,6 +200,15 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         _;
     }
 
+    modifier canIssueCreditTo(address member) {
+        // only allow member or credit issuer to call
+        require(
+            _msgSender() == member || stableCredit.access().isIssuer(_msgSender()),
+            "CreditIssuer: Unauthorized caller"
+        );
+        _;
+    }
+
     modifier onlyOperator() {
         require(stableCredit.access().isOperator(_msgSender()), "CreditIssuer: Unauthorized caller");
         _;
@@ -201,6 +223,11 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     modifier notInActivePeriod(address member) {
         require(!inActivePeriod(member), "CreditIssuer: member in active credit period");
+        _;
+    }
+
+    modifier notNull(address member) {
+        require(member != address(0), "ReSourceCreditIssuer: member address can't be null ");
         _;
     }
 }

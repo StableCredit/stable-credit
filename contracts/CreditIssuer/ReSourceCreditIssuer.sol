@@ -99,12 +99,26 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// to members.
     /// @dev Caller must be authorized by network to underwrite members.
     /// @param member address of member to underwrite.
-    function underwriteMember(address member) public override onlyIssuer notNull(member) {
+    function underwriteMember(address member)
+        public
+        override
+        notNull(member)
+        canIssueCreditTo(member)
+    {
         super.underwriteMember(member);
-        // TODO: use SBTs to get a starting point for creditLimit and feeRate
-        // use risk oracle to add network context
+        // TODO: use SBT data to calculate limit, fee rate, and min ITD
+        // if member does not have SBT minted, return
+        // grantMember(member);
         // initializeCreditLine(network, member, feeRate, creditLimit);
         emit MemberUnderwritten(member);
+    }
+
+    /// @notice called by network authorized to issue credit.
+    /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
+    /// @param member address of member.
+    function grantMember(address member) public override notNull(member) canIssueCreditTo(member) {
+        super.grantMember(member);
+        // TODO: use SBT to determine identity of caller
     }
 
     /// @notice facilitates network operators to bypass the underwriting process and manually
@@ -220,12 +234,5 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         if (income >= IMutualCredit(address(stableCredit)).creditBalanceOf(member)) {
             creditTerms[member].rebalanced = true;
         }
-    }
-
-    /* ========== MODIFIERS ========== */
-
-    modifier notNull(address member) {
-        require(member != address(0), "ReSourceCreditIssuer: member address can't be null ");
-        _;
     }
 }
