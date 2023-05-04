@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 interface IReSourceCreditIssuer {
     struct CreditTerm {
-        bool paused;
         bool rebalanced;
         uint256 periodIncome;
         uint256 feeRate;
@@ -19,8 +18,6 @@ interface IReSourceCreditIssuer {
 
     event MemberUnderwritten(address member);
     event CreditTermsCreated(address member, uint256 feeRate);
-    event CreditTermsPaused(address member);
-    event CreditTermsUnpaused(address member);
     event MinITDUpdated(address member, uint256 minItd);
     event RebalancedUpdated(address member, bool rebalanced);
 }

@@ -52,7 +52,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// is written off to the network debt account.
     /// @param member address of member to sync credit line for.
     /// @return transaction validation result.
-    function syncCreditLine(address member) external returns (bool) {
+    function syncCreditPeriod(address member) external returns (bool) {
         return _validateTransaction(member, address(0), 0);
     }
 
@@ -117,6 +117,22 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         require(!stableCredit.access().isMember(member), "CreditIssuer: member already exists");
     }
 
+    /// @notice enables network operators to pause a given member's credit terms.
+    /// @dev caller must have network operator role access.
+    /// @param member address of member to pause terms for.
+    function pauseTermsOf(address member) external onlyIssuer {
+        creditPeriods[member].paused = true;
+        emit CreditTermsPaused(member);
+    }
+
+    /// @notice enables network operators to unpause a given member's credit terms.
+    /// @dev caller must have network operator role access.
+    /// @param member address of member to unpause terms for.
+    function unpauseTermsOf(address member) external onlyIssuer {
+        creditPeriods[member].paused = false;
+        emit CreditTermsUnpaused(member);
+    }
+
     /// @notice called by network operators to set the credit period length.
     /// @dev only callable by network operators.
     /// @param _periodLength length of credit period in seconds.
@@ -139,7 +155,8 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         // create new credit period
         creditPeriods[member] = CreditPeriod({
             issueTimestamp: block.timestamp,
-            expirationTimestamp: block.timestamp + periodLength
+            expirationTimestamp: block.timestamp + periodLength,
+            paused: false
         });
         emit CreditPeriodCreated(member, block.timestamp + periodLength);
     }

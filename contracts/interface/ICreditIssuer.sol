@@ -5,6 +5,7 @@ interface ICreditIssuer {
     struct CreditPeriod {
         uint256 issueTimestamp;
         uint256 expirationTimestamp;
+        bool paused;
     }
 
     /// @notice called by the StableCredit contract when members transfer credits.
@@ -23,6 +24,8 @@ interface ICreditIssuer {
 
     /* ========== EVENTS ========== */
 
+    event CreditTermsPaused(address member);
+    event CreditTermsUnpaused(address member);
     event CreditLineDefaulted(address member);
     event CreditPeriodExpired(address member);
     event CreditPeriodCreated(address member, uint256 periodExpiration);

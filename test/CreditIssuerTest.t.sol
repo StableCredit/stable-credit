@@ -108,7 +108,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // assert period is expired
         assertTrue(creditIssuer.periodExpired(alice));
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check that period income has been reset to 0
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 0);
     }
@@ -129,7 +129,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // check that period is expired
         assertTrue(creditIssuer.periodExpired(alice));
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check that rebalanced has been reset
         assertTrue(!creditIssuer.creditTermsOf(alice).rebalanced);
     }
@@ -150,7 +150,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // assert period is expired
         assertTrue(creditIssuer.periodExpired(alice));
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check that alice's credit period has been renewed
         assertEq(creditIssuer.periodExpirationOf(alice), aliceExpiration + 120 days + 1);
         // check credit line is unaltered
@@ -171,7 +171,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // assert in grace period
         assertTrue(creditIssuer.inGracePeriod(alice));
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check that alice's credit line is frozen
         assertEq(stableCredit.creditBalanceOf(alice), 20000000);
         // transaction won't revert but will not transfer credits
@@ -190,7 +190,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // advance time to expiration
         vm.warp(block.timestamp + 90 days + 1);
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check that alice is frozen
         assertTrue(creditIssuer.isFrozen(alice));
         changePrank(bob);
@@ -201,7 +201,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // check alice is no longer frozen
         assertTrue(!creditIssuer.isFrozen(alice));
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check that alice credit period renewed
         assertEq(creditIssuer.periodExpirationOf(alice), aliceExpiration + 90 days + 1);
         // check credit line is unaltered
@@ -255,7 +255,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check network debt
         assertEq(
             stableCredit.networkDebt(),
@@ -274,7 +274,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check alice has not defaulted
         assertEq(
             stableCredit.creditLimitOf(alice),
@@ -301,7 +301,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         changePrank(alice);
 
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check alice has not defaulted
         assertEq(
             stableCredit.creditLimitOf(alice),
@@ -328,7 +328,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         changePrank(alice);
 
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check alice has not defaulted
         assertTrue(creditIssuer.isFrozen(alice));
     }
@@ -349,7 +349,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.unpauseTermsOf(alice);
         changePrank(alice);
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check alice has not defaulted
         assertEq(
             stableCredit.creditLimitOf(alice),
@@ -370,7 +370,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.unpauseTermsOf(alice);
         changePrank(alice);
         // synchronize alice's credit line
-        creditIssuer.syncCreditLine(alice);
+        creditIssuer.syncCreditPeriod(alice);
         // check alice has defaulted
         assertEq(stableCredit.creditLimitOf(alice), 0);
         assertEq(stableCredit.creditBalanceOf(alice), 0);

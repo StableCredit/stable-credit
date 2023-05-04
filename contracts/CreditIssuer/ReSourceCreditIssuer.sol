@@ -82,7 +82,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     function isFrozen(address member) public view returns (bool) {
         // member is frozen if in grace period, credit terms are not paused, has not rebalanced,
         // and has an invalid ITD
-        return inGracePeriod(member) && !creditTerms[member].paused && !hasRebalanced(member)
+        return inGracePeriod(member) && !creditPeriods[member].paused && !hasRebalanced(member)
             && !hasValidITD(member);
     }
 
@@ -143,22 +143,6 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         emit CreditTermsCreated(member, feeRate);
     }
 
-    /// @notice enables network operators to pause a given member's credit terms.
-    /// @dev caller must have network operator role access.
-    /// @param member address of member to pause terms for.
-    function pauseTermsOf(address member) external onlyIssuer {
-        creditTerms[member].paused = true;
-        emit CreditTermsPaused(member);
-    }
-
-    /// @notice enables network operators to unpause a given member's credit terms.
-    /// @dev caller must have network operator role access.
-    /// @param member address of member to unpause terms for.
-    function unpauseTermsOf(address member) external onlyIssuer {
-        creditTerms[member].paused = false;
-        emit CreditTermsUnpaused(member);
-    }
-
     /// @notice enables network operators to update a given member's minimum ITD.
     /// @dev caller must have network operator role access.
     /// @param member address of member to update minimum ITD for.
@@ -193,8 +177,8 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         if (inActivePeriod(to)) {
             updateMemberTerms(to, amount);
         }
-        // if terms are paused for member, validate member
-        if (creditTerms[from].paused) return true;
+        // if period is paused for member, validate member
+        if (creditPeriods[from].paused) return true;
         // validate credit period
         return super._validateTransaction(from, to, amount);
     }
