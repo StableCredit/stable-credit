@@ -16,7 +16,12 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         address joe = address(4);
         changePrank(deployer);
         creditIssuer.initializeCreditLine(
-            joe, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
+            joe,
+            90 days,
+            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
+            5e16,
+            10e16,
+            0
         );
         assertEq(creditIssuer.creditTermsOf(joe).feeRate, 5e16);
         assertEq(
@@ -138,12 +143,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
-        uint256 aliceExpiration = creditIssuer.periodExpirationOf(alice);
         changePrank(bob);
         // bob sends needed income to alice causing her ITD to be valid
         stableCredit.transfer(alice, creditIssuer.neededIncomeOf(alice));
         assertTrue(creditIssuer.hasValidITD(alice));
-
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
         changePrank(alice);
@@ -151,8 +154,9 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         assertTrue(creditIssuer.periodExpired(alice));
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
+        console.log((creditIssuer.periodExpirationOf(alice) - block.timestamp) / 1 days);
         // check that alice's credit period has been renewed
-        assertEq(creditIssuer.periodExpirationOf(alice), aliceExpiration + 120 days + 1);
+        assertEq(creditIssuer.periodExpirationOf(alice), block.timestamp + 90 days);
         // check credit line is unaltered
         assertEq(
             stableCredit.creditLimitOf(alice),
@@ -383,7 +387,12 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testTxValidationExpiredButNotUsingCredit() public {
         changePrank(deployer);
         creditIssuer.initializeCreditLine(
-            bob, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
+            bob,
+            90 days,
+            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
+            5e16,
+            10e16,
+            0
         );
         changePrank(alice);
         // alice sends bob 10 credits
@@ -397,8 +406,8 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
 
     function testSetPeriodLength() public {
         changePrank(deployer);
-        creditIssuer.setPeriodLength(100 days);
-        assertEq(creditIssuer.periodLength(), 100 days);
+        creditIssuer.setPeriodLength(alice, 100 days);
+        assertEq(creditIssuer.periodExpirationOf(alice), block.timestamp + 100 days);
     }
 
     function testSetGracePeriod() public {

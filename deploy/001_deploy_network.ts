@@ -5,13 +5,13 @@ import {
   AccessManager__factory,
   ReservePool__factory,
   StableCredit__factory,
-  ReSourceCreditIssuer__factory
+  ReSourceCreditIssuer__factory,
+  OwnableUpgradeable__factory,
 } from "../types"
 import { deployProxyAndSaveAs, getConfig } from "../utils/utils"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
-
-  let {symbol, name, reserveTokenAddress, adminOwner, riskOracleAddress} = getConfig();
+  let { symbol, name, reserveTokenAddress, adminOwner, riskOracleAddress } = getConfig()
 
   // ============ Deploy Contracts ============ //
 
@@ -119,7 +119,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       launchPoolAbi
     )
   }
-  
+
   // ============ Initialize Contracts State ============ //
 
   const stableCredit = StableCredit__factory.connect(
@@ -136,6 +136,10 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   )
   const creditIssuer = ReSourceCreditIssuer__factory.connect(
     creditIssuerAddress,
+    (await ethers.getSigners())[0]
+  )
+  const admin = OwnableUpgradeable__factory.connect(
+    (await upgrades.admin.getInstance()).address,
     (await ethers.getSigners())[0]
   )
 
@@ -160,13 +164,13 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // set reservePool
   await (await stableCredit.setReservePool(reservePoolAddress)).wait()
   // set targetRTD to 20%
-  await (await reservePool.setTargetRTD(20e16.toString())).wait()
-  // set periodLength to 90 days
-  await (await creditIssuer.setPeriodLength(90 * 24 * 60 * 60)).wait()
+  await (await reservePool.setTargetRTD((20e16).toString())).wait()
   // set gracePeriod length to 30 days
   await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
-  // transfer admin ownership to adminOwner address
-  await upgrades.admin.transferProxyAdminOwnership(adminOwner);
+  if ((await admin.owner()) != adminOwner) {
+    // transfer admin ownership to adminOwner address
+    await upgrades.admin.transferProxyAdminOwnership(adminOwner)
+  }
   // revoke signer admin access
   await (await accessManager.revokeAdmin((await hardhat.ethers.getSigners())[0].address)).wait()
 }

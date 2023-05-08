@@ -55,7 +55,6 @@
     "compile": "yarn hardhat compile",
     "typechain": "yarn hardhat typechain",
     "deploy": "yarn hardhat deploy",
-    "deploy-network": "yarn hardhat deploy --tags NETWORK",
     "deploy-mock": "yarn hardhat deploy --tags MOCK",
     "setup-local": "yarn hardhat run scripts/setup-local.ts",
     "watch": "yarn node scripts/watch.js",

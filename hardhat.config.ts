@@ -1,6 +1,6 @@
 const fs = require("fs")
 const chalk = require("chalk")
-require('dotenv').config()
+require("dotenv").config()
 
 import "hardhat-deploy"
 import "hardhat-preprocessor"
@@ -12,7 +12,6 @@ import "solidity-coverage"
 import "hardhat-contract-sizer"
 import "hardhat-dependency-compiler"
 
-
 import { utils } from "ethers"
 
 import { HardhatUserConfig, task } from "hardhat/config"
@@ -21,6 +20,7 @@ import "./tasks/accounts"
 import "./tasks/clean"
 import "./tasks/fundedwallet"
 import "./tasks/generate"
+import "./tasks/demoSetup"
 
 const { isAddress, getAddress, formatUnits, parseUnits } = utils
 
@@ -71,9 +71,7 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    compilers: [
-      { version: "0.8.17" },
-    ],
+    compilers: [{ version: "0.8.17" }],
   },
   namedAccounts: {
     deployer: {
@@ -105,15 +103,15 @@ const config: HardhatUserConfig = {
   },
   dependencyCompiler: {
     paths: [
-      'lib/risk-management/contracts/ReservePool.sol',
-      'lib/risk-management/contracts/RiskOracle.sol',
-      'test/MockERC20.sol'
+      "lib/risk-management/contracts/ReservePool.sol",
+      "lib/risk-management/contracts/RiskOracle.sol",
+      "test/MockERC20.sol",
     ],
   },
   typechain: {
     outDir: "types",
     target: "ethers-v5",
-    externalArtifacts: ["./lib/risk-management/artifacts/*.json"]
+    externalArtifacts: ["./lib/risk-management/artifacts/*.json"],
   },
 }
 

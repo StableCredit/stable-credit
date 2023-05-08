@@ -127,9 +127,10 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @param member address of member to initialize credit line for.
     function initializeCreditLine(
         address member,
+        uint256 periodLength,
+        uint256 creditLimit,
         uint256 feeRate,
         uint256 minITD,
-        uint256 creditLimit,
         uint256 balance
     ) public onlyIssuer notNull(member) notInActivePeriod(member) {
         // set member fee rate
@@ -139,7 +140,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         // initialize credit line
         stableCredit.createCreditLine(member, creditLimit, balance);
         // initialize credit period
-        initializeCreditPeriod(member);
+        initializeCreditPeriod(member, periodLength);
         emit CreditTermsCreated(member, feeRate);
     }
 
@@ -185,11 +186,11 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
 
     /// @notice responsible for initializing the given member's credit period.
     /// @param member address of member to initialize credit period for.
-    function initializeCreditPeriod(address member) internal override {
+    function initializeCreditPeriod(address member, uint256 expiration) internal override {
         // initialize credit terms
         creditTerms[member].rebalanced = false;
         creditTerms[member].periodIncome = 0;
-        super.initializeCreditPeriod(member);
+        super.initializeCreditPeriod(member, expiration);
     }
 
     /// @notice called when a member's credit period has expired and is not in good standing.
@@ -202,7 +203,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
             creditTerms[member].rebalanced = false;
             creditTerms[member].periodIncome = 0;
             // start new credit period
-            initializeCreditPeriod(member);
+            initializeCreditPeriod(member, creditPeriods[member].length);
             return;
         }
         super.expireCreditPeriod(member);

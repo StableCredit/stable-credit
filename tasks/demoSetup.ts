@@ -1,27 +1,25 @@
 import { task } from "hardhat/config"
 import { send } from "../hardhat.config"
+import { ERC20, StableCredit, ReSourceCreditIssuer, ReSourceFeeManager, RiskOracle } from "../types"
 import { parseStableCredits } from "../utils/utils"
 
 import { DEMO_SETUP } from "./task-names"
 
-task(DEMO_SETUP, "Configure a referenced network with demo tx's")
-  .addParam("symbol", "Symbol of stable credit network")
-  .setAction(async (taskArgs, { ethers }) => {
-    let symbol = taskArgs.symbol
+task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
+  async (taskArgs, { ethers }) => {
+    // Initialize contracts
+    const stableCredit = (await ethers.getContract("StableCredit")) as StableCredit
+    const feeManager = (await ethers.getContract("ReSourceFeeManager")) as ReSourceFeeManager
+    const creditIssuer = (await ethers.getContract("ReSourceCreditIssuer")) as ReSourceCreditIssuer
+    const reserveToken = (await ethers.getContract("ReserveToken")) as ERC20
+    const riskOracle = (await ethers.getContract("RiskOracle")) as RiskOracle
 
-    const stableCredit = await ethers.getContract(symbol + "_StableCredit")
-
-    const feeManager = await ethers.getContract(symbol + "_FeeManager")
-
-    const riskManager = await ethers.getContract("RiskManager")
-
-    const reserveToken = await ethers.getContract("ReserveToken")
-
+    // Unpause fees if paused
     const feesPaused = await feeManager.paused()
-
     if (feesPaused) await (await feeManager.unpauseFees()).wait()
 
-    await (await feeManager.setTargetFeeRate(200000)).wait()
+    // set base fee to 20%
+    await (await riskOracle.setBaseFeeRate(stableCredit.address, (20e16).toString())).wait()
 
     const signers = await ethers.getSigners()
     const accountA = signers[1]
@@ -30,28 +28,33 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
     const accountD = signers[4]
     const accountE = signers[5]
 
+    // initialize accounts A-E
     for (var i = 1; i <= 5; i++) {
       // assign credit lines
       await (
-        await riskManager.createCreditLine(
-          stableCredit.address,
+        await creditIssuer.initializeCreditLine(
           signers[i].address,
+          90 * 24 * 60 * 60,
           parseStableCredits("10000"),
-          100000000,
-          101000000,
-          0,
+          (5e16).toString(),
+          (10e16).toString(),
           0
         )
       ).wait()
+
+      // send gas to account
       const tx = {
         to: signers[i].address,
         value: ethers.utils.parseEther("1"),
       }
       send(ethers.provider.getSigner(), tx)
 
+      // send reserve tokens to account
       await (
         await reserveToken.transfer(signers[i].address, ethers.utils.parseEther("2000"))
       ).wait()
+
+      // approve reserve tokens for feeManager
       await (
         await reserveToken
           .connect(signers[i])
@@ -59,12 +62,12 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
       ).wait()
     }
 
-    const account2 = new ethers.Wallet(
+    const defaultingAccount = new ethers.Wallet(
       "cc17b52b3a9287777ae9fbf8f634908e7d5246a205c2fc53d043534c0f8667e8",
       ethers.provider
     )
 
-    // configure account 1
+    // configure defaultingAccount
     let tx = {
       to: "0x77dE279ee3dDfAEC727dDD2bb707824C795514EE",
       value: ethers.utils.parseEther("1"),
@@ -78,61 +81,62 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
       )
     ).wait()
 
-    // assign defaulting credit line to Account 2
+    // assign defaulting credit line to defaultingAccount
     await (
-      await riskManager.createCreditLine(
-        stableCredit.address,
-        account2.address,
+      await creditIssuer.initializeCreditLine(
+        defaultingAccount.address,
+        1,
         parseStableCredits("1000"),
-        30,
-        31,
-        0,
+        (5e16).toString(),
+        (10e16).toString(),
         0
       )
     ).wait()
     tx = {
-      to: account2.address,
+      to: defaultingAccount.address,
       value: ethers.utils.parseEther("1"),
     }
     send(ethers.provider.getSigner(), tx)
 
-    await (await reserveToken.transfer(account2.address, ethers.utils.parseEther("2000"))).wait()
+    await (
+      await reserveToken.transfer(defaultingAccount.address, ethers.utils.parseEther("2000"))
+    ).wait()
     await (
       await reserveToken
-        .connect(account2)
+        .connect(defaultingAccount)
         .approve(feeManager.address, ethers.constants.MaxUint256)
     ).wait()
     await (
-      await stableCredit.connect(account2).transfer(accountB.address, parseStableCredits("200"))
+      await stableCredit
+        .connect(defaultingAccount)
+        .transfer(accountB.address, parseStableCredits("200"))
     ).wait()
 
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
 
-    // configure account 3
+    // configure external account
+
+    const account3Address = "0xc44deEd52309b286a698BC2A8b3A7424E52302a1"
+
     await (
-      await riskManager.createCreditLine(
-        stableCredit.address,
-        "0xc44deEd52309b286a698BC2A8b3A7424E52302a1",
+      await creditIssuer.initializeCreditLine(
+        account3Address,
+        90 * 24 * 60 * 60,
         parseStableCredits("1000"),
-        300000,
-        310000,
-        0,
+        (30e16).toString(),
+        (10e16).toString(),
         0
       )
     ).wait()
+
     tx = {
-      to: "0xc44deEd52309b286a698BC2A8b3A7424E52302a1",
+      to: account3Address,
       value: ethers.utils.parseEther("1"),
     }
     send(ethers.provider.getSigner(), tx)
 
-    await (
-      await reserveToken.transfer(
-        "0xc44deEd52309b286a698BC2A8b3A7424E52302a1",
-        ethers.utils.parseEther("2000")
-      )
-    ).wait()
+    await (await reserveToken.transfer(account3Address, ethers.utils.parseEther("2000"))).wait()
 
     // send 1400 from A to B
     await (
@@ -152,7 +156,8 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's")
       await stableCredit.connect(accountD).transfer(accountE.address, parseStableCredits("2500"))
     ).wait()
 
-    await (await feeManager.setTargetFeeRate(50000)).wait()
+    await (await riskOracle.setBaseFeeRate(stableCredit.address, (5e16).toString())).wait()
 
     console.log("🚀 configured")
-  })
+  }
+)

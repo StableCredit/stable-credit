@@ -7,7 +7,7 @@ import {
   StableCredit__factory,
   ReSourceCreditIssuer__factory,
   ERC20,
-  RiskOracle__factory
+  RiskOracle__factory,
 } from "../types"
 import { ethers } from "hardhat"
 import { parseEther } from "ethers/lib/utils"
@@ -48,19 +48,19 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       riskOracleAbi
     )
   }
-  
-    // deploy access manager
-    let accessManagerAddress = (await hardhat.deployments.getOrNull("AccessManager"))?.address
-    if (!accessManagerAddress) {
-      const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
-      const accessManagerArgs = [(await hardhat.ethers.getSigners())[0].address]
-      accessManagerAddress = await deployProxyAndSave(
-        "AccessManager",
-        accessManagerArgs,
-        hardhat,
-        accessManagerAbi
-      )
-    }
+
+  // deploy access manager
+  let accessManagerAddress = (await hardhat.deployments.getOrNull("AccessManager"))?.address
+  if (!accessManagerAddress) {
+    const accessManagerAbi = (await hardhat.artifacts.readArtifact("AccessManager")).abi
+    const accessManagerArgs = [(await hardhat.ethers.getSigners())[0].address]
+    accessManagerAddress = await deployProxyAndSave(
+      "AccessManager",
+      accessManagerArgs,
+      hardhat,
+      accessManagerAbi
+    )
+  }
 
   // deploy stable credit
   let stableCreditAddress = (await hardhat.deployments.getOrNull("StableCredit"))?.address
@@ -131,7 +131,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       hardhat,
       creditPoolAbi
     )
-  } 
+  }
 
   // deploy launch pool
   let launchPoolAddress = (await hardhat.deployments.getOrNull("LaunchPool"))?.address
@@ -185,13 +185,11 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // set reservePool
   await (await stableCredit.setReservePool(reservePoolAddress)).wait()
   // set targetRTD to 20%
-  await (await reservePool.setTargetRTD(20e16.toString())).wait()
-  // set periodLength to 90 days
-  await (await creditIssuer.setPeriodLength(90 * 24 * 60 * 60)).wait()
+  await (await reservePool.setTargetRTD((20e16).toString())).wait()
   // set gracePeriod length to 30 days
   await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
   // set base fee rate to 5%
-  await (await riskOracle.setBaseFeeRate(stableCredit.address, 5e16.toString())).wait()
+  await (await riskOracle.setBaseFeeRate(stableCredit.address, (5e16).toString())).wait()
 }
 export default func
 func.tags = ["MOCK"]

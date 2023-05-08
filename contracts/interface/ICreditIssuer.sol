@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 interface ICreditIssuer {
     struct CreditPeriod {
-        uint256 issueTimestamp;
-        uint256 expirationTimestamp;
+        uint256 issuedAt;
+        uint256 length;
         bool paused;
     }
 

@@ -65,14 +65,18 @@ contract ReSourceStableCreditTest is Test {
         stableCredit.setCreditIssuer(address(creditIssuer)); // set creditIssuer
         stableCredit.setReservePool(address(reservePool)); // set reservePool
         reservePool.setTargetRTD(20e16); // set targetRTD to 20%
-        creditIssuer.setPeriodLength(90 days); // set period length to 90 days
         creditIssuer.setGracePeriodLength(30 days); // set gracePeriod to 30 days
         riskOracle.setBaseFeeRate(address(reservePool), 5e16); // set base fee rate to 5%
         // send alice 1000 reserve tokens
         reservePool.reserveToken().transfer(alice, 1000 ether);
         // initialize alice credit line
         creditIssuer.initializeCreditLine(
-            alice, 5e16, 10e16, 1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
+            alice,
+            90 days,
+            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
+            5e16,
+            10e16,
+            0
         );
         vm.stopPrank();
     }
