@@ -35,7 +35,8 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
       await (
         await creditIssuer.initializeCreditLine(
           signers[i].address,
-          90 * 24 * 60 * 60,
+          90 * 24 * 60 * 60, // 90 days
+          30 * 24 * 60 * 60, // 30 days
           parseStableCredits("10000"),
           (5e16).toString(),
           (10e16).toString(),
@@ -86,7 +87,8 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     await (
       await creditIssuer.initializeCreditLine(
         defaultingAccount.address,
-        1,
+        1, // 1 second
+        1, // 1 second
         parseStableCredits("1000"),
         (5e16).toString(),
         (10e16).toString(),
@@ -123,7 +125,8 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     await (
       await creditIssuer.initializeCreditLine(
         account3Address,
-        90 * 24 * 60 * 60,
+        90 * 24 * 60 * 60, // 90 days
+        30 * 24 * 60 * 60, // 30 days
         parseStableCredits("1000"),
         (30e16).toString(),
         (10e16).toString(),
@@ -173,6 +176,6 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
       await stableCredit.createCreditLine(creditPool.address, parseStableCredits("1000"), 0)
     ).wait()
 
-    console.log("🚀 configured")
+    console.log("🚀 demo configured")
   }
 )

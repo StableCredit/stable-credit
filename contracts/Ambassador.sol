@@ -58,7 +58,7 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
     {
         require(baseAmount > 0, "Ambassador: deposit must be greater than 0");
         address ambassador = memberships[member];
-        require(ambassadors[ambassador], "Ambassador: ambassador not found");
+        require(isAmbassador(ambassador), "Ambassador: ambassador not found");
         // calculate compensation
         uint256 compensationAmount = baseAmount * compensationRate / 1 ether;
         // calculate amount of compensation to service debt balance
@@ -82,6 +82,15 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
         );
         emit AmbassadorCompensated(member, ambassador, compensationAmount);
         return compensationAmount;
+    }
+
+    /* ========== VIEW FUNCTIONS ========== */
+
+    /// @notice returns true if the given address is an ambassador
+    /// @param ambassador Ambassador address
+    /// @return whether the given address is an ambassador
+    function isAmbassador(address ambassador) public view returns (bool) {
+        return ambassadors[ambassador];
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

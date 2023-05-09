@@ -18,6 +18,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.initializeCreditLine(
             joe,
             90 days,
+            30 days,
             1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
             5e16,
             10e16,
@@ -389,6 +390,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.initializeCreditLine(
             bob,
             90 days,
+            30 days,
             1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
             5e16,
             10e16,
@@ -398,7 +400,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // alice sends bob 10 credits
         stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // expire credit line
-        vm.warp(creditIssuer.periodExpirationOf(bob) + creditIssuer.gracePeriodLength() + 1);
+        vm.warp(creditIssuer.graceExpirationOf(bob) + 1);
         changePrank(bob);
         // bob sends alice 10 credits
         stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
@@ -406,15 +408,17 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
 
     function testSetPeriodLength() public {
         changePrank(deployer);
-        creditIssuer.setPeriodLength(alice, 100 days);
+        creditIssuer.setPeriodExpiration(alice, block.timestamp + 100 days);
         assertEq(creditIssuer.periodExpirationOf(alice), block.timestamp + 100 days);
     }
 
     function testSetGracePeriod() public {
         changePrank(deployer);
-        creditIssuer.setGracePeriodLength(100 days);
-        assertEq(creditIssuer.gracePeriodLength(), 100 days);
+        creditIssuer.setGraceExpiration(alice, block.timestamp + 100 days);
+        assertEq(creditIssuer.graceExpirationOf(alice), block.timestamp + 100 days);
     }
+
+    // TODO: testRenewCreditPeriod
 
     // TODO: testUnderwriteMember
 }

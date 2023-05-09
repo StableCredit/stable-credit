@@ -125,9 +125,16 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// assign new members with credit terms and issue credit.
     /// @dev caller must have network operator role access.
     /// @param member address of member to initialize credit line for.
+    /// @param periodLength length of credit period in seconds.
+    /// @param graceLength length of grace period in seconds.
+    /// @param creditLimit credit limit for member.
+    /// @param feeRate fee rate for member.
+    /// @param minITD minimum Income to Debt ratio for member.
+    /// @param balance initial balance for member (debt is assigned to network debt account)
     function initializeCreditLine(
         address member,
         uint256 periodLength,
+        uint256 graceLength,
         uint256 creditLimit,
         uint256 feeRate,
         uint256 minITD,
@@ -140,7 +147,9 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         // initialize credit line
         stableCredit.createCreditLine(member, creditLimit, balance);
         // initialize credit period
-        initializeCreditPeriod(member, periodLength);
+        initializeCreditPeriod(
+            member, block.timestamp + periodLength, block.timestamp + periodLength + graceLength
+        );
         emit CreditTermsCreated(member, feeRate);
     }
 
@@ -186,11 +195,17 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
 
     /// @notice responsible for initializing the given member's credit period.
     /// @param member address of member to initialize credit period for.
-    function initializeCreditPeriod(address member, uint256 expiration) internal override {
+    /// @param periodExpiration timestamp of when the credit period expires.
+    /// @param graceExpiration timestamp of when the grace period expires.
+    function initializeCreditPeriod(
+        address member,
+        uint256 periodExpiration,
+        uint256 graceExpiration
+    ) internal override {
         // initialize credit terms
         creditTerms[member].rebalanced = false;
         creditTerms[member].periodIncome = 0;
-        super.initializeCreditPeriod(member, expiration);
+        super.initializeCreditPeriod(member, periodExpiration, graceExpiration);
     }
 
     /// @notice called when a member's credit period has expired and is not in good standing.
@@ -202,8 +217,13 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
             // reset terms
             creditTerms[member].rebalanced = false;
             creditTerms[member].periodIncome = 0;
+            CreditPeriod memory period = creditPeriods[member];
+
+            uint256 newExpiration = block.timestamp + (period.expiration - period.issuedAt);
+            uint256 newGraceExpiration =
+                block.timestamp + (period.graceExpiration - period.issuedAt);
             // start new credit period
-            initializeCreditPeriod(member, creditPeriods[member].length);
+            initializeCreditPeriod(member, newExpiration, newGraceExpiration);
             return;
         }
         super.expireCreditPeriod(member);

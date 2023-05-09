@@ -19,8 +19,6 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     IStableCredit public stableCredit;
     // member => credit period
     mapping(address => CreditPeriod) public creditPeriods;
-    // grace period length in seconds
-    uint256 public gracePeriodLength;
 
     /* ========== INITIALIZER ========== */
 
@@ -66,8 +64,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member.
     /// @return whether the given member has an active period.
     function inActivePeriod(address member) public view returns (bool) {
-        return creditPeriods[member].issuedAt > 0
-            && block.timestamp < periodExpirationOf(member) + gracePeriodLength;
+        return creditPeriods[member].expiration > 0 && block.timestamp < graceExpirationOf(member);
     }
 
     /// @notice fetches a given member's grace period status within a given network. A member is in
@@ -75,8 +72,8 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member.
     /// @return whether the given member has an expired period and in grace period.
     function inGracePeriod(address member) public view returns (bool) {
-        return periodExpired(member) && !inGoodStanding(member)
-            && block.timestamp < periodExpirationOf(member) + gracePeriodLength;
+        return !inGoodStanding(member) && periodExpired(member)
+            && block.timestamp < graceExpirationOf(member);
     }
 
     /// @notice fetches a given member's credit period status within a given network.
@@ -90,7 +87,14 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member.
     /// @return expiration timestamp of member's credit period.
     function periodExpirationOf(address member) public view returns (uint256) {
-        return creditPeriods[member].issuedAt + creditPeriods[member].length;
+        return creditPeriods[member].expiration;
+    }
+
+    /// @notice fetches a given member's credit grace period expiration timestamp.
+    /// @param member address of member.
+    /// @return expiration timestamp of member's credit grace period.
+    function graceExpirationOf(address member) public view returns (uint256) {
+        return creditPeriods[member].graceExpiration;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -133,28 +137,41 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     /// @notice called by network operators to set the credit period length.
     /// @dev only callable by network operators.
-    /// @param _periodLength length of credit period in seconds.
-    function setPeriodLength(address member, uint256 _periodLength) public onlyIssuer {
-        creditPeriods[member].length = _periodLength;
+    /// @param member address of member to set period expiration for.
+    /// @param periodExpiration expiration timestamp of credit period.
+    function setPeriodExpiration(address member, uint256 periodExpiration) public onlyIssuer {
+        creditPeriods[member].expiration = periodExpiration;
     }
 
     /// @notice called by network operators to set the grace period length.
     /// @dev only callable by network operators.
-    /// @param _gracePeriodLength length of grace period in seconds.
-    function setGracePeriodLength(uint256 _gracePeriodLength) public onlyIssuer {
-        gracePeriodLength = _gracePeriodLength;
+    /// @param member address of member to set grace period for.
+    /// @param graceExpiration expiration timestamp of grace period.
+    function setGraceExpiration(address member, uint256 graceExpiration) public onlyIssuer {
+        creditPeriods[member].graceExpiration = graceExpiration;
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
 
     /// @notice responsible for initializing the given member's credit period.
     /// @param member address of member to initialize credit period for.
-    function initializeCreditPeriod(address member, uint256 periodLength) internal virtual {
-        require(periodLength > 0, "CreditIssuer: period length must be greater than 0");
+    /// @param periodExpiration expiration timestamp of credit period.
+    /// @param graceExpiration expiration timestamp of grace period.
+    function initializeCreditPeriod(
+        address member,
+        uint256 periodExpiration,
+        uint256 graceExpiration
+    ) internal virtual {
+        require(periodExpiration > block.timestamp, "CreditIssuer: period expiration in past");
+        require(graceExpiration > periodExpiration, "CreditIssuer: grace expiration in past");
         // create new credit period
-        creditPeriods[member] =
-            CreditPeriod({issuedAt: block.timestamp, length: periodLength, paused: false});
-        emit CreditPeriodCreated(member, block.timestamp + periodLength);
+        creditPeriods[member] = CreditPeriod({
+            issuedAt: block.timestamp,
+            expiration: periodExpiration,
+            graceExpiration: graceExpiration,
+            paused: false
+        });
+        emit CreditPeriodCreated(member, periodExpiration, graceExpiration);
     }
 
     /// @notice called when a member's credit period has expired and is not in good standing.

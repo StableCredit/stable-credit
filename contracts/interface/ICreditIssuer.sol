@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 interface ICreditIssuer {
     struct CreditPeriod {
         uint256 issuedAt;
-        uint256 length;
+        uint256 expiration;
+        uint256 graceExpiration;
         bool paused;
     }
 
@@ -28,5 +29,7 @@ interface ICreditIssuer {
     event CreditTermsUnpaused(address member);
     event CreditLineDefaulted(address member);
     event CreditPeriodExpired(address member);
-    event CreditPeriodCreated(address member, uint256 periodExpiration);
+    event CreditPeriodCreated(
+        address member, uint256 periodExpiration, uint256 gracePeriodExpiration
+    );
 }

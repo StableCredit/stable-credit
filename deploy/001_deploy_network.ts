@@ -193,8 +193,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await stableCredit.setCreditPool(creditPoolAddress)).wait()
   // set targetRTD to 20%
   await (await reservePool.setTargetRTD((20e16).toString())).wait()
-  // set gracePeriod length to 30 days
-  await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
   // grant issuer role to ambassador
   await (await accessManager.grantIssuer(ambassadorAddress)).wait()
   // grant operator role to ambassador
