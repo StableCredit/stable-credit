@@ -56,7 +56,7 @@
     "typechain": "yarn hardhat typechain",
     "deploy": "yarn hardhat deploy",
     "deploy-mock": "yarn hardhat deploy --tags MOCK",
-    "setup-local": "yarn hardhat run scripts/setup-local.ts",
+    "demo": "yarn deploy-mock && yarn hardhat demoSetup",
     "watch": "yarn node scripts/watch.js",
     "accounts": "yarn hardhat accounts",
     "balance": "yarn hardhat balance",

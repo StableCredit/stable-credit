@@ -120,6 +120,32 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     )
   }
 
+  // deploy ambassador
+  let ambassadorAddress = (await hardhat.deployments.getOrNull("Ambassador"))?.address
+  if (!ambassadorAddress) {
+    const ambassadorAbi = (await hardhat.artifacts.readArtifact("Ambassador")).abi
+    // initialize ambassador with:
+    //      30% depositRate,
+    //      5% debtAssumptionRate,
+    //      50% debtServiceRate,
+    //      2 credit promotion amount
+    const ambassadorArgs = [
+      stableCreditAddress,
+      (30e16).toString(),
+      (5e16).toString(),
+      (50e16).toString(),
+      (2e6).toString(),
+    ]
+
+    ambassadorAddress = await deployProxyAndSaveAs(
+      "Ambassador",
+      symbol + "_Ambassador",
+      ambassadorArgs,
+      hardhat,
+      ambassadorAbi
+    )
+  }
+
   // ============ Initialize Contracts State ============ //
 
   const stableCredit = StableCredit__factory.connect(
@@ -163,10 +189,16 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set reservePool
   await (await stableCredit.setReservePool(reservePoolAddress)).wait()
+  // set creditPool
+  await (await stableCredit.setCreditPool(creditPoolAddress)).wait()
   // set targetRTD to 20%
   await (await reservePool.setTargetRTD((20e16).toString())).wait()
   // set gracePeriod length to 30 days
   await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
+  // grant issuer role to ambassador
+  await (await accessManager.grantIssuer(ambassadorAddress)).wait()
+  // grant operator role to ambassador
+  await (await accessManager.grantOperator(ambassadorAddress)).wait()
   if ((await admin.owner()) != adminOwner) {
     // transfer admin ownership to adminOwner address
     await upgrades.admin.transferProxyAdminOwnership(adminOwner)

@@ -26,7 +26,6 @@ contract LaunchPoolTest is ReSourceStableCreditTest {
         stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
         accessManager.grantMember(bob);
         accessManager.grantOperator(address(launchPool));
-        accessManager.grantOperator(address(creditPool));
         changePrank(alice);
         stableCredit.approve(address(creditPool), type(uint256).max);
         creditPool.depositCredits(100e6);

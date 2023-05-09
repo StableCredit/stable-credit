@@ -8,6 +8,7 @@ import {
   ReSourceCreditIssuer__factory,
   ERC20,
   RiskOracle__factory,
+  StableCreditRegistry__factory,
 } from "../types"
 import { ethers } from "hardhat"
 import { parseEther } from "ethers/lib/utils"
@@ -46,6 +47,21 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       riskOracleArgs,
       hardhat,
       riskOracleAbi
+    )
+  }
+
+  // deploy StableCreditRegistry
+  let stableCreditRegistryAddress = (await hardhat.deployments.getOrNull("StableCreditRegistry"))
+    ?.address
+  if (!stableCreditRegistryAddress) {
+    const stableCreditRegistryAbi = (await hardhat.artifacts.readArtifact("StableCreditRegistry"))
+      .abi
+    const stableCreditRegistryArgs = []
+    stableCreditRegistryAddress = await deployProxyAndSave(
+      "StableCreditRegistry",
+      stableCreditRegistryArgs,
+      hardhat,
+      stableCreditRegistryAbi
     )
   }
 
@@ -120,6 +136,31 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     )
   }
 
+  // deploy ambassador
+  let ambassadorAddress = (await hardhat.deployments.getOrNull("Ambassador"))?.address
+  if (!ambassadorAddress) {
+    const ambassadorAbi = (await hardhat.artifacts.readArtifact("Ambassador")).abi
+    // initialize ambassador with:
+    //      30% depositRate,
+    //      5% debtAssumptionRate,
+    //      50% debtServiceRate,
+    //      2 credit promotion amount
+    const ambassadorArgs = [
+      stableCreditAddress,
+      (30e16).toString(),
+      (5e16).toString(),
+      (50e16).toString(),
+      (2e6).toString(),
+    ]
+
+    ambassadorAddress = await deployProxyAndSave(
+      "Ambassador",
+      ambassadorArgs,
+      hardhat,
+      ambassadorAbi
+    )
+  }
+
   // deploy credit pool
   let creditPoolAddress = (await hardhat.deployments.getOrNull("CreditPool"))?.address
   if (!creditPoolAddress) {
@@ -166,6 +207,13 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   )
   const riskOracle = RiskOracle__factory.connect(riskOracleAddress, (await ethers.getSigners())[0])
 
+  const stableCreditRegistry = StableCreditRegistry__factory.connect(
+    stableCreditRegistryAddress,
+    (await ethers.getSigners())[0]
+  )
+
+  // set add network to registry
+  await (await stableCreditRegistry.addNetwork(stableCreditAddress)).wait()
   // grant stableCredit operator access
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   // grant creditIssuer operator access
@@ -184,12 +232,18 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set reservePool
   await (await stableCredit.setReservePool(reservePoolAddress)).wait()
+  // set creditPool
+  await (await stableCredit.setCreditPool(creditPoolAddress)).wait()
   // set targetRTD to 20%
   await (await reservePool.setTargetRTD((20e16).toString())).wait()
   // set gracePeriod length to 30 days
   await (await creditIssuer.setGracePeriodLength(30 * 24 * 60 * 60)).wait()
   // set base fee rate to 5%
   await (await riskOracle.setBaseFeeRate(stableCredit.address, (5e16).toString())).wait()
+  // grant issuer role to ambassador
+  await (await accessManager.grantIssuer(ambassadorAddress)).wait()
+  // grant operator role to ambassador
+  await (await accessManager.grantOperator(ambassadorAddress)).wait()
 }
 export default func
 func.tags = ["MOCK"]

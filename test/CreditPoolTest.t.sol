@@ -20,6 +20,7 @@ contract CreditPoolTest is ReSourceStableCreditTest {
         // set credit pool limit to max
         stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
         accessManager.grantMember(bob);
+        stableCredit.setCreditPool(address(creditPool)); // set creditPool
         changePrank(alice);
         stableCredit.approve(address(creditPool), type(uint256).max);
     }

@@ -1,6 +1,5 @@
 import { task } from "hardhat/config"
 import { send } from "../hardhat.config"
-import { ERC20, StableCredit, ReSourceCreditIssuer, ReSourceFeeManager, RiskOracle } from "../types"
 import { parseStableCredits } from "../utils/utils"
 
 import { DEMO_SETUP } from "./task-names"
@@ -8,11 +7,13 @@ import { DEMO_SETUP } from "./task-names"
 task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
   async (taskArgs, { ethers }) => {
     // Initialize contracts
-    const stableCredit = (await ethers.getContract("StableCredit")) as StableCredit
-    const feeManager = (await ethers.getContract("ReSourceFeeManager")) as ReSourceFeeManager
-    const creditIssuer = (await ethers.getContract("ReSourceCreditIssuer")) as ReSourceCreditIssuer
-    const reserveToken = (await ethers.getContract("ReserveToken")) as ERC20
-    const riskOracle = (await ethers.getContract("RiskOracle")) as RiskOracle
+    const stableCredit = await ethers.getContract("StableCredit")
+    const feeManager = await ethers.getContract("ReSourceFeeManager")
+    const creditIssuer = await ethers.getContract("ReSourceCreditIssuer")
+    const reserveToken = await ethers.getContract("ReserveToken")
+    const riskOracle = await ethers.getContract("RiskOracle")
+    const creditPool = await ethers.getContract("CreditPool")
+    const ambassador = await ethers.getContract("Ambassador")
 
     // Unpause fees if paused
     const feesPaused = await feeManager.paused()
@@ -138,6 +139,14 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
 
     await (await reserveToken.transfer(account3Address, ethers.utils.parseEther("2000"))).wait()
 
+    // initialize ambassador
+
+    const ambassadorAddress = "0x3e528D33C77B3e9724adBf9de08f81E211402F23"
+
+    await (await ambassador.addAmbassador(ambassadorAddress)).wait()
+
+    await (await ambassador.assignMembership(accountA.address, ambassadorAddress)).wait()
+
     // send 1400 from A to B
     await (
       await stableCredit.connect(accountA).transfer(accountB.address, parseStableCredits("1400"))
@@ -156,7 +165,13 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
       await stableCredit.connect(accountD).transfer(accountE.address, parseStableCredits("2500"))
     ).wait()
 
+    // reset base fee to 5%
     await (await riskOracle.setBaseFeeRate(stableCredit.address, (5e16).toString())).wait()
+
+    // set initial credit pool limit
+    await (
+      await stableCredit.createCreditLine(creditPool.address, parseStableCredits("1000"), 0)
+    ).wait()
 
     console.log("🚀 configured")
   }

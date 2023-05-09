@@ -105,6 +105,7 @@ const config: HardhatUserConfig = {
     paths: [
       "lib/risk-management/contracts/ReservePool.sol",
       "lib/risk-management/contracts/RiskOracle.sol",
+      "lib/risk-management/contracts/StableCreditRegistry.sol",
       "test/MockERC20.sol",
     ],
   },

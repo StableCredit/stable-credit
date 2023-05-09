@@ -27,6 +27,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     IFeeManager public feeManager;
     ICreditIssuer public creditIssuer;
     IAmbassador public ambassador;
+    address public creditPool;
 
     /* ========== INITIALIZER ========== */
 
@@ -171,6 +172,13 @@ contract StableCredit is MutualCredit, IStableCredit {
     function setCreditIssuer(address _creditIssuer) external onlyAdmin {
         creditIssuer = ICreditIssuer(_creditIssuer);
         emit CreditIssuerUpdated(_creditIssuer);
+    }
+
+    /// @notice enables network admin to set the credit pool address
+    /// @param _creditPool address of credit pool contract
+    function setCreditPool(address _creditPool) external onlyAdmin {
+        creditPool = _creditPool;
+        emit CreditPoolUpdated(_creditPool);
     }
 
     /* ========== MODIFIERS ========== */
