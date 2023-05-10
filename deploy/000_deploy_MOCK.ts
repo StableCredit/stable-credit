@@ -212,8 +212,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     (await ethers.getSigners())[0]
   )
 
-  // set add network to registry
-  await (await stableCreditRegistry.addNetwork(stableCreditAddress)).wait()
   // grant stableCredit operator access
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   // grant creditIssuer operator access
@@ -242,6 +240,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await accessManager.grantIssuer(ambassadorAddress)).wait()
   // grant operator role to ambassador
   await (await accessManager.grantOperator(ambassadorAddress)).wait()
+  // set add network to registry
+  await (await stableCreditRegistry.addNetwork(stableCreditAddress)).wait()
 }
 export default func
 func.tags = ["MOCK"]

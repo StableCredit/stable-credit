@@ -30,10 +30,10 @@ interface ICreditPool {
     event CreditsWithdrawn(address withdrawer, uint256 creditAmount);
     event DepositWithdrawn(bytes32 depositId);
     event BalanceWithdrawn(address depositor, uint256 amount);
-    event DepositsServiced(uint256 index);
+    event DepositPartiallyServiced(bytes32 depositId, uint256 amount);
+    event DepositServiced(bytes32 depositId);
     event DiscountRateDecreased(uint256 rate);
     event DiscountRateIncreased(uint256 rate);
     event DepositsCanceled(uint256 amount);
     event DepositCreated(bytes32 depositId, address depositor, uint256 amount);
-    event DepositDestroyed(bytes32 depositId);
 }

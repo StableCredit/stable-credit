@@ -139,12 +139,12 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
                 creditDeposits[listHead].amount -= creditsWithdrawn;
                 // decrement remaining credits withdrawn from credits deposited
                 creditsDeposited -= creditsWithdrawn;
+                emit DepositPartiallyServiced(listHead, creditsWithdrawn);
                 // remove remaining credits withdrawn
                 creditsWithdrawn = 0;
             }
             index++;
         }
-        emit DepositsServiced(index);
     }
 
     /* ========== VIEWS ========== */
@@ -238,7 +238,7 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
         creditsDeposited -= creditDeposits[depositId].amount;
         // delete deposit
         delete creditDeposits[depositId];
-        emit DepositDestroyed(depositId);
+        emit DepositServiced(depositId);
         // decrement total deposits
         totalDeposits--;
     }
