@@ -25,5 +25,7 @@ types
 .env
 
 deployments/localhost
+deployments/ganache
 
 .openzeppelin/unknown-31337.json
+.openzeppelin/unknown-1337.json
