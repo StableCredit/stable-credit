@@ -5,22 +5,8 @@ import "./ReSourceStableCreditTest.t.sol";
 import "../contracts/CreditPool.sol";
 
 contract CreditPoolTest is ReSourceStableCreditTest {
-    CreditPool creditPool;
-    address carol;
-
     function setUp() public {
-        carol = address(4);
         setUpReSourceTest();
-        changePrank(deployer);
-        reserveToken.transfer(bob, 100 ether);
-        reserveToken.transfer(carol, 100 ether);
-        // deploy credit pool
-        creditPool = new CreditPool();
-        creditPool.initialize(address(stableCredit));
-        // set credit pool limit to max
-        stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
-        accessManager.grantMember(bob);
-        stableCredit.setCreditPool(address(creditPool)); // set creditPool
         changePrank(alice);
         stableCredit.approve(address(creditPool), type(uint256).max);
     }

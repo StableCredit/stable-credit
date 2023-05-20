@@ -9,6 +9,12 @@ interface ICreditPool {
         bytes32 prev;
     }
 
+    /// @notice Enables members to deposit credits into the credit pool. Members can only deposit
+    /// a positive balance of credits if the credit pool has a sufficient outstanding debt of credits
+    /// to service.
+    /// @dev members depositing from positive balances will be instantly serviced.
+    /// @param amount Amount of credits to deposit
+    function depositCredits(uint256 amount) external returns (bytes32);
     /// @notice Enables users (member or not) to withdraw credits from the credit pool. Members can only
     /// withdraw credits if the pool has sufficient credits deposited or credit balance to cover the withdrawal.
     /// @dev only withdrawable if pool is not paused

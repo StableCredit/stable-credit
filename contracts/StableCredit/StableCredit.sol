@@ -7,12 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@resource-risk-management/interface/IReservePool.sol";
 import "./MutualCredit.sol";
 import "../interface/IStableCredit.sol";
-import "../interface/IAccessManager.sol";
-import "../interface/IFeeManager.sol";
-import "../interface/ICreditIssuer.sol";
-import "../Ambassador.sol";
 
-/// @title StableCreditDemurrage contract
+/// @title StableCredit contract
 /// @author ReSource
 /// @notice Extends the ERC20 standard to include mutual credit functionality where users
 /// can mint tokens into existence by utilizing their lines of credit. Credit defaults result
@@ -27,7 +23,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     IFeeManager public feeManager;
     ICreditIssuer public creditIssuer;
     IAmbassador public ambassador;
-    address public creditPool;
+    ICreditPool public creditPool;
 
     /* ========== INITIALIZER ========== */
 
@@ -74,15 +70,27 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     /// @notice Reduces network debt in exchange for reserve reimbursement.
-    /// @dev Must have sufficient network debt.
+    /// @dev Must have sufficient network debt or pool debt to service.
     function burnNetworkDebt(uint256 amount) public virtual {
         require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
         require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
-        _transfer(_msgSender(), address(this), amount);
+        uint256 creditPoolDebt = creditBalanceOf(address(creditPool));
+        // if credit pool has debt, pay it off first
+        if (creditPoolDebt > 0) {
+            // calculate amount to deposit
+            uint256 poolDepositAmount = amount > creditPoolDebt ? creditPoolDebt : amount;
+            _transfer(_msgSender(), address(this), poolDepositAmount);
+            _approve(address(this), address(creditPool), poolDepositAmount);
+            creditPool.depositCredits(poolDepositAmount);
+        }
+        if (amount <= creditPoolDebt) return;
+        // use leftover to burn network debt
+        uint256 leftOver = amount - creditPoolDebt;
+        _transfer(_msgSender(), address(this), leftOver);
         reservePool.reimburseAccount(
-            _msgSender(), reservePool.convertCreditTokenToReserveToken(amount)
+            _msgSender(), reservePool.convertCreditTokenToReserveToken(leftOver)
         );
-        emit NetworkDebtBurned(_msgSender(), amount);
+        emit NetworkDebtBurned(_msgSender(), leftOver);
     }
 
     /// @notice Repays referenced member's credit balance by amount.
@@ -177,7 +185,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice enables network admin to set the credit pool address
     /// @param _creditPool address of credit pool contract
     function setCreditPool(address _creditPool) external onlyAdmin {
-        creditPool = _creditPool;
+        creditPool = ICreditPool(_creditPool);
         emit CreditPoolUpdated(_creditPool);
     }
 

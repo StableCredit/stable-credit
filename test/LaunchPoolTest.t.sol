@@ -6,25 +6,16 @@ import "../contracts/CreditPool.sol";
 import "../contracts/LaunchPool.sol";
 
 contract LaunchPoolTest is ReSourceStableCreditTest {
-    address carol;
-    CreditPool creditPool;
     LaunchPool launchPool;
 
     function setUp() public {
-        carol = address(4);
         setUpReSourceTest();
         changePrank(deployer);
-        reserveToken.transfer(bob, 100 ether);
-        reserveToken.transfer(carol, 100 ether);
-        // deploy credit pool
-        creditPool = new CreditPool();
-        creditPool.initialize(address(stableCredit));
         // deploy launch pool
         launchPool = new LaunchPool();
         launchPool.initialize(address(stableCredit), address(creditPool), 30 days);
         // set credit pool limit to max
         stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
-        accessManager.grantMember(bob);
         accessManager.grantOperator(address(launchPool));
         changePrank(alice);
         stableCredit.approve(address(creditPool), type(uint256).max);

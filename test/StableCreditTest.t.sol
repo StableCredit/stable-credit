@@ -42,15 +42,15 @@ contract StableCreditTest is ReSourceStableCreditTest {
     }
 
     function testGrantCreditAndMembership() public {
-        // check bob does not have membership
-        assertTrue(!accessManager.isMember(bob));
-        // assign bob credit line
+        // check address(10) does not have membership
+        assertTrue(!accessManager.isMember(address(10)));
+        // assign address(10) credit line
         changePrank(deployer);
         stableCredit.createCreditLine(
-            bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
+            address(10), 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()), 0
         );
-        // check bob has membership
-        assertTrue(accessManager.isMember(bob));
+        // check address(10) has membership
+        assertTrue(accessManager.isMember(address(10)));
     }
 
     function testOverpayOutstandingCreditBalance() public {
@@ -129,7 +129,6 @@ contract StableCreditTest is ReSourceStableCreditTest {
         stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         // give tokens for repayment
         changePrank(deployer);
-        accessManager.grantMember(bob);
         reservePool.reserveToken().transfer(alice, 100 * 1 ether);
         changePrank(alice);
         // approve reserve tokens
@@ -146,6 +145,77 @@ contract StableCreditTest is ReSourceStableCreditTest {
         // burn network debt
         stableCredit.burnNetworkDebt(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
         assertEq(stableCredit.networkDebt(), 0);
+    }
+
+    function testBurnNetworkDebtWithPartialCreditPoolDebt() public {
+        // create credit balance for alice
+        changePrank(alice);
+        stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        // give tokens for repayment
+        changePrank(deployer);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
+        changePrank(alice);
+        // approve reserve tokens
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        // repay full credit balance
+        stableCredit.repayCreditBalance(
+            alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
+        );
+        assertEq(
+            stableCredit.networkDebt(),
+            100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+        );
+        changePrank(carol);
+        reserveToken.approve(address(creditPool), 100 ether);
+        // carol withdraw 40 credits from credit pool creating a 40 credit pool debt
+        creditPool.withdrawCredits(40e6);
+        // check credit pool debt is 40
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 40e6);
+        changePrank(bob);
+        // burn network debt
+        stableCredit.burnNetworkDebt(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        // check credit pool debt is reduced by
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 0);
+        // check network debt is less 60
+        assertEq(
+            stableCredit.networkDebt(),
+            40 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+        );
+    }
+
+    function testBurnNetworkDebtWithOnlyCreditPoolDebt() public {
+        // create credit balance for alice
+        changePrank(alice);
+        stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        // give tokens for repayment
+        changePrank(deployer);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
+        changePrank(alice);
+        // approve reserve tokens
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        // repay full credit balance
+        stableCredit.repayCreditBalance(
+            alice, uint128(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
+        );
+        assertEq(
+            stableCredit.networkDebt(),
+            100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+        );
+        changePrank(carol);
+        reserveToken.approve(address(creditPool), 100 ether);
+        // carol withdraw 100 credits from credit pool creating a 100 credit pool debt
+        creditPool.withdrawCredits(100e6);
+
+        changePrank(bob);
+        // burn network debt
+        stableCredit.burnNetworkDebt(100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        // check network debt is unaffected
+        assertEq(
+            stableCredit.networkDebt(),
+            100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+        );
+        // check credit pool debt is reduced by
+        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 0);
     }
 
     function testSetAccessManager() public {

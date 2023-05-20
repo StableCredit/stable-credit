@@ -15,6 +15,7 @@ import "./MockERC20.sol";
 contract ReSourceStableCreditTest is Test {
     address alice;
     address bob;
+    address carol;
     address deployer;
 
     // risk management contracts
@@ -27,14 +28,17 @@ contract ReSourceStableCreditTest is Test {
     AccessManager public accessManager;
     ReSourceFeeManager public feeManager;
     ReSourceCreditIssuer public creditIssuer;
+    CreditPool public creditPool;
 
     function setUpReSourceTest() public {
         alice = address(2);
         bob = address(3);
+        carol = address(4);
         vm.deal(alice, 100 ether);
         vm.deal(bob, 100 ether);
         deployer = address(1);
         vm.startPrank(deployer);
+
         // deploy reserve token
         reserveToken = new MockERC20(1000000e18, "Reserve Token", "REZ");
         // deploy riskOracle
@@ -68,6 +72,9 @@ contract ReSourceStableCreditTest is Test {
         riskOracle.setBaseFeeRate(address(reservePool), 5e16); // set base fee rate to 5%
         // send alice 1000 reserve tokens
         reservePool.reserveToken().transfer(alice, 1000 ether);
+        reserveToken.transfer(bob, 100 ether);
+        reserveToken.transfer(carol, 100 ether);
+        accessManager.grantMember(bob);
         // initialize alice credit line
         creditIssuer.initializeCreditLine(
             alice,
@@ -78,6 +85,12 @@ contract ReSourceStableCreditTest is Test {
             10e16,
             0
         );
+        // deploy credit pool
+        creditPool = new CreditPool();
+        creditPool.initialize(address(stableCredit));
+        // set credit pool limit to max
+        stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
+        stableCredit.setCreditPool(address(creditPool)); // set creditPool
     }
 
     function test() public {}

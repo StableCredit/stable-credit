@@ -93,7 +93,5 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         assertEq(feeManager.calculateFee(address(0), 100e6), 5 ether);
     }
 
-    // TODO: test exemptAddress
-
     // TODO: test calculateFee without oracle
 }

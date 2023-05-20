@@ -8,7 +8,6 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function setUp() public {
         setUpReSourceTest();
         changePrank(deployer);
-        accessManager.grantMember(bob);
     }
 
     // test credit initialization called in setup

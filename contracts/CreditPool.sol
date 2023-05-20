@@ -42,7 +42,13 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
     /// to service.
     /// @dev members depositing from positive balances will be instantly serviced.
     /// @param amount Amount of credits to deposit
-    function depositCredits(uint256 amount) public virtual whenNotPaused returns (bytes32) {
+    function depositCredits(uint256 amount)
+        public
+        virtual
+        override
+        whenNotPaused
+        returns (bytes32)
+    {
         // caller's balance of credits
         uint256 callerBalance = IERC20Upgradeable(address(stableCredit)).balanceOf(_msgSender());
         // contract's current debt
