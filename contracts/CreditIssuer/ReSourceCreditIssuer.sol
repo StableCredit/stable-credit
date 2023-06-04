@@ -218,7 +218,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
             creditTerms[member].rebalanced = false;
             creditTerms[member].periodIncome = 0;
             CreditPeriod memory period = creditPeriods[member];
-
+            // TODO: try re-underwrite
             uint256 newExpiration = block.timestamp + (period.expiration - period.issuedAt);
             uint256 newGraceExpiration =
                 block.timestamp + (period.graceExpiration - period.issuedAt);
@@ -235,7 +235,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     function updateMemberTerms(address member, uint256 income) private {
         // record new period income
         creditTerms[member].periodIncome += income;
-        // update rebalance status if possible
+        // update rebalanced status if possible
         if (income >= IMutualCredit(address(stableCredit)).creditBalanceOf(member)) {
             creditTerms[member].rebalanced = true;
         }

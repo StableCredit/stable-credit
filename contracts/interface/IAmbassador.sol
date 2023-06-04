@@ -15,7 +15,7 @@ interface IAmbassador {
     /// the given member's ambassador
     /// @param member Member address
     /// @param creditAmount Amount of credits to transfer
-    function transferDebt(address member, uint256 creditAmount) external;
+    function assumeDebt(address member, uint256 creditAmount) external;
 
     /* ========== EVENTS ========== */
 

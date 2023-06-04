@@ -141,7 +141,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     function writeOffCreditLine(address member) public virtual onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
         if (address(ambassador) != address(0)) {
-            ambassador.transferDebt(member, creditBalanceOf(member));
+            ambassador.assumeDebt(member, creditBalance);
         }
         _transfer(address(this), member, creditBalance);
         emit CreditLineWrittenOff(member, creditBalance);

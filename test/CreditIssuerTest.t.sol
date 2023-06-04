@@ -14,19 +14,20 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testInitializeCreditLine() public {
         address joe = address(4);
         changePrank(deployer);
+        // initialize joe credit line
         creditIssuer.initializeCreditLine(
             joe,
             90 days,
             30 days,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            5e16,
-            10e16,
+            1000e6, // 1000 credits
+            5e16, // 5%
+            10e16, // 10%
             0
         );
         assertEq(creditIssuer.creditTermsOf(joe).feeRate, 5e16);
         assertEq(
             stableCredit.creditLimitOf(joe),
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+            1000e6 // 1000 credits
         );
         // check member minimum Income to Debt ratio
         assertEq(creditIssuer.creditTermsOf(joe).minITD, 10e16);
@@ -35,22 +36,22 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testHasRebalanced() public {
         changePrank(alice);
         // alice send 10 stable credits to bob
-        stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 10e6);
         changePrank(bob);
         // bob sends 10 stable credits back to alice, rebalancing her credit line
-        stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(alice, 10e6);
         assertTrue(creditIssuer.creditTermsOf(alice).rebalanced);
     }
 
     function testItdOf() public {
         changePrank(alice);
         // alice sends 15 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 15 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 15e6);
         // check that alice's ITD is 0
         assertEq(creditIssuer.itdOf(alice), 0);
         changePrank(bob);
         // bob sends 5 credits to alice
-        stableCredit.transfer(alice, 5 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(alice, 5e6);
         // check that alice's ITD is 50% (10 debt / 5 income)
         assertEq(creditIssuer.itdOf(alice), 50e16);
     }
@@ -58,10 +59,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testHasValidITD() public {
         changePrank(alice);
         // alice sends 15 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 15 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 15e6);
         changePrank(bob);
         // bob sends 5 credits to alice causing her ITD to be 50% (10 debt / 5 income)
-        stableCredit.transfer(alice, 5 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(alice, 5e6);
         // check that alice's ITD is valid (50% > 10%)
         assertTrue(creditIssuer.hasValidITD(alice));
     }
@@ -69,10 +70,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testHasInvalidITD() public {
         changePrank(alice);
         // alice sends 100 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 100e6);
         changePrank(bob);
         // bob sends 5 credits to alice causing her ITD to be 5.2% (95 debt / 5 income)
-        stableCredit.transfer(alice, 5 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(alice, 5e6);
         // check that alice's ITD is invalid (5.2% < 10%)
         assertTrue(!creditIssuer.hasValidITD(alice));
     }
@@ -80,7 +81,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testNeededIncome() public {
         changePrank(alice);
         // alice sends 10 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 10e6);
         uint256 aliceNeededIncome = creditIssuer.neededIncomeOf(alice);
         // assert needed income is .909091 credits
         assertEq(aliceNeededIncome, 909091);
@@ -96,10 +97,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testExpirationResetsPeriodIncome() public {
         changePrank(alice);
         // alice sends 10 credits to bob
-        stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 10e6);
         changePrank(bob);
         // bob sends 10 credits to alice
-        stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(alice, 10e6);
         changePrank(deployer);
         // assert period income is 10 credits
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10000000);
@@ -121,10 +122,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testExpirationResetsRebalanced() public {
         changePrank(alice);
         // alice sends 10 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 10e6);
         changePrank(bob);
         // bob sends 10 credits to alice causing her ITD to be 100% (0 debt / 10 income)
-        stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(alice, 10e6);
         changePrank(deployer);
         assertTrue(creditIssuer.creditTermsOf(alice).rebalanced);
         assertTrue(!creditIssuer.periodExpired(alice));
@@ -142,7 +143,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testExpirationWithSufficientDTI() public {
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         changePrank(bob);
         // bob sends needed income to alice causing her ITD to be valid
         stableCredit.transfer(alice, creditIssuer.neededIncomeOf(alice));
@@ -158,16 +159,13 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // check that alice's credit period has been renewed
         assertEq(creditIssuer.periodExpirationOf(alice), block.timestamp + 90 days);
         // check credit line is unaltered
-        assertEq(
-            stableCredit.creditLimitOf(alice),
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        assertEq(stableCredit.creditLimitOf(alice), 1000e6);
     }
 
     function testGracePeriodFreeze() public {
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // check that alice's ITD is invalid
         assertTrue(!creditIssuer.hasValidITD(alice));
         // advance time to expiration
@@ -186,7 +184,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
     function testGracePeriodCompliance() public {
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         uint256 aliceExpiration = creditIssuer.periodExpirationOf(alice);
         changePrank(bob);
         // bob sends needed income - 1 to alice causing her ITD to remain invalid
@@ -209,62 +207,46 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // check that alice credit period renewed
         assertEq(creditIssuer.periodExpirationOf(alice), aliceExpiration + 90 days + 1);
         // check credit line is unaltered
-        assertEq(
-            stableCredit.creditLimitOf(alice),
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        assertEq(stableCredit.creditLimitOf(alice), 1000e6);
     }
 
     function testReserveCurrencyRepaymentIncome() public {
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // check that alice has no income
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 0);
         // approve
         reservePool.reserveToken().approve(address(stableCredit), type(uint256).max);
         // alice make payment on credit balance
-        stableCredit.repayCreditBalance(
-            alice, uint128(10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
-        );
-        assertEq(
-            creditIssuer.creditTermsOf(alice).periodIncome,
-            10 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        stableCredit.repayCreditBalance(alice, uint128(10e6));
+        assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10e6);
     }
 
     function reserveCurrencyRepaymentInGracePeriod() public {
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // advance time to expiration
         vm.warp(block.timestamp + 90 days + 1);
         assertTrue(creditIssuer.isFrozen(alice));
         // approve reserve token
         reservePool.reserveToken().approve(address(stableCredit), type(uint256).max);
         // alice make payment on credit balance
-        stableCredit.repayCreditBalance(
-            alice, uint128(10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()))
-        );
-        assertEq(
-            creditIssuer.creditTermsOf(alice).periodIncome,
-            10 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        stableCredit.repayCreditBalance(alice, uint128(10e6));
+        assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10e6);
     }
 
     function testDefault() public {
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
         // check network debt
-        assertEq(
-            stableCredit.networkDebt(),
-            20 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        assertEq(stableCredit.networkDebt(), 20e6);
         // check alice credit limit is 0
         assertEq(stableCredit.creditLimitOf(alice), 0);
     }
@@ -274,20 +256,14 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.pauseTermsOf(address(alice));
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // advance time to expiration
         vm.warp(block.timestamp + 120 days + 1);
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
         // check alice has not defaulted
-        assertEq(
-            stableCredit.creditLimitOf(alice),
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
-        assertEq(
-            stableCredit.creditBalanceOf(alice),
-            20 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        assertEq(stableCredit.creditLimitOf(alice), 1000e6);
+        assertEq(stableCredit.creditBalanceOf(alice), 20e6);
     }
 
     function testUnpauseBeforeExpiration() public {
@@ -295,7 +271,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.pauseTermsOf(address(alice));
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // advance time to before expiration
         vm.warp(block.timestamp + 89 days);
 
@@ -307,14 +283,8 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
         // check alice has not defaulted
-        assertEq(
-            stableCredit.creditLimitOf(alice),
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
-        assertEq(
-            stableCredit.creditBalanceOf(alice),
-            20 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        assertEq(stableCredit.creditLimitOf(alice), 1000e6);
+        assertEq(stableCredit.creditBalanceOf(alice), 20e6);
     }
 
     function testUnpauseDuringGrace() public {
@@ -322,7 +292,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.pauseTermsOf(address(alice));
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // advance time to before expiration
         vm.warp(block.timestamp + 91 days);
 
@@ -342,7 +312,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.pauseTermsOf(address(alice));
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // advance time to after expiration
         vm.warp(block.timestamp + 120 days + 1);
         // bob sends needed income to alice
@@ -355,10 +325,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
         // check alice has not defaulted
-        assertEq(
-            stableCredit.creditLimitOf(alice),
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        assertEq(stableCredit.creditLimitOf(alice), 1000e6);
         assertEq(stableCredit.creditBalanceOf(alice), 0);
     }
 
@@ -367,7 +334,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.pauseTermsOf(address(alice));
         changePrank(alice);
         // alice sends 20 credits to bob causing her ITD to be 0
-        stableCredit.transfer(bob, 20 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 20e6);
         // advance time to after expiration
         vm.warp(block.timestamp + 120 days + 1);
         changePrank(deployer);
@@ -378,31 +345,20 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // check alice has defaulted
         assertEq(stableCredit.creditLimitOf(alice), 0);
         assertEq(stableCredit.creditBalanceOf(alice), 0);
-        assertEq(
-            stableCredit.networkDebt(),
-            20 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
-        );
+        assertEq(stableCredit.networkDebt(), 20e6);
     }
 
     function testTxValidationExpiredButNotUsingCredit() public {
         changePrank(deployer);
-        creditIssuer.initializeCreditLine(
-            bob,
-            90 days,
-            30 days,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            5e16,
-            10e16,
-            0
-        );
+        creditIssuer.initializeCreditLine(bob, 90 days, 30 days, 1000e6, 5e16, 10e16, 0);
         changePrank(alice);
         // alice sends bob 10 credits
-        stableCredit.transfer(bob, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(bob, 10e6);
         // expire credit line
         vm.warp(creditIssuer.graceExpirationOf(bob) + 1);
         changePrank(bob);
         // bob sends alice 10 credits
-        stableCredit.transfer(alice, 10 * (10 ** IERC20Metadata(address(stableCredit)).decimals()));
+        stableCredit.transfer(alice, 10e6);
     }
 
     function testSetPeriodLength() public {
@@ -416,8 +372,6 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         creditIssuer.setGraceExpiration(alice, block.timestamp + 100 days);
         assertEq(creditIssuer.graceExpirationOf(alice), block.timestamp + 100 days);
     }
-
-    // TODO: testRenewCreditPeriod
 
     // TODO: testUnderwriteMember
 }

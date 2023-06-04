@@ -60,14 +60,14 @@ contract AmbassadorTest is ReSourceStableCreditTest {
     function testDefaultPenaltyRate() public {
         changePrank(address(stableCredit));
         // transfer 100 credits of debt to ambassadorA
-        ambassador.transferDebt(alice, 100e6);
+        ambassador.assumeDebt(alice, 100e6);
         assertEq(ambassador.debtBalances(ambassadorA), 5 ether);
     }
 
     function testPenaltyServiceRate() public {
         changePrank(address(stableCredit));
         // transfer 100 credits of debt to ambassadorA
-        ambassador.transferDebt(alice, 100e6);
+        ambassador.assumeDebt(alice, 100e6);
         changePrank(alice);
         // check that 50% of the deposit is used to service debt
         reserveToken.approve(address(ambassador), 30 ether);

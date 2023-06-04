@@ -76,15 +76,7 @@ contract ReSourceStableCreditTest is Test {
         reserveToken.transfer(carol, 100 ether);
         accessManager.grantMember(bob);
         // initialize alice credit line
-        creditIssuer.initializeCreditLine(
-            alice,
-            90 days,
-            30 days,
-            1000 * (10 ** IERC20Metadata(address(stableCredit)).decimals()),
-            5e16,
-            10e16,
-            0
-        );
+        creditIssuer.initializeCreditLine(alice, 90 days, 30 days, 1000e6, 5e16, 10e16, 0);
         // deploy credit pool
         creditPool = new CreditPool();
         creditPool.initialize(address(stableCredit));

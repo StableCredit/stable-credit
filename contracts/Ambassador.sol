@@ -58,7 +58,7 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
     {
         require(baseAmount > 0, "Ambassador: deposit must be greater than 0");
         address ambassador = memberships[member];
-        require(isAmbassador(ambassador), "Ambassador: ambassador not found");
+        if (!isAmbassador(ambassador)) return 0;
         // calculate compensation
         uint256 compensationAmount = baseAmount * compensationRate / 1 ether;
         // calculate amount of compensation to service debt balance
@@ -110,7 +110,7 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
     /// the given member's ambassador
     /// @param member Member address
     /// @param creditAmount Amount of credits to transfer
-    function transferDebt(address member, uint256 creditAmount) external onlyStableCredit {
+    function assumeDebt(address member, uint256 creditAmount) external onlyStableCredit {
         uint256 debtAmount = creditAmount * defaultPenaltyRate / 1 ether;
         address ambassador = memberships[member];
         debtBalances[ambassador] += stableCredit.convertCreditsToReserveToken(debtAmount);
