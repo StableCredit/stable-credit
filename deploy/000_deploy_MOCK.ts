@@ -232,6 +232,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await stableCredit.setReservePool(reservePoolAddress)).wait()
   // set creditPool
   await (await stableCredit.setCreditPool(creditPoolAddress)).wait()
+  // set ambassador
+  await (await stableCredit.setAmbassador(ambassadorAddress)).wait()
   // set targetRTD to 20%
   await (await reservePool.setTargetRTD((20e16).toString())).wait()
   // set base fee rate to 5%

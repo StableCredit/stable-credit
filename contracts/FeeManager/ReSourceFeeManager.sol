@@ -12,8 +12,6 @@ import "./FeeManager.sol";
 contract ReSourceFeeManager is FeeManager {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IAmbassador public ambassador;
-
     /* ========== INITIALIZER ========== */
 
     function initialize(address _stableCredit) external initializer {
@@ -48,13 +46,6 @@ contract ReSourceFeeManager is FeeManager {
         emit FeesCollected(sender, memberFee - ambassadorFee);
     }
 
-    /// @notice set the ambassador contract address
-    /// @dev only callable by operator
-    /// @param _ambassador ambassador contract address
-    function setAmbassador(address _ambassador) external onlyOperator {
-        ambassador = IAmbassador(_ambassador);
-    }
-
     /* ========== VIEWS ========== */
 
     /// @notice calculate fee to charge member in reserve token value
@@ -71,6 +62,8 @@ contract ReSourceFeeManager is FeeManager {
         if (member == address(0)) {
             return super.calculateFee(member, amount);
         }
+        // TODO: only charge memberFeeRate when sender is overdrafting account
+        //      base is charged always
         // calculate member fee
         uint256 memberFeeRate = IReSourceCreditIssuer(address(stableCredit.creditIssuer()))
             .creditTermsOf(member).feeRate;
@@ -104,11 +97,13 @@ contract ReSourceFeeManager is FeeManager {
     /// @param member member address
     /// @param baseFee base fee to be collected in reserve token value
     function depositAmbassadorFee(address member, uint256 baseFee) internal returns (uint256) {
-        if (address(ambassador) != address(0)) {
+        if (address(stableCredit.ambassador()) != address(0)) {
             // approve ambassador to transfer minimum of base fee
-            stableCredit.reservePool().reserveToken().approve(address(ambassador), baseFee);
+            stableCredit.reservePool().reserveToken().approve(
+                address(stableCredit.ambassador()), baseFee
+            );
             // deposit ambassador fee
-            return ambassador.compensateAmbassador(member, baseFee);
+            return stableCredit.ambassador().compensateAmbassador(member, baseFee);
         }
         return 0;
     }

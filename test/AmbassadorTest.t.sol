@@ -24,7 +24,7 @@ contract AmbassadorTest is ReSourceStableCreditTest {
         accessManager.grantIssuer(address(ambassador));
         accessManager.grantOperator(address(ambassador));
         // set fee manager ambassador
-        feeManager.setAmbassador(address(ambassador));
+        stableCredit.setAmbassador(address(ambassador));
         ambassador.addAmbassador(ambassadorA);
         // assignMembership
         ambassador.assignMembership(alice, ambassadorA);
