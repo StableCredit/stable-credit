@@ -3,6 +3,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { retry } from "ts-retry"
 import { Deployment } from "hardhat-deploy/dist/types"
 import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils/options"
+import { uploadConfigToR2 } from "./r2Config"
+
+let config = {}
 
 export const tryWithGas = async (
   func: ContractFunction,
@@ -35,9 +38,10 @@ export const deployProxyAndSave = async (
   args: any,
   hardhat: HardhatRuntimeEnvironment,
   abi,
+  saveToR2: boolean,
   deployOptions?: DeployProxyOptions
 ): Promise<string> => {
-  return await deployProxyAndSaveAs(name, name, args, hardhat, abi, deployOptions)
+  return await deployProxyAndSaveAs(name, name, args, hardhat, abi, saveToR2, deployOptions)
 }
 
 export const deployProxyAndSaveAs = async (
@@ -46,6 +50,7 @@ export const deployProxyAndSaveAs = async (
   args: any,
   hardhat: HardhatRuntimeEnvironment,
   abi,
+  saveToR2: boolean,
   deployOptions?: DeployProxyOptions
 ): Promise<string> => {
   const contractFactory = await hardhat.ethers.getContractFactory(factoryName)
@@ -77,6 +82,8 @@ export const deployProxyAndSaveAs = async (
 
   hardhat.deployments.save(name, contractDeployment)
 
+  if (saveToR2) await uploadConfigToR2(name, contract.address)
+
   console.log("🚀 ", name, " deployed")
   return contract.address
 }
@@ -102,5 +109,5 @@ export const getConfig = () => {
   if (!symbol) throw new Error("Symbol not provided")
   if (!adminOwner) throw new Error("Admin owner not provided")
 
-  return {adminOwner, reserveTokenAddress, riskOracleAddress, name, symbol}
+  return { adminOwner, reserveTokenAddress, riskOracleAddress, name, symbol }
 }

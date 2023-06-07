@@ -46,7 +46,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "RiskOracle",
       riskOracleArgs,
       hardhat,
-      riskOracleAbi
+      riskOracleAbi,
+      true
     )
   }
 
@@ -61,7 +62,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "StableCreditRegistry",
       stableCreditRegistryArgs,
       hardhat,
-      stableCreditRegistryAbi
+      stableCreditRegistryAbi,
+      true
     )
   }
 
@@ -74,7 +76,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "AccessManager",
       accessManagerArgs,
       hardhat,
-      accessManagerAbi
+      accessManagerAbi,
+      true
     )
   }
 
@@ -88,6 +91,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       stableCreditArgs,
       hardhat,
       stableCreditAbi,
+      true,
       { initializer: "__StableCredit_init" }
     )
   }
@@ -106,7 +110,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "ReservePool",
       reservePoolArgs,
       hardhat,
-      reservePoolAbi
+      reservePoolAbi,
+      true
     )
   }
 
@@ -119,7 +124,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "ReSourceFeeManager",
       feeManagerArgs,
       hardhat,
-      feeManagerAbi
+      feeManagerAbi,
+      true
     )
   }
 
@@ -132,7 +138,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "ReSourceCreditIssuer",
       creditIssuerArgs,
       hardhat,
-      creditIssuerAbi
+      creditIssuerAbi,
+      true
     )
   }
 
@@ -157,7 +164,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "Ambassador",
       ambassadorArgs,
       hardhat,
-      ambassadorAbi
+      ambassadorAbi,
+      true
     )
   }
 
@@ -170,7 +178,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "CreditPool",
       creditPoolArgs,
       hardhat,
-      creditPoolAbi
+      creditPoolAbi,
+      true
     )
   }
 
@@ -183,7 +192,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       "LaunchPool",
       launchPoolArgs,
       hardhat,
-      launchPoolAbi
+      launchPoolAbi,
+      true
     )
   }
 
@@ -245,5 +255,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // set add network to registry
   await (await stableCreditRegistry.addNetwork(stableCreditAddress)).wait()
 }
+
 export default func
 func.tags = ["MOCK"]
