@@ -8,6 +8,7 @@ import {
 
 import "dotenv/config"
 
+const CF_ENVIRONMENT = process.env.CF_ENVIRONMENT || ""
 const CF_ACCESS_KEY = process.env.CF_ACCESS_KEY || ""
 const CF_SECRET_KEY = process.env.CF_SECRET_KEY || ""
 const CF_BUCKET_NAME = process.env.CF_BUCKET_NAME || ""
@@ -28,7 +29,7 @@ export const uploadConfigToR2 = async (name: string, address: string) => {
 
   var data = {
     Bucket: CF_BUCKET_NAME,
-    Key: `rdk-config-${name}.json`,
+    Key: `config-${ENVIRONMENT}--${name}.json`,
     Body: buf,
     ContentEncoding: "base64",
     ContentType: "application/json",
