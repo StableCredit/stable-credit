@@ -29,7 +29,7 @@ export const uploadConfigToR2 = async (name: string, address: string) => {
 
   var data = {
     Bucket: CF_BUCKET_NAME,
-    Key: `config-${ENVIRONMENT}--${name}.json`,
+    Key: `config-${CF_ENVIRONMENT}-${name}.json`,
     Body: buf,
     ContentEncoding: "base64",
     ContentType: "application/json",

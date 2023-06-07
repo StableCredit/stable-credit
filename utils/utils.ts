@@ -5,7 +5,7 @@ import { Deployment } from "hardhat-deploy/dist/types"
 import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils/options"
 import { uploadConfigToR2 } from "./r2Config"
 
-let config = {}
+const CF_UPLOAD = Boolean(process.env.CF_UPLOAD) || false
 
 export const tryWithGas = async (
   func: ContractFunction,
@@ -82,7 +82,7 @@ export const deployProxyAndSaveAs = async (
 
   hardhat.deployments.save(name, contractDeployment)
 
-  if (saveToR2) await uploadConfigToR2(name, contract.address)
+  if (saveToR2 && CF_UPLOAD) await uploadConfigToR2(name, contract.address)
 
   console.log("🚀 ", name, " deployed")
   return contract.address
