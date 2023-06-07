@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./ReSourceStableCreditTest.t.sol";
-import "../contracts/Pools/CreditPool.sol";
+import "../contracts/CreditPool.sol";
 
 contract CreditPoolTest is ReSourceStableCreditTest {
     function setUp() public {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interface/IReSourceCreditIssuer.sol";
-import "../interface/IReSourceStableCredit.sol";
+import "../interface/IAmbassador.sol";
 import "../interface/IMutualCredit.sol";
 import "./FeeManager.sol";
 
@@ -97,14 +97,13 @@ contract ReSourceFeeManager is FeeManager {
     /// @param member member address
     /// @param baseFee base fee to be collected in reserve token value
     function depositAmbassadorFee(address member, uint256 baseFee) internal returns (uint256) {
-        IReSourceStableCredit rsStableCredit = IReSourceStableCredit(address(stableCredit));
-        if (address(rsStableCredit.ambassador()) != address(0)) {
+        if (address(stableCredit.ambassador()) != address(0)) {
             // approve ambassador to transfer minimum of base fee
             stableCredit.reservePool().reserveToken().approve(
-                address(rsStableCredit.ambassador()), baseFee
+                address(stableCredit.ambassador()), baseFee
             );
             // deposit ambassador fee
-            return rsStableCredit.ambassador().compensateAmbassador(member, baseFee);
+            return stableCredit.ambassador().compensateAmbassador(member, baseFee);
         }
         return 0;
     }
