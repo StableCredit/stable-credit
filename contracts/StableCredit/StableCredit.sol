@@ -22,15 +22,13 @@ contract StableCredit is MutualCredit, IStableCredit {
     IReservePool public reservePool;
     IFeeManager public feeManager;
     ICreditIssuer public creditIssuer;
-    IAmbassador public ambassador;
-    ICreditPool public creditPool;
 
     /* ========== INITIALIZER ========== */
 
     function __StableCredit_init(string memory name_, string memory symbol_, address access_)
         public
         virtual
-        initializer
+        onlyInitializing
     {
         __MutualCredit_init(name_, symbol_);
         // assign "network debt account" credit line
@@ -74,23 +72,11 @@ contract StableCredit is MutualCredit, IStableCredit {
     function burnNetworkDebt(uint256 amount) public virtual {
         require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
         require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
-        uint256 creditPoolDebt = creditBalanceOf(address(creditPool));
-        // if credit pool has debt, pay it off first
-        if (creditPoolDebt > 0) {
-            // calculate amount to deposit
-            uint256 poolDepositAmount = amount > creditPoolDebt ? creditPoolDebt : amount;
-            _transfer(_msgSender(), address(this), poolDepositAmount);
-            _approve(address(this), address(creditPool), poolDepositAmount);
-            creditPool.depositCredits(poolDepositAmount);
-        }
-        if (amount <= creditPoolDebt) return;
-        // use leftover to burn network debt
-        uint256 leftOver = amount - creditPoolDebt;
-        _transfer(_msgSender(), address(this), leftOver);
+        _transfer(_msgSender(), address(this), amount);
         reservePool.reimburseAccount(
-            _msgSender(), reservePool.convertCreditTokenToReserveToken(leftOver)
+            _msgSender(), reservePool.convertCreditTokenToReserveToken(amount)
         );
-        emit NetworkDebtBurned(_msgSender(), leftOver);
+        emit NetworkDebtBurned(_msgSender(), amount);
     }
 
     /// @notice Repays referenced member's credit balance by amount.
@@ -140,9 +126,6 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @param member address of member to write off
     function writeOffCreditLine(address member) public virtual onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
-        if (address(ambassador) != address(0)) {
-            ambassador.assumeDebt(member, creditBalance);
-        }
         _transfer(address(this), member, creditBalance);
         emit CreditLineWrittenOff(member, creditBalance);
     }
@@ -168,25 +151,11 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit FeeManagerUpdated(_feeManager);
     }
 
-    /// @notice enables network admin to set the ambassador address
-    /// @param _ambassador address of ambassador contract
-    function setAmbassador(address _ambassador) external onlyAdmin {
-        ambassador = IAmbassador(_ambassador);
-        emit AmbassadorUpdated(_ambassador);
-    }
-
     /// @notice enables network admin to set the credit issuer address
     /// @param _creditIssuer address of credit issuer contract
     function setCreditIssuer(address _creditIssuer) external onlyAdmin {
         creditIssuer = ICreditIssuer(_creditIssuer);
         emit CreditIssuerUpdated(_creditIssuer);
-    }
-
-    /// @notice enables network admin to set the credit pool address
-    /// @param _creditPool address of credit pool contract
-    function setCreditPool(address _creditPool) external onlyAdmin {
-        creditPool = ICreditPool(_creditPool);
-        emit CreditPoolUpdated(_creditPool);
     }
 
     /* ========== MODIFIERS ========== */

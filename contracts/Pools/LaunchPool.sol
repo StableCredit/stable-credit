@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "./interface/ICreditPool.sol";
-import "./interface/IStableCredit.sol";
+import "../interface/ICreditPool.sol";
+import "../interface/IStableCredit.sol";
 
 contract LaunchPool is PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
