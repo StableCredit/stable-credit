@@ -5,7 +5,7 @@ import { Deployment } from "hardhat-deploy/dist/types"
 import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils/options"
 import { uploadConfigToR2 } from "./r2Config"
 
-const CF_UPLOAD = Boolean(process.env.CF_UPLOAD) || false
+const CF_UPLOAD = Boolean(process.env.CF_UPLOAD == "true") || false
 
 export const tryWithGas = async (
   func: ContractFunction,
