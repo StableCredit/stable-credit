@@ -40,7 +40,7 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /// @notice Network account that manages the rectification of defaulted debt accounts.
     /// @return amount of debt owned by the network.
-    function networkDebt() external view returns (uint256) {
+    function networkDebt() public view returns (uint256) {
         return creditBalanceOf(address(this));
     }
 
@@ -61,22 +61,9 @@ contract StableCredit is MutualCredit, IStableCredit {
         returns (bool)
     {
         if (address(feeManager) != address(0)) {
-            feeManager.collectFees(_msgSender(), to, amount, false);
+            feeManager.collectFee(_msgSender(), to, amount);
         }
         return super.transfer(to, amount);
-    }
-
-    /// @notice Enables members to transfer credits to other network participants
-    /// @dev members are only able to pay tx fees in stable credits if there is network debt to service
-    /// and they are only using a positive balance (including tx fee)
-    /// @param to address of recipient
-    /// @param amount amount of credits to transfer
-    /// @param feeInCredits enables members to pay tx fees using their stable credit balance (if available)
-    function transfer(address to, uint256 amount, bool feeInCredits) external returns (bool) {
-        if (address(feeManager) != address(0)) {
-            feeManager.collectFees(_msgSender(), to, amount, feeInCredits);
-        }
-        super.transfer(to, amount);
     }
 
     /// @notice Reduces network debt in exchange for reserve reimbursement.
@@ -84,7 +71,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @return reimbursement amount from reserve pool
     function burnNetworkDebt(uint256 amount) public virtual override returns (uint256) {
         require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
-        require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
+        require(amount <= networkDebt(), "StableCredit: Insufficient network debt");
         _transfer(_msgSender(), address(this), amount);
         uint256 reimbursement = reservePool.reimburseAccount(
             _msgSender(), reservePool.convertCreditTokenToReserveToken(amount)

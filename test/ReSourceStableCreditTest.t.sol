@@ -64,6 +64,7 @@ contract ReSourceStableCreditTest is Test {
         // initialize contract variables
         accessManager.grantOperator(address(stableCredit)); // grant stableCredit operator access
         accessManager.grantOperator(address(creditIssuer)); // grant creditIssuer operator access
+        accessManager.grantOperator(address(feeManager)); // grant feeManager operator access
         stableCredit.setAccessManager(address(accessManager)); // set accessManager
         stableCredit.setFeeManager(address(feeManager)); // set feeManager
         stableCredit.setCreditIssuer(address(creditIssuer)); // set creditIssuer

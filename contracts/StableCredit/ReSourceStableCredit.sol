@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./StableCredit.sol";
 import "../interface/IReSourceStableCredit.sol";
+import "../interface/IReSourceFeeManager.sol";
 
 /// @title StableCredit contract
 /// @author ReSource
@@ -36,6 +37,29 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
     /// @dev Must have sufficient network debt or pool debt to service.
     function burnNetworkDebt(uint256 amount) public override onlyOperator returns (uint256) {
         return super.burnNetworkDebt(amount);
+    }
+
+    /// @notice Enables members to transfer credits to other network participants
+    /// @dev members are only able to pay tx fees in stable credits if there is network debt to service
+    /// and they are only using a positive balance (including tx fee)
+    /// @param to address of recipient
+    /// @param amount amount of credits to transfer
+    function transferWithCredits(address to, uint256 amount) external returns (bool) {
+        require(
+            canPayFeeInCredits(_msgSender(), amount), "StableCredit: Cannot pay fees in credits"
+        );
+        IReSourceFeeManager(address(feeManager)).collectFeeInCredits(_msgSender(), to, amount);
+        return ERC20Upgradeable.transfer(to, amount);
+    }
+
+    /* ========== VIEWS ========== */
+
+    function canPayFeeInCredits(address sender, uint256 amount) public view returns (bool) {
+        bool feeManagerSet = address(feeManager) != address(0);
+        uint256 fee = IReSourceFeeManager(address(feeManager)).calculateFeeInCredits(sender, amount);
+        bool sufficientBalance = balanceOf(sender) >= amount + fee;
+        bool sufficientNetworkDebt = networkDebt() >= fee;
+        return feeManagerSet && sufficientBalance && sufficientNetworkDebt;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
