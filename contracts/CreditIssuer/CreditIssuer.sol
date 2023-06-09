@@ -179,7 +179,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member to expire.
     function expireCreditPeriod(address member) internal virtual {
         require(!inGoodStanding(member), "RiskManager: member in good standing");
-        uint256 creditBalance = IMutualCredit(address(stableCredit)).creditBalanceOf(member);
+        uint256 creditBalance = stableCredit.creditBalanceOf(member);
         delete creditPeriods[member];
         // if member holds outstanding debt at expiration, default on debt
         if (creditBalance > 0) {
@@ -209,7 +209,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         // valid if sender does not have terms.
         if (creditPeriods[from].issuedAt == 0) return true;
         // valid if sender is not using credit.
-        if (amount > 0 && amount <= IERC20Upgradeable(address(stableCredit)).balanceOf(from)) {
+        if (amount > 0 && amount <= stableCredit.balanceOf(from)) {
             return true;
         }
         // if member is in grace period invalidate transaction

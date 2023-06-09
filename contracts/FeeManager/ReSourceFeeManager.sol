@@ -11,6 +11,10 @@ import "./FeeManager.sol";
 /// @notice Extends the FeeManager contract to include custom fee calculation logic
 contract ReSourceFeeManager is FeeManager {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20Upgradeable for IStableCredit;
+
+    /* ========== STATE VARIABLES ========== */
+    mapping(address => bool) public serviceDebt;
 
     /* ========== INITIALIZER ========== */
 
@@ -26,7 +30,7 @@ contract ReSourceFeeManager is FeeManager {
     /// @param sender stable credit sender address
     /// @param recipient stable credit recipient address
     /// @param amount stable credit amount
-    function collectFees(address sender, address recipient, uint256 amount)
+    function collectFees(address sender, address recipient, uint256 amount, bool inCredits)
         public
         override
         onlyStableCredit
@@ -34,60 +38,68 @@ contract ReSourceFeeManager is FeeManager {
         if (!shouldChargeTx(sender, recipient)) {
             return;
         }
-        // calculate member fee
-        uint256 memberFee = calculateFee(sender, amount);
+        uint256 fee = calculateFee(sender, amount, inCredits);
+        if (inCredits) {
+            // transaction amount and fee must be covered by positive balance
+            require(
+                stableCredit.balanceOf(sender) > amount + fee,
+                "FeeManager: Insufficient balance for fee in credits"
+            );
+            // collect tx fee in credits from sender
+            stableCredit.safeTransferFrom(sender, address(this), fee);
+            // use collected credits to burn network debt
+            uint256 reimbursement = stableCredit.burnNetworkDebt(fee);
+            // transfer reimbursement to sender
+            stableCredit.reservePool().reserveToken().safeTransfer(sender, reimbursement);
+            return;
+        }
+        // collect reserve token fees from sender
+        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), fee);
         // calculate base fee
-        uint256 baseFee = calculateFee(address(0), amount);
-        // collect fees
-        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), memberFee);
+        uint256 baseFee = calculateFee(address(0), amount, inCredits);
+        // deposit portion of baseFee to ambassador
         uint256 ambassadorFee = depositAmbassadorFee(sender, baseFee);
         // update total fees collected
-        collectedFees += memberFee - ambassadorFee;
-        emit FeesCollected(sender, memberFee - ambassadorFee);
+        collectedFees += fee - ambassadorFee;
+        emit FeesCollected(sender, fee);
     }
 
     /* ========== VIEWS ========== */
 
     /// @notice calculate fee to charge member in reserve token value
-    /// @dev extends the base fee calculation to include a member fee rate provided by the
+    /// @dev extends the base fee calculation to include a member risk fee rate provided by the
     /// ReSource credit issuer. If a null member address is supplied, the base fee is returned.
+    /// Calling with inCredits as true requires member balance to be greater than tx amount.
     /// @param amount stable credit amount to base fee off of
     /// @return reserve token amount to charge given member
-    function calculateFee(address member, uint256 amount) public view override returns (uint256) {
+    function calculateFee(address member, uint256 amount, bool inCredits)
+        public
+        view
+        override
+        returns (uint256)
+    {
         // if contract is paused or risk oracle is not set, return 0
         if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
             return 0;
         }
         // if member is null, return base fee
         if (member == address(0)) {
-            return super.calculateFee(member, amount);
+            return super.calculateFee(member, amount, inCredits);
         }
-        // TODO: only charge memberFeeRate when sender is overdrafting account
-        //      base is charged always
-        // calculate member fee
-        uint256 memberFeeRate = IReSourceCreditIssuer(address(stableCredit.creditIssuer()))
-            .creditTermsOf(member).feeRate;
-        uint256 memberFee =
-            stableCredit.convertCreditsToReserveToken((memberFeeRate * amount) / 1 ether);
-        // return base fee + member fee
-        return super.calculateFee(member, amount) + memberFee;
-    }
 
-    /// @notice check if sender should be charged fee for tx
-    /// @param sender stable credit sender address
-    /// @param recipient stable credit recipient address
-    /// @return true if tx should be charged fees, false otherwise
-    function shouldChargeTx(address sender, address recipient)
-        public
-        view
-        override
-        returns (bool)
-    {
-        if (
-            !super.shouldChargeTx(sender, recipient)
-                || IMutualCredit(address(stableCredit)).creditLimitOf(sender) == 0
-        ) return false;
-        return true;
+        // add riskFee if member is using credit balance || inCredits
+        if (stableCredit.balanceOf(member) < amount || inCredits) {
+            // calculate member risk fee rate
+            uint256 riskFeeRate = IReSourceCreditIssuer(address(stableCredit.creditIssuer()))
+                .creditTermsOf(member).feeRate;
+            uint256 amountOnCredit = amount - stableCredit.balanceOf(member);
+            uint256 memberFee =
+                stableCredit.convertCreditsToReserveToken((riskFeeRate * amountOnCredit) / 1 ether);
+            // return base fee + member fee
+            return super.calculateFee(member, amount, inCredits) + memberFee;
+        }
+        // if member is using positive balance return base fee calculation
+        return super.calculateFee(member, amount, inCredits);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */

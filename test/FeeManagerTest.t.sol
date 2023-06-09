@@ -15,7 +15,7 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         changePrank(alice);
         // 10 reserve tokens
         uint256 tokenAmount = 10e18;
-        assertEq(feeManager.calculateFee(alice, 100e6), tokenAmount);
+        assertEq(feeManager.calculateFee(alice, 100e6, false), tokenAmount);
     }
 
     function testFeeCollection() public {
@@ -57,14 +57,18 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         changePrank(deployer);
         // pause fees
         feeManager.pauseFees();
-        assertEq(feeManager.calculateFee(alice, 100), 0);
+        assertEq(feeManager.calculateFee(alice, 100, false), 0);
     }
 
     function testCalculateFeesWithoutOracleSet() public {
         changePrank(deployer);
         // set risk oracle to zero address
         reservePool.setRiskOracle(address(0));
-        assertEq(feeManager.calculateFee(alice, 100), 0);
+        assertEq(feeManager.calculateFee(alice, 100, false), 0);
+    }
+
+    function testFeeCollectionWithStableCredits() public {
+        // create
     }
 
     function testUnpauseFees() public {
@@ -88,6 +92,6 @@ contract FeeManagerTest is ReSourceStableCreditTest {
 
     function testCalculateBaseFee() public {
         // base fee is 5%
-        assertEq(feeManager.calculateFee(address(0), 100e6), 5 ether);
+        assertEq(feeManager.calculateFee(address(0), 100e6, false), 5 ether);
     }
 }

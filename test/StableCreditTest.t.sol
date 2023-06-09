@@ -109,65 +109,12 @@ contract StableCreditTest is ReSourceStableCreditTest {
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
         assertEq(stableCredit.networkDebt(), 100e6);
+        changePrank(deployer);
+        accessManager.grantOperator(bob);
         changePrank(bob);
         // burn network debt
         stableCredit.burnNetworkDebt(100e6);
         assertEq(stableCredit.networkDebt(), 0);
-    }
-
-    function testBurnNetworkDebtWithPartialCreditPoolDebt() public {
-        // create credit balance for alice
-        changePrank(alice);
-        stableCredit.transfer(bob, 100e6);
-        // give tokens for repayment
-        changePrank(deployer);
-        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
-        changePrank(alice);
-        // approve reserve tokens
-        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
-        // repay full credit balance
-        stableCredit.repayCreditBalance(alice, uint128(100e6));
-        assertEq(stableCredit.networkDebt(), 100e6);
-        changePrank(carol);
-        reserveToken.approve(address(creditPool), 100 ether);
-        // carol withdraw 40 credits from credit pool creating a 40 credit pool debt
-        creditPool.withdrawCredits(40e6);
-        // check credit pool debt is 40
-        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 40e6);
-        changePrank(bob);
-        // burn network debt
-        stableCredit.burnNetworkDebt(100e6);
-        // check credit pool debt is reduced by
-        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 0);
-        // check network debt is less 60
-        assertEq(stableCredit.networkDebt(), 40e6);
-    }
-
-    function testBurnNetworkDebtWithOnlyCreditPoolDebt() public {
-        // create credit balance for alice
-        changePrank(alice);
-        stableCredit.transfer(bob, 100e6);
-        // give tokens for repayment
-        changePrank(deployer);
-        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
-        changePrank(alice);
-        // approve reserve tokens
-        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
-        // repay full credit balance
-        stableCredit.repayCreditBalance(alice, uint128(100e6));
-        assertEq(stableCredit.networkDebt(), 100e6);
-        changePrank(carol);
-        reserveToken.approve(address(creditPool), 100 ether);
-        // carol withdraw 100 credits from credit pool creating a 100 credit pool debt
-        creditPool.withdrawCredits(100e6);
-
-        changePrank(bob);
-        // burn network debt
-        stableCredit.burnNetworkDebt(100e6);
-        // check network debt is unaffected
-        assertEq(stableCredit.networkDebt(), 100e6);
-        // check credit pool debt is reduced by
-        assertEq(stableCredit.creditBalanceOf(address(creditPool)), 0);
     }
 
     function testSetAccessManager() public {

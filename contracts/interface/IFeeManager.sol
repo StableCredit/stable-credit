@@ -8,7 +8,8 @@ interface IFeeManager {
     /// @param sender stable credit sender address
     /// @param receiver stable credit receiver address
     /// @param amount stable credit amount
-    function collectFees(address sender, address receiver, uint256 amount) external;
+    function collectFees(address sender, address receiver, uint256 amount, bool feeInCredits)
+        external;
 
     /* ========== EVENTS ========== */
 

@@ -8,8 +8,8 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
   async (taskArgs, { ethers }) => {
     // Initialize contracts
     const stableCredit = await ethers.getContract("StableCredit")
-    const feeManager = await ethers.getContract("ReSourceFeeManager")
-    const creditIssuer = await ethers.getContract("ReSourceCreditIssuer")
+    const feeManager = await ethers.getContract("FeeManager")
+    const creditIssuer = await ethers.getContract("CreditIssuer")
     const reserveToken = await ethers.getContract("ReserveToken")
     const riskOracle = await ethers.getContract("RiskOracle")
     const creditPool = await ethers.getContract("CreditPool")
@@ -109,6 +109,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
         .connect(defaultingAccount)
         .approve(feeManager.address, ethers.constants.MaxUint256)
     ).wait()
+
     await (
       await stableCredit
         .connect(defaultingAccount)

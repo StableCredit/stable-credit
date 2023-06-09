@@ -6,8 +6,9 @@ import "./IFeeManager.sol";
 import "./ICreditIssuer.sol";
 import "@resource-risk-management/interface/IReservePool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "./IMutualCredit.sol";
 
-interface IStableCredit {
+interface IStableCredit is IMutualCredit, IERC20Upgradeable {
     /// @dev the reserve pool contract which holds and manages reserve tokens
     function reservePool() external view returns (IReservePool);
     /// @dev the fee manager contract which manages transaction fee collection and distribution
@@ -30,6 +31,10 @@ interface IStableCredit {
     /// @notice Calculates the a credit amount in reserve token value.
     /// @param amount credit amount to convert
     function convertCreditsToReserveToken(uint256 amount) external view returns (uint256);
+    /// @notice Reduces network debt in exchange for reserve reimbursement.
+    /// @dev Must have sufficient network debt or pool debt to service.
+    /// @return reimbursement amount from reserve pool
+    function burnNetworkDebt(uint256 amount) external returns (uint256);
 
     /* ========== EVENTS ========== */
 

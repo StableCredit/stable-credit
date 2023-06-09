@@ -13,6 +13,7 @@ import "../interface/IFeeManager.sol";
 /// network's reserve pool.
 contract FeeManager is IFeeManager, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20Upgradeable for IStableCredit;
 
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
@@ -45,7 +46,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /// @param sender stable credit sender address
     /// @param recipient stable credit receiver address
     /// @param amount stable credit amount
-    function collectFees(address sender, address recipient, uint256 amount)
+    function collectFees(address sender, address recipient, uint256 amount, bool inCredits)
         public
         virtual
         override
@@ -54,10 +55,24 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
         if (!shouldChargeTx(sender, recipient)) {
             return;
         }
-        uint256 totalFee = calculateFee(sender, amount);
-        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), totalFee);
-        collectedFees += totalFee;
-        emit FeesCollected(sender, totalFee);
+        uint256 fee = calculateFee(address(0), amount, inCredits);
+        if (inCredits) {
+            // transaction amount and fee must be covered by positive balance
+            require(
+                stableCredit.balanceOf(sender) > amount + fee,
+                "FeeManager: Insufficient balance for fee in credits"
+            );
+            // collect tx fee in credits from sender
+            stableCredit.safeTransferFrom(sender, address(this), fee);
+            // use collected credits to burn network debt
+            uint256 reimbursement = stableCredit.burnNetworkDebt(fee);
+            // transfer reimbursement to sender
+            stableCredit.reservePool().reserveToken().safeTransfer(sender, reimbursement);
+            return;
+        }
+        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), fee);
+        collectedFees += fee;
+        emit FeesCollected(sender, fee);
     }
 
     /* ========== VIEWS ========== */
@@ -67,16 +82,24 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /// @param member address of member to calculate fee for
     /// @param amount stable credit amount to base fee off of
     /// @return reserve token amount to charge given member
-    function calculateFee(address member, uint256 amount) public view virtual returns (uint256) {
+    function calculateFee(address member, uint256 amount, bool inCredits)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
         // if contract is paused or risk oracle is not set, return 0
         if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
             return 0;
         }
+        uint256 feeInCredits = stableCredit.reservePool().riskOracle().baseFeeRate(
+            address(stableCredit.reservePool())
+        ) * amount / 1 ether;
         // return base fee rate * amount
-        return stableCredit.convertCreditsToReserveToken(
-            stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()))
-                * amount / 1 ether
-        );
+        if (inCredits) {
+            return feeInCredits;
+        }
+        return stableCredit.convertCreditsToReserveToken(feeInCredits);
     }
 
     /// @notice check if sender should be charged fee for tx

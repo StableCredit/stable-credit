@@ -1,10 +1,10 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { DeployFunction } from "hardhat-deploy/types"
-import { deployProxyAndSave } from "../utils/utils"
+import { deployProxyAndSave, deployProxyAndSaveAs } from "../utils/utils"
 import {
   AccessManager__factory,
   ReservePool__factory,
-  StableCredit__factory,
+  ReSourceStableCredit__factory,
   ReSourceCreditIssuer__factory,
   ERC20,
   RiskOracle__factory,
@@ -79,16 +79,16 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   }
 
   // deploy stable credit
-  let stableCreditAddress = (await hardhat.deployments.getOrNull("StableCredit"))?.address
+  let stableCreditAddress = (await hardhat.deployments.getOrNull("ReSourceStableCredit"))?.address
   if (!stableCreditAddress) {
-    const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
+    const stableCreditAbi = (await hardhat.artifacts.readArtifact("ReSourceStableCredit")).abi
     const stableCreditArgs = ["mock", "MOCK", accessManagerAddress]
-    stableCreditAddress = await deployProxyAndSave(
+    stableCreditAddress = await deployProxyAndSaveAs(
+      "ReSourceStableCredit",
       "StableCredit",
       stableCreditArgs,
       hardhat,
-      stableCreditAbi,
-      { initializer: "__StableCredit_init" }
+      stableCreditAbi
     )
   }
 
@@ -115,8 +115,9 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   if (!feeManagerAddress) {
     const feeManagerAbi = (await hardhat.artifacts.readArtifact("ReSourceFeeManager")).abi
     const feeManagerArgs = [stableCreditAddress]
-    feeManagerAddress = await deployProxyAndSave(
+    feeManagerAddress = await deployProxyAndSaveAs(
       "ReSourceFeeManager",
+      "FeeManager",
       feeManagerArgs,
       hardhat,
       feeManagerAbi
@@ -128,8 +129,9 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   if (!creditIssuerAddress) {
     const creditIssuerAbi = (await hardhat.artifacts.readArtifact("ReSourceCreditIssuer")).abi
     const creditIssuerArgs = [stableCreditAddress]
-    creditIssuerAddress = await deployProxyAndSave(
+    creditIssuerAddress = await deployProxyAndSaveAs(
       "ReSourceCreditIssuer",
+      "CreditIssuer",
       creditIssuerArgs,
       hardhat,
       creditIssuerAbi
@@ -189,7 +191,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   // ============ Initialize Contracts State ============ //
 
-  const stableCredit = StableCredit__factory.connect(
+  const stableCredit = ReSourceStableCredit__factory.connect(
     stableCreditAddress,
     (await ethers.getSigners())[0]
   )

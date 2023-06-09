@@ -91,12 +91,11 @@ contract LaunchPool is PausableUpgradeable {
     function withdrawCredits() external hasLaunched whenNotPaused {
         // caller must have a deposit
         require(deposits[_msgSender()] > 0, "LaunchPool: no deposit to withdraw");
-        IERC20Upgradeable _stableCredit = IERC20Upgradeable(address(stableCredit));
         // calculate amount of credits to withdraw
         // creditsToWithdraw = deposit / totalDeposited * launch credits
         uint256 creditsToWithdraw = withdrawableCredits();
         // transfer credits
-        _stableCredit.transfer(_msgSender(), creditsToWithdraw);
+        stableCredit.transfer(_msgSender(), creditsToWithdraw);
         // reduce total deposited
         totalDeposited -= deposits[_msgSender()];
         // reset deposit
@@ -146,9 +145,8 @@ contract LaunchPool is PausableUpgradeable {
     /// @notice Returns the amount of credits a user can withdraw.
     /// @return creditAmount Amount of credits a user can withdraw
     function withdrawableCredits() public view returns (uint256) {
-        IERC20Upgradeable _stableCredit = IERC20Upgradeable(address(stableCredit));
         return deposits[_msgSender()] * 1 ether / totalDeposited
-            * _stableCredit.balanceOf(address(this)) / 1 ether;
+            * stableCredit.balanceOf(address(this)) / 1 ether;
     }
 
     /// @notice Returns the amount of deposits needed to launch the network.

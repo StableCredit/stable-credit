@@ -52,31 +52,45 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    /// @notice Caller must approve feeManager to spend reserve tokens for transfer of credits.
-    /// @dev Validates the caller's credit line and synchronizes demurrage balance.
-    function _transfer(address _from, address _to, uint256 _amount)
-        internal
-        virtual
-        override
-        senderIsMember(_from)
+    /// @notice Enables members to transfer credits to other network participants
+    /// @param to address of recipient
+    /// @param amount amount of credits to transfer
+    function transfer(address to, uint256 amount)
+        public
+        override(ERC20Upgradeable, IERC20Upgradeable)
+        returns (bool)
     {
-        if (!creditIssuer.validateTransaction(_from, _to, _amount)) return;
         if (address(feeManager) != address(0)) {
-            feeManager.collectFees(_from, _to, _amount);
+            feeManager.collectFees(_msgSender(), to, amount, false);
         }
-        super._transfer(_from, _to, _amount);
+        return super.transfer(to, amount);
+    }
+
+    /// @notice Enables members to transfer credits to other network participants
+    /// @dev members are only able to pay tx fees in stable credits if there is network debt to service
+    /// and they are only using a positive balance (including tx fee)
+    /// @param to address of recipient
+    /// @param amount amount of credits to transfer
+    /// @param feeInCredits enables members to pay tx fees using their stable credit balance (if available)
+    function transfer(address to, uint256 amount, bool feeInCredits) external returns (bool) {
+        if (address(feeManager) != address(0)) {
+            feeManager.collectFees(_msgSender(), to, amount, feeInCredits);
+        }
+        super.transfer(to, amount);
     }
 
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt or pool debt to service.
-    function burnNetworkDebt(uint256 amount) public virtual {
+    /// @return reimbursement amount from reserve pool
+    function burnNetworkDebt(uint256 amount) public virtual override returns (uint256) {
         require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
         require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
         _transfer(_msgSender(), address(this), amount);
-        reservePool.reimburseAccount(
+        uint256 reimbursement = reservePool.reimburseAccount(
             _msgSender(), reservePool.convertCreditTokenToReserveToken(amount)
         );
         emit NetworkDebtBurned(_msgSender(), amount);
+        return reimbursement;
     }
 
     /// @notice Repays referenced member's credit balance by amount.
@@ -158,10 +172,29 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditIssuerUpdated(_creditIssuer);
     }
 
+    /* ========== PRIVATE FUNCTIONS ========== */
+
+    /// @notice Caller must approve feeManager to spend reserve tokens for transfer of credits.
+    /// @dev Validates the caller's credit line and synchronizes demurrage balance.
+    function _transfer(address _from, address _to, uint256 _amount)
+        internal
+        virtual
+        override
+        senderIsMember(_from)
+    {
+        if (!creditIssuer.validateTransaction(_msgSender(), _to, _amount)) return;
+        super._transfer(_from, _to, _amount);
+    }
+
     /* ========== MODIFIERS ========== */
 
     modifier onlyAdmin() {
         require(access.isAdmin(_msgSender()), "StableCredit: Unauthorized caller");
+        _;
+    }
+
+    modifier onlyOperator() {
+        require(access.isOperator(_msgSender()), "StableCredit: Unauthorized caller");
         _;
     }
 

@@ -2,8 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./StableCredit.sol";
-import "../interface/IAmbassador.sol";
-import "../interface/ICreditPool.sol";
+import "../interface/IReSourceStableCredit.sol";
 
 /// @title StableCredit contract
 /// @author ReSource
@@ -12,8 +11,7 @@ import "../interface/ICreditPool.sol";
 /// in the transfer of the outstanding credit balance to the network debt balance.
 /// @dev Restricted functions are only callable by network operators.
 
-// TODO: inherit from IReSourceStableCredit interface
-contract ReSourceStableCredit is StableCredit {
+contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
     /* ========== STATE VARIABLES ========== */
 
     IAmbassador public ambassador;
@@ -36,26 +34,8 @@ contract ReSourceStableCredit is StableCredit {
 
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt or pool debt to service.
-    function burnNetworkDebt(uint256 amount) public virtual override {
-        require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
-        require(amount <= creditBalanceOf(address(this)), "StableCredit: Insufficient network debt");
-        uint256 creditPoolDebt = creditBalanceOf(address(creditPool));
-        // pay credit pool debt first (if any)
-        if (creditPoolDebt > 0) {
-            // calculate amount to deposit
-            uint256 poolDepositAmount = amount > creditPoolDebt ? creditPoolDebt : amount;
-            _transfer(_msgSender(), address(this), poolDepositAmount);
-            _approve(address(this), address(creditPool), poolDepositAmount);
-            creditPool.depositCredits(poolDepositAmount);
-        }
-        if (amount <= creditPoolDebt) return;
-        // use leftover to burn network debt
-        uint256 leftOver = amount - creditPoolDebt;
-        _transfer(_msgSender(), address(this), leftOver);
-        reservePool.reimburseAccount(
-            _msgSender(), reservePool.convertCreditTokenToReserveToken(leftOver)
-        );
-        emit NetworkDebtBurned(_msgSender(), leftOver);
+    function burnNetworkDebt(uint256 amount) public override onlyOperator returns (uint256) {
+        return super.burnNetworkDebt(amount);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -63,12 +43,10 @@ contract ReSourceStableCredit is StableCredit {
     /// @notice transfer a given member's debt to the network
     /// @param member address of member to write off
     function writeOffCreditLine(address member) public virtual override onlyCreditIssuer {
-        uint256 creditBalance = creditBalanceOf(member);
         if (address(ambassador) != address(0)) {
-            ambassador.assumeDebt(member, creditBalance);
+            ambassador.assumeDebt(member, creditBalanceOf(member));
         }
-        _transfer(address(this), member, creditBalance);
-        emit CreditLineWrittenOff(member, creditBalance);
+        super.writeOffCreditLine(member);
     }
 
     /// @notice enables network admin to set the ambassador address
@@ -84,8 +62,4 @@ contract ReSourceStableCredit is StableCredit {
         creditPool = ICreditPool(_creditPool);
         emit CreditPoolUpdated(_creditPool);
     }
-
-    /* ========== EVENTS ========== */
-    event AmbassadorUpdated(address ambassador);
-    event CreditPoolUpdated(address creditPool);
 }
