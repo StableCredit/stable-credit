@@ -50,9 +50,9 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
         returns (bytes32)
     {
         // caller's balance of credits
-        uint256 callerBalance = IERC20Upgradeable(address(stableCredit)).balanceOf(_msgSender());
+        uint256 callerBalance = stableCredit.balanceOf(_msgSender());
         // contract's current debt
-        uint256 poolDebt = IMutualCredit(address(stableCredit)).creditBalanceOf(address(this));
+        uint256 poolDebt = stableCredit.creditBalanceOf(address(this));
         // calculate caller's serviceable credits (either entire caller balance or remaining pool debt)
         uint256 serviceableCredits = poolDebt > callerBalance ? poolDebt : callerBalance;
         // calculate amount of deposit to service (either entire deposit amount or all serviceable credits)
@@ -77,7 +77,7 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
             id = addDeposit(_msgSender(), amount - amountToService);
         }
         // transfer credits from caller to contract
-        IERC20Upgradeable(address(stableCredit)).transferFrom(_msgSender(), address(this), amount);
+        stableCredit.transferFrom(_msgSender(), address(this), amount);
         emit CreditsDeposited(_msgSender(), amount);
         return id;
     }
@@ -94,7 +94,7 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
             _msgSender(), address(this), convertCreditsToTokensWithDiscount(creditAmount)
         );
         // transfer caller credits
-        IERC20Upgradeable(address(stableCredit)).transfer(_msgSender(), creditAmount);
+        stableCredit.transfer(_msgSender(), creditAmount);
         emit CreditsWithdrawn(_msgSender(), creditAmount);
     }
 
@@ -107,9 +107,7 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
             creditDeposits[depositId].depositor == _msgSender(),
             "CreditPool: caller does not own deposit"
         );
-        IERC20Upgradeable(address(stableCredit)).transfer(
-            _msgSender(), creditDeposits[depositId].amount
-        );
+        stableCredit.transfer(_msgSender(), creditDeposits[depositId].amount);
         removeDeposit(depositId);
         emit DepositWithdrawn(depositId);
     }
@@ -203,7 +201,7 @@ contract CreditPool is ICreditPool, PausableUpgradeable {
         uint256 index;
         while (index < quantity && listHead != 0) {
             // transfer deposit back to depositor
-            IERC20Upgradeable(address(stableCredit)).transfer(
+            stableCredit.transfer(
                 creditDeposits[listHead].depositor, creditDeposits[listHead].amount
             );
             removeDeposit(listHead);

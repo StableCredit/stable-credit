@@ -4,7 +4,7 @@ import { ethers, upgrades } from "hardhat"
 import {
   AccessManager__factory,
   ReservePool__factory,
-  StableCredit__factory,
+  ReSourceStableCredit__factory,
   ReSourceCreditIssuer__factory,
   OwnableUpgradeable__factory,
 } from "../types"
@@ -34,16 +34,15 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   let stableCreditAddress = (await hardhat.deployments.getOrNull(symbol + "_StableCredit"))?.address
   // deploy stable credit
   if (!stableCreditAddress) {
-    const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCredit")).abi
+    const stableCreditAbi = (await hardhat.artifacts.readArtifact("ReSourceStableCredit")).abi
     const stableCreditArgs = [name, symbol, accessManagerAddress]
     stableCreditAddress = await deployProxyAndSaveAs(
-      "StableCredit",
+      "ReSourceStableCredit",
       symbol + "_StableCredit",
       stableCreditArgs,
       hardhat,
       stableCreditAbi,
-      false,
-      { initializer: "__StableCredit_init" }
+      true
     )
   }
 
@@ -156,7 +155,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
 
   // ============ Initialize Contracts State ============ //
 
-  const stableCredit = StableCredit__factory.connect(
+  const stableCredit = ReSourceStableCredit__factory.connect(
     stableCreditAddress,
     (await ethers.getSigners())[0]
   )

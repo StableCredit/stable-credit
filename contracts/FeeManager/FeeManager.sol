@@ -13,6 +13,7 @@ import "../interface/IFeeManager.sol";
 /// network's reserve pool.
 contract FeeManager is IFeeManager, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20Upgradeable for IStableCredit;
 
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
@@ -45,7 +46,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /// @param sender stable credit sender address
     /// @param recipient stable credit receiver address
     /// @param amount stable credit amount
-    function collectFees(address sender, address recipient, uint256 amount)
+    function collectFee(address sender, address recipient, uint256 amount)
         public
         virtual
         override
@@ -54,10 +55,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
         if (!shouldChargeTx(sender, recipient)) {
             return;
         }
-        uint256 totalFee = calculateFee(sender, amount);
-        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), totalFee);
-        collectedFees += totalFee;
-        emit FeesCollected(sender, totalFee);
+        uint256 fee = calculateFee(address(0), amount);
+        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), fee);
+        collectedFees += fee;
+        emit FeesCollected(sender, fee);
     }
 
     /* ========== VIEWS ========== */
@@ -72,11 +73,11 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
         if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
             return 0;
         }
+        uint256 feeInCredits = stableCredit.reservePool().riskOracle().baseFeeRate(
+            address(stableCredit.reservePool())
+        ) * amount / 1 ether;
         // return base fee rate * amount
-        return stableCredit.convertCreditsToReserveToken(
-            stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit.reservePool()))
-                * amount / 1 ether
-        );
+        return stableCredit.convertCreditsToReserveToken(feeInCredits);
     }
 
     /// @notice check if sender should be charged fee for tx

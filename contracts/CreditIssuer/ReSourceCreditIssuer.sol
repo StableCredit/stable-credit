@@ -54,10 +54,10 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         // if no income, return 0
         if (creditTerms[member].periodIncome == 0) return 0;
         // if no debt, return indeterminate
-        if (IMutualCredit(address(stableCredit)).creditBalanceOf(member) == 0) return -1;
+        if (stableCredit.creditBalanceOf(member) == 0) return -1;
         // income / credit balance (in Parts Per Million)
         return int256(creditTerms[member].periodIncome * 1 ether)
-            / int256(IMutualCredit(address(stableCredit)).creditBalanceOf(member));
+            / int256(stableCredit.creditBalanceOf(member));
     }
 
     /// @notice fetches a given member's needed income to comply with the given network's minimum
@@ -68,10 +68,8 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         // if ITD is valid, no income is needed
         if (hasValidITD(member)) return 0;
         return (
-            (
-                creditTerms[member].minITD
-                    * IMutualCredit(address(stableCredit)).creditBalanceOf(member) / 1 ether
-            ) - creditTerms[member].periodIncome
+            (creditTerms[member].minITD * stableCredit.creditBalanceOf(member) / 1 ether)
+                - creditTerms[member].periodIncome
         ) * 1 ether / ((creditTerms[member].minITD + 1 ether)) + 1;
     }
 
@@ -236,7 +234,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         // record new period income
         creditTerms[member].periodIncome += income;
         // update rebalanced status if possible
-        if (income >= IMutualCredit(address(stableCredit)).creditBalanceOf(member)) {
+        if (income >= stableCredit.creditBalanceOf(member)) {
             creditTerms[member].rebalanced = true;
         }
     }

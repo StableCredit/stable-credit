@@ -100,8 +100,8 @@ contract Ambassador is IAmbassador, PausableUpgradeable {
     function underwriteMember(address member) external onlyAmbassador {
         memberships[member] = _msgSender();
         stableCredit.creditIssuer().underwriteMember(member);
-        if (IERC20Upgradeable(address(stableCredit)).balanceOf(address(this)) >= promotionAmount) {
-            IERC20Upgradeable(address(stableCredit)).transfer(member, promotionAmount);
+        if (stableCredit.balanceOf(address(this)) >= promotionAmount) {
+            stableCredit.transfer(member, promotionAmount);
             emit PromotionReceived(member, promotionAmount);
         }
     }
