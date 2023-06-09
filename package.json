@@ -22,6 +22,7 @@
     "typechain": "^5.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.347.0",
     "@eth-optimism/hardhat-ovm": "^0.2.2",
     "@metamask/eth-sig-util": "^4.0.1",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",

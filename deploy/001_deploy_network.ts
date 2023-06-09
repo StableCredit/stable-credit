@@ -26,7 +26,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       symbol + "_AccessManager",
       accessManagerArgs,
       hardhat,
-      accessManagerAbi
+      accessManagerAbi,
+      false
     )
   }
 
@@ -41,6 +42,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       stableCreditArgs,
       hardhat,
       stableCreditAbi,
+      false,
       { initializer: "__StableCredit_init" }
     )
   }
@@ -60,7 +62,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       symbol + "_ReservePool",
       reservePoolArgs,
       hardhat,
-      reservePoolAbi
+      reservePoolAbi,
+      false
     )
   }
 
@@ -74,7 +77,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       symbol + "_FeeManager",
       feeManagerArgs,
       hardhat,
-      feeManagerAbi
+      feeManagerAbi,
+      false
     )
   }
 
@@ -88,7 +92,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       symbol + "_CreditIssuer",
       creditIssuerArgs,
       hardhat,
-      creditIssuerAbi
+      creditIssuerAbi,
+      false
     )
   }
 
@@ -102,7 +107,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       symbol + "_CreditPool",
       creditPoolArgs,
       hardhat,
-      creditPoolAbi
+      creditPoolAbi,
+      false
     )
   }
 
@@ -116,7 +122,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       symbol + "_LaunchPool",
       launchPoolArgs,
       hardhat,
-      launchPoolAbi
+      launchPoolAbi,
+      false
     )
   }
 
@@ -142,7 +149,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
       symbol + "_Ambassador",
       ambassadorArgs,
       hardhat,
-      ambassadorAbi
+      ambassadorAbi,
+      false
     )
   }
 
