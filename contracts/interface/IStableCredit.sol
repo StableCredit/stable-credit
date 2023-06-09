@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./IAccessManager.sol";
 import "./IFeeManager.sol";
 import "./ICreditIssuer.sol";
+import "./IAmbassador.sol";
+import "./ICreditPool.sol";
 import "@resource-risk-management/interface/IReservePool.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
@@ -16,6 +18,10 @@ interface IStableCredit {
     function access() external view returns (IAccessManager);
     /// @dev the credit issuer contract which manages credit line issuance
     function creditIssuer() external view returns (ICreditIssuer);
+    /// @dev the ambassador contract which manages the network's ambassador program
+    function ambassador() external view returns (IAmbassador);
+    /// @dev the credit pool contract which manages the network's credit pool
+    function creditPool() external view returns (ICreditPool);
     /// @notice transfer a given member's debt to the network
     function writeOffCreditLine(address member) external;
     /// @notice called by the underwriting layer to assign credit lines
@@ -44,4 +50,6 @@ interface IStableCredit {
     event ReservePoolUpdated(address reservePool);
     event FeeManagerUpdated(address feeManager);
     event CreditIssuerUpdated(address creditIssuer);
+    event AmbassadorUpdated(address ambassador);
+    event CreditPoolUpdated(address creditPool);
 }

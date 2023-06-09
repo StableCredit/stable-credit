@@ -6,10 +6,10 @@ import "forge-std/Test.sol";
 import "@resource-risk-management/ReservePool.sol";
 import "@resource-risk-management/RiskOracle.sol";
 import "../contracts/CreditIssuer/ReSourceCreditIssuer.sol";
-import "../contracts/FeeManager/ReSourceFeeManager.sol";
-import "../contracts/StableCredit/ReSourceStableCredit.sol";
+import "../contracts/StableCredit/StableCredit.sol";
 import "../contracts/AccessManager.sol";
-import "../contracts/Pools/CreditPool.sol";
+import "../contracts/FeeManager/ReSourceFeeManager.sol";
+import "../contracts/CreditPool.sol";
 import "./MockERC20.sol";
 
 contract ReSourceStableCreditTest is Test {
@@ -23,7 +23,7 @@ contract ReSourceStableCreditTest is Test {
     RiskOracle public riskOracle;
 
     // stable credit network contracts
-    ReSourceStableCredit public stableCredit;
+    StableCredit public stableCredit;
     MockERC20 public reserveToken;
     AccessManager public accessManager;
     ReSourceFeeManager public feeManager;
@@ -48,8 +48,8 @@ contract ReSourceStableCreditTest is Test {
         accessManager = new AccessManager();
         accessManager.initialize(deployer);
         // deploy mock StableCredit network
-        stableCredit = new ReSourceStableCredit();
-        stableCredit.initialize("mock", "MOCK", address(accessManager));
+        stableCredit = new StableCredit();
+        stableCredit.__StableCredit_init("mock", "MOCK", address(accessManager));
         // deploy reservePool
         reservePool = new ReservePool();
         reservePool.initialize(

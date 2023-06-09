@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./ReSourceStableCreditTest.t.sol";
-import "../contracts/Pools/CreditPool.sol";
-import "../contracts/Pools/LaunchPool.sol";
+import "../contracts/CreditPool.sol";
+import "../contracts/LaunchPool.sol";
 
 contract LaunchPoolTest is ReSourceStableCreditTest {
     LaunchPool launchPool;
