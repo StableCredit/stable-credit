@@ -26,6 +26,7 @@ types
 
 deployments/localhost
 deployments/ganache
+deployments/hardhat
 
 .openzeppelin/unknown-31337.json
 .openzeppelin/unknown-1337.json
