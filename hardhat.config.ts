@@ -53,11 +53,12 @@ const config: HardhatUserConfig = {
       tags: ["local", "testing"],
       timeout: 100000000,
     },
-    ganache: {
-      url: "http://localhost:8545",
-      chainId: 1337,
+    test: {
+      url: "http://contracts:8545",
+      chainId: 31337,
       saveDeployments: true,
       tags: ["local", "testing"],
+      timeout: 100000000,
     },
     celo: {
       url: "https://forno.celo.org",

@@ -1,10 +1,4 @@
-import {
-  S3Client,
-  ListBucketsCommand,
-  ListObjectsV2Command,
-  GetObjectCommand,
-  PutObjectCommand,
-} from "@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 
 import "dotenv/config"
 
