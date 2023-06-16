@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./StableCredit.sol";
 import "../interface/IReSourceStableCredit.sol";
 import "../interface/IReSourceFeeManager.sol";
+import "../interface/IReSourceCreditIssuer.sol";
 
 /// @title StableCredit contract
 /// @author ReSource
@@ -37,6 +38,23 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
     /// @dev Must have sufficient network debt or pool debt to service.
     function burnNetworkDebt(uint256 amount) public override onlyOperator returns (uint256) {
         return super.burnNetworkDebt(amount);
+    }
+
+    /// @notice Enables members to transfer credits to other network participants
+    /// @param to address of recipient
+    /// @param amount amount of credits to transfer
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        bool result = super.transfer(to, amount);
+        IReSourceCreditIssuer issuer = IReSourceCreditIssuer(address(creditIssuer));
+        emit CreditLineStateUpdated(
+            _msgSender(),
+            to,
+            issuer.itdOf(_msgSender()),
+            issuer.itdOf(to),
+            issuer.inGoodStanding(_msgSender()),
+            issuer.inGoodStanding(to)
+            );
+        return result;
     }
 
     /// @notice Enables members to transfer credits to other network participants

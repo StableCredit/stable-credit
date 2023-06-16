@@ -26,7 +26,12 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @notice fetches a given member's current credit standing in relation to the credit terms.
     /// @param member address of member to fetch standing status for.
     /// @return whether the given member is in good standing.
-    function inGoodStanding(address member) public view override returns (bool) {
+    function inGoodStanding(address member)
+        public
+        view
+        override(CreditIssuer, IReSourceCreditIssuer)
+        returns (bool)
+    {
         return hasRebalanced(member) || hasValidITD(member);
     }
 
@@ -50,7 +55,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @notice fetches a given member's Income to Debt ratio within the current credit period.
     /// @param member address of member to fetch ITD for.
     /// @return ITD ratio within the current credit period, where 1 ether == 100%.
-    function itdOf(address member) public view returns (int256) {
+    function itdOf(address member) public view override returns (int256) {
         // if no income, return 0
         if (creditTerms[member].periodIncome == 0) return 0;
         // if no debt, return indeterminate
@@ -148,7 +153,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         initializeCreditPeriod(
             member, block.timestamp + periodLength, block.timestamp + periodLength + graceLength
         );
-        emit CreditTermsCreated(member, feeRate);
+        emit CreditTermsCreated(member, feeRate, minITD);
     }
 
     /// @notice enables network operators to update a given member's minimum ITD.
@@ -162,9 +167,10 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @notice enables network operators to update a given member's rebalanced status.
     /// @dev caller must have network operator role access.
     /// @param member address of member to update rebalanced status for.
-    function updateRebalanced(address member, bool rebalanced) external onlyIssuer {
-        creditTerms[member].rebalanced = rebalanced;
-        emit RebalancedUpdated(member, rebalanced);
+    /// @param feeRate new fee rate for member.
+    function updateFeeRate(address member, uint256 feeRate) external onlyIssuer {
+        creditTerms[member].feeRate = feeRate;
+        emit FeeRateUpdated(member, feeRate);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
@@ -237,5 +243,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         if (income >= stableCredit.creditBalanceOf(member)) {
             creditTerms[member].rebalanced = true;
         }
+
+        emit CreditTermsUpdated(member, income, creditTerms[member].rebalanced);
     }
 }

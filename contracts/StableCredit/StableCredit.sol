@@ -57,6 +57,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @param amount amount of credits to transfer
     function transfer(address to, uint256 amount)
         public
+        virtual
         override(ERC20Upgradeable, IERC20Upgradeable)
         returns (bool)
     {

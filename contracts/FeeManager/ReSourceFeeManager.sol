@@ -151,7 +151,7 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
     /// @param baseFee base fee to be collected in reserve token value
     function depositAmbassadorFee(address member, uint256 baseFee) internal returns (uint256) {
         IReSourceStableCredit rsStableCredit = IReSourceStableCredit(address(stableCredit));
-        if (address(rsStableCredit.ambassador()) != address(0)) {
+        if (address(rsStableCredit.ambassador()) != address(0) && baseFee > 0) {
             // approve ambassador to transfer minimum of base fee
             stableCredit.reservePool().reserveToken().approve(
                 address(rsStableCredit.ambassador()), baseFee

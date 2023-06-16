@@ -13,4 +13,12 @@ interface IReSourceStableCredit {
     /* ========== EVENTS ========== */
     event AmbassadorUpdated(address ambassador);
     event CreditPoolUpdated(address creditPool);
+    event CreditLineStateUpdated(
+        address sender,
+        address recipient,
+        int256 senderITD,
+        int256 recipientITD,
+        bool senderStanding,
+        bool recipientStanding
+    );
 }
