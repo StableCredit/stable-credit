@@ -47,7 +47,7 @@ contract StableCreditTest is ReSourceStableCreditTest {
         // approve reserve tokens
         reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
         // check over repayment reverts
-        vm.expectRevert(bytes("StableCredit: invalid amount"));
+        vm.expectRevert(bytes("StableCredit: invalid payment amount"));
         stableCredit.repayCreditBalance(alice, uint128(101e6));
     }
 
