@@ -50,7 +50,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
         public
         virtual
         override
-        onlyStableCredit
     {
         if (!shouldChargeTx(sender, recipient)) {
             return;

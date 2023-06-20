@@ -72,7 +72,7 @@ contract MutualCredit is IMutualCredit, ERC20BurnableUpgradeable {
         Member memory _memberFrom = members[_from];
         uint256 _missingBalance = _amount - _balanceFrom;
         uint256 _creditLeft = creditLimitLeftOf(_from);
-        require(_creditLeft >= _missingBalance, "Insufficient credit");
+        require(_creditLeft >= _missingBalance, "MutualCredit: Insufficient credit");
         members[_from].creditBalance = (_memberFrom.creditBalance + _missingBalance).toUInt128();
         _mint(_from, _missingBalance);
     }

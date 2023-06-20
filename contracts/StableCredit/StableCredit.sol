@@ -85,7 +85,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @dev Caller must approve this contract to spend reserve tokens in order to repay.
     function repayCreditBalance(address member, uint128 amount) external {
         uint256 creditBalance = creditBalanceOf(member);
-        require(amount <= creditBalance, "StableCredit: invalid amount");
+        require(amount <= creditBalance, "StableCredit: invalid payment amount");
         uint256 reserveTokenAmount = reservePool.convertCreditTokenToReserveToken(amount);
         reservePool.reserveToken().transferFrom(_msgSender(), address(this), reserveTokenAmount);
         reservePool.reserveToken().approve(address(reservePool), reserveTokenAmount);
