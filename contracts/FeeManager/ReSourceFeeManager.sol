@@ -31,11 +31,7 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
     /// @param sender stable credit sender address
     /// @param recipient stable credit recipient address
     /// @param amount stable credit amount
-    function collectFee(address sender, address recipient, uint256 amount)
-        public
-        override
-        onlyStableCredit
-    {
+    function collectFee(address sender, address recipient, uint256 amount) public override {
         if (!shouldChargeTx(sender, recipient)) {
             return;
         }
