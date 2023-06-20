@@ -74,7 +74,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
             return 0;
         }
         uint256 feeInCredits = stableCredit.reservePool().riskOracle().baseFeeRate(
-            address(stableCredit.reservePool())
+            address(stableCredit)
         ) * amount / 1 ether;
         // return base fee rate * amount
         return stableCredit.convertCreditsToReserveToken(feeInCredits);

@@ -70,7 +70,7 @@ contract ReSourceStableCreditTest is Test {
         stableCredit.setCreditIssuer(address(creditIssuer)); // set creditIssuer
         stableCredit.setReservePool(address(reservePool)); // set reservePool
         reservePool.setTargetRTD(20e16); // set targetRTD to 20%
-        riskOracle.setBaseFeeRate(address(reservePool), 5e16); // set base fee rate to 5%
+        riskOracle.setBaseFeeRate(address(stableCredit), 5e16); // set base fee rate to 5%
         // send alice 1000 reserve tokens
         reservePool.reserveToken().transfer(alice, 1000 ether);
         reserveToken.transfer(bob, 100 ether);

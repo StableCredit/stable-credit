@@ -130,9 +130,8 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
             return 0;
         }
         // if member is null, return base fee
-        uint256 baseFee = stableCredit.reservePool().riskOracle().baseFeeRate(
-            address(stableCredit.reservePool())
-        ) * amount / 1 ether;
+        uint256 baseFee = stableCredit.reservePool().riskOracle().baseFeeRate(address(stableCredit))
+            * amount / 1 ether;
         if (member == address(0)) {
             return baseFee;
         }
