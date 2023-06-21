@@ -84,7 +84,7 @@ export const deployProxyAndSaveAs = async (
 
   if (saveToR2 && CF_UPLOAD) await uploadConfigToR2(name, contract.address)
 
-  console.log("🚀 ", name, " deployed")
+  console.log("🚀 ", name, " deployed at ", contract.address)
   return contract.address
 }
 

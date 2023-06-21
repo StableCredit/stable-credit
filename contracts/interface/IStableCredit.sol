@@ -40,7 +40,6 @@ interface IStableCredit is IMutualCredit, IERC20Upgradeable {
 
     event CreditLineCreated(address member, uint256 creditLimit, uint256 balance);
     event CreditLimitUpdated(address member, uint256 creditLimit);
-    event MembersDemurraged(uint256 amount);
     event CreditBalanceRepaid(address member, uint128 amount);
     event NetworkDebtBurned(address member, uint256 amount);
     event CreditLineWrittenOff(address member, uint256 amount);
