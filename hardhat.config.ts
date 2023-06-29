@@ -21,6 +21,7 @@ import "./tasks/clean"
 import "./tasks/fundedwallet"
 import "./tasks/generate"
 import "./tasks/demoSetup"
+import "./tasks/syncCreditPeriod"
 
 const { isAddress, getAddress, formatUnits, parseUnits } = utils
 
