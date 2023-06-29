@@ -85,7 +85,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   let stableCreditAddress = (await hardhat.deployments.getOrNull("ReSourceStableCredit"))?.address
   if (!stableCreditAddress) {
     const stableCreditAbi = (await hardhat.artifacts.readArtifact("ReSourceStableCredit")).abi
-    const stableCreditArgs = ["mock", "MOCK", accessManagerAddress]
+    const stableCreditArgs = ["ReSource Network", "rUSD", accessManagerAddress]
     stableCreditAddress = await deployProxyAndSaveAs(
       "ReSourceStableCredit",
       "StableCredit",

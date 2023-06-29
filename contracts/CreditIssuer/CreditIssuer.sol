@@ -54,33 +54,58 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     /* ========== VIEWS ========== */
 
-    /// @notice fetches a given member's current credit standing in relation to the credit terms.
-    /// @dev intended to be overwritten in parent implementation to include good standing validation logic.
-    /// @param member address of member to fetch standing status for.
-    /// @return whether the given member is in good standing.
-    function inGoodStanding(address member) public view virtual returns (bool) {}
-
-    /// @notice fetches a given member's credit period status within a given network.
+    /// @notice returns whether a given member's credit period is initialized.
     /// @param member address of member.
-    /// @return whether the given member has an active period.
-    function inActivePeriod(address member) public view returns (bool) {
-        return creditPeriods[member].expiration > 0 && block.timestamp < graceExpirationOf(member);
+    /// @return whether member's credit period is initialized.
+    function periodInitialized(address member) public view returns (bool) {
+        return creditPeriods[member].expiration > 0;
     }
 
-    /// @notice fetches a given member's grace period status within a given network. A member is in
-    /// grace period if they have an expired period and are not in good standing.
+    /// @notice returns whether a given member is in an active period.
     /// @param member address of member.
-    /// @return whether the given member has an expired period and in grace period.
+    /// @return whether member is in an active credit period.
+    function inActivePeriod(address member) public view returns (bool) {
+        return periodInitialized(member) && block.timestamp < periodExpirationOf(member);
+    }
+
+    /// @notice returns whether a given member is in an active grace period.
+    /// @param member address of member.
+    /// @return whether member is in an active grace period.
     function inGracePeriod(address member) public view returns (bool) {
-        return !inGoodStanding(member) && periodExpired(member)
+        return block.timestamp >= periodExpirationOf(member)
             && block.timestamp < graceExpirationOf(member);
     }
 
-    /// @notice fetches a given member's credit period status within a given network.
+    /// @notice returns whether a given member's credit period has expired.
     /// @param member address of member.
-    /// @return whether the given member ha an expired period.
+    /// @return whether member's credit period has expired.
     function periodExpired(address member) public view returns (bool) {
-        return block.timestamp >= periodExpirationOf(member);
+        return periodInitialized(member) && !inActivePeriod(member) && !inGracePeriod(member);
+    }
+
+    /// @notice returns whether a given member is in compliance with credit terms.
+    /// @dev intended to be overwritten in parent implementation to include custom compliance logic.
+    /// @param member address of member.
+    /// @return whether member is in compliance with credit terms.
+    function inCompliance(address member) public view virtual override returns (bool) {
+        uint256 creditBalance = stableCredit.creditBalanceOf(member);
+        return creditBalance == 0;
+    }
+
+    /// @notice returns whether a given member is in default.
+    /// @dev returns true if period has expired, grace period has expired, and member is not compliant.
+    /// @param member address of member.
+    /// @return whether member is in default.
+    function inDefault(address member) public view returns (bool) {
+        return periodExpired(member) && !inCompliance(member);
+    }
+
+    /// @notice returns whether a given member's credit line is frozen.
+    /// @dev returns true if member is in grace period and not compliant.
+    /// @param member address of member.
+    /// @return whether member's credit line is frozen.
+    function isFrozen(address member) public view returns (bool) {
+        return inGracePeriod(member) && !inCompliance(member);
     }
 
     /// @notice fetches a given member's credit period expiration timestamp.
@@ -174,15 +199,15 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         emit CreditPeriodCreated(member, periodExpiration, graceExpiration);
     }
 
-    /// @notice called when a member's credit period has expired and is not in good standing.
-    /// @dev deletes credit terms and emits a default event if caller has outstanding debt.
+    /// @notice called when a member's credit period has expired
+    /// @dev deletes credit terms and emits a default event if caller is in default.
     /// @param member address of member to expire.
-    function expireCreditPeriod(address member) internal virtual {
-        require(!inGoodStanding(member), "RiskManager: member in good standing");
-        uint256 creditBalance = stableCredit.creditBalanceOf(member);
+    /// @return true if member is not in default, false if member is in default.
+    function expireCreditPeriod(address member) internal virtual returns (bool) {
+        bool memberInDefault = inDefault(member);
         delete creditPeriods[member];
-        // if member holds outstanding debt at expiration, default on debt
-        if (creditBalance > 0) {
+        // if member in default, write off credit line and revoke membership
+        if (memberInDefault) {
             // write off debt
             stableCredit.writeOffCreditLine(member);
             // update credit limit to 0
@@ -190,8 +215,10 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
             // revoke membership
             stableCredit.access().revokeMember(member);
             emit CreditLineDefaulted(member);
+            return false;
         }
         emit CreditPeriodExpired(member);
+        return true;
     }
 
     /// @notice called with each stable credit transaction to validate the transaction and update
@@ -206,21 +233,18 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         virtual
         returns (bool)
     {
-        // valid if sender does not have terms.
-        if (creditPeriods[from].issuedAt == 0) return true;
         // valid if sender is not using credit.
         if (amount > 0 && amount <= stableCredit.balanceOf(from)) {
             return true;
         }
+        // valid if sender period is not initialized.
+        if (!periodInitialized(from)) return true;
+        // valid if sender is not in an active period.
+        if (inActivePeriod(from)) return true;
         // if member is in grace period invalidate transaction
-        if (inGracePeriod(from)) return false;
+        if (isFrozen(from)) return false;
         // if end of active credit period, handle expiration
-        if (periodExpired(from)) {
-            expireCreditPeriod(from);
-            return false;
-        }
-        // validate transaction
-        return true;
+        return expireCreditPeriod(from);
     }
 
     /* ========== MODIFIERS ========== */

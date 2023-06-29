@@ -18,7 +18,7 @@ interface IReSourceStableCredit {
         address recipient,
         int256 senderITD,
         int256 recipientITD,
-        bool senderStanding,
-        bool recipientStanding
+        bool senderCompliance,
+        bool recipientCompliance
     );
 }

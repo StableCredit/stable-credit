@@ -45,14 +45,14 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
     /// @param amount amount of credits to transfer
     function transfer(address to, uint256 amount) public override returns (bool) {
         bool result = super.transfer(to, amount);
-        IReSourceCreditIssuer issuer = IReSourceCreditIssuer(address(creditIssuer));
+        IReSourceCreditIssuer reSourceIssuer = IReSourceCreditIssuer(address(creditIssuer));
         emit CreditLineStateUpdated(
             _msgSender(),
             to,
-            issuer.itdOf(_msgSender()),
-            issuer.itdOf(to),
-            issuer.inGoodStanding(_msgSender()),
-            issuer.inGoodStanding(to)
+            reSourceIssuer.itdOf(_msgSender()),
+            reSourceIssuer.itdOf(to),
+            creditIssuer.inCompliance(_msgSender()),
+            creditIssuer.inCompliance(to)
             );
         return result;
     }

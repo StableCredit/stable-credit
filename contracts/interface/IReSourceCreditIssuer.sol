@@ -14,11 +14,6 @@ interface IReSourceCreditIssuer {
     /// @return CreditTerm data including paused, rebalanced, periodIncome, and feeRate.
     function creditTermsOf(address member) external view returns (CreditTerm memory);
 
-    /// @notice fetches a given member's current credit standing in relation to the credit terms.
-    /// @param member address of member to fetch standing status for.
-    /// @return whether the given member is in good standing.
-    function inGoodStanding(address member) external view returns (bool);
-
     /// @notice fetches a given member's Income to Debt ratio within the current credit period.
     /// @param member address of member to fetch ITD for.
     /// @return ITD ratio within the current credit period, where 1 ether == 100%.

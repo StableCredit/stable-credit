@@ -105,9 +105,9 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // assert period income is 10 credits
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10000000);
         // assert period is not expired
-        assertTrue(!creditIssuer.periodExpired(alice));
+        assertTrue(creditIssuer.inActivePeriod(alice));
         // advance time to expiration + grace period length (30 days)
-        vm.warp(block.timestamp + 120 days + 1);
+        vm.warp(block.timestamp + 121 days);
         changePrank(alice);
         // assert period income is still 10 credits before member validation
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 10000000);
@@ -115,6 +115,7 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         assertTrue(creditIssuer.periodExpired(alice));
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
+        console.log(creditIssuer.creditTermsOf(alice).periodIncome);
         // check that period income has been reset to 0
         assertEq(creditIssuer.creditTermsOf(alice).periodIncome, 0);
     }
@@ -242,13 +243,25 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
         // alice sends 20 credits to bob causing her ITD to be 0
         stableCredit.transfer(bob, 20e6);
         // advance time to expiration
-        vm.warp(block.timestamp + 120 days + 1);
+        vm.warp(block.timestamp + 121 days);
+        // check bob is in default
+        assertTrue(creditIssuer.inDefault(alice));
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
         // check network debt
         assertEq(stableCredit.networkDebt(), 20e6);
         // check alice credit limit is 0
         assertEq(stableCredit.creditLimitOf(alice), 0);
+    }
+
+    function testInDefault() public {
+        changePrank(alice);
+        // alice sends 20 credits to bob causing her ITD to be 0
+        stableCredit.transfer(bob, 20e6);
+        // advance time to expiration
+        vm.warp(block.timestamp + 120 days + 1);
+        // check network debt
+        assertTrue(creditIssuer.inDefault(alice));
     }
 
     function testExpirationWithPausedTerms() public {

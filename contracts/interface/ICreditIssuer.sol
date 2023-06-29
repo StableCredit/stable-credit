@@ -23,6 +23,12 @@ interface ICreditIssuer {
     /// @param member address of member.
     function underwriteMember(address member) external;
 
+    /// @notice returns whether a given member is in compliance with credit terms.
+    /// @dev intended to be overwritten in parent implementation to include custom compliance logic.
+    /// @param member address of member.
+    /// @return whether member is in compliance with credit terms.
+    function inCompliance(address member) external view returns (bool);
+
     /* ========== EVENTS ========== */
 
     event CreditTermsPaused(address member);

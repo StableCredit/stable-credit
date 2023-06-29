@@ -29,7 +29,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     const accountD = signers[4]
     const accountE = signers[5]
 
-    // initialize accounts A-E
+    // ~~~~~~~~~~~~~~~~~~ initialize accounts A-E ~~~~~~~~~~~~~~~~~~
     for (var i = 1; i <= 5; i++) {
       // assign credit lines
       await (
@@ -64,10 +64,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
       ).wait()
     }
 
-    const defaultingAccount = new ethers.Wallet(
-      "cc17b52b3a9287777ae9fbf8f634908e7d5246a205c2fc53d043534c0f8667e8",
-      ethers.provider
-    )
+    // ~~~~~~~~~~~~~~~~~~ initialize account 1 ~~~~~~~~~~~~~~~~~~
 
     // configure defaultingAccount
     let tx = {
@@ -83,15 +80,22 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
       )
     ).wait()
 
+    // ~~~~~~~~~~~~~~~~~~ initialize defaulting account (2) ~~~~~~~~~~~~~~~~~~
+
+    const defaultingAccount = new ethers.Wallet(
+      "cc17b52b3a9287777ae9fbf8f634908e7d5246a205c2fc53d043534c0f8667e8",
+      ethers.provider
+    )
+
     // assign defaulting credit line to defaultingAccount
     await (
       await creditIssuer.initializeCreditLine(
         defaultingAccount.address,
+        100, // 100 second
         1, // 1 second
-        1, // 1 second
-        parseStableCredits("1000"),
-        (5e16).toString(),
-        (10e16).toString(),
+        parseStableCredits("1000"), // 1000 limit
+        (5e16).toString(), // 5% risk fee rate
+        (10e16).toString(), // 10% minITD
         0
       )
     ).wait()
@@ -101,25 +105,32 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     }
     send(ethers.provider.getSigner(), tx)
 
+    // send reserve tokens to defaultingAccount
+
     await (
       await reserveToken.transfer(defaultingAccount.address, ethers.utils.parseEther("2000"))
     ).wait()
+
+    // approve feeManager to spend defaultingAccount's reserve tokens
     await (
       await reserveToken
         .connect(defaultingAccount)
         .approve(feeManager.address, ethers.constants.MaxUint256)
     ).wait()
 
+    // send 200 from defaultingAccount to accountB
     await (
       await stableCredit
         .connect(defaultingAccount)
         .transfer(accountB.address, parseStableCredits("200"))
     ).wait()
 
+    // increase time to cause default
+
     await ethers.provider.send("evm_increaseTime", [100])
     await ethers.provider.send("evm_mine", [])
 
-    // configure external account
+    // ~~~~~~~~~~~~~~~~~~ initialize account 3 ~~~~~~~~~~~~~~~~~~
 
     const account3Address = "0xc44deEd52309b286a698BC2A8b3A7424E52302a1"
 

@@ -23,15 +23,11 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
 
     /* ========== VIEWS ========== */
 
-    /// @notice fetches a given member's current credit standing in relation to the credit terms.
-    /// @param member address of member to fetch standing status for.
-    /// @return whether the given member is in good standing.
-    function inGoodStanding(address member)
-        public
-        view
-        override(CreditIssuer, IReSourceCreditIssuer)
-        returns (bool)
-    {
+    /// @notice returns whether a given member is in compliance with credit terms.
+    /// @dev intended to be overwritten in parent implementation to include custom compliance logic.
+    /// @param member address of member.
+    /// @return whether member is in compliance with credit terms.
+    function inCompliance(address member) public view override returns (bool) {
         return hasRebalanced(member) || hasValidITD(member);
     }
 
@@ -76,17 +72,6 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
             (creditTerms[member].minITD * stableCredit.creditBalanceOf(member) / 1 ether)
                 - creditTerms[member].periodIncome
         ) * 1 ether / ((creditTerms[member].minITD + 1 ether)) + 1;
-    }
-
-    /// @notice fetches whether a given member's credit line is frozen due to non compliance with
-    /// credit terms.
-    /// @param member address of member to fetch credit line status.
-    /// @return Whether member's credit line is frozen.
-    function isFrozen(address member) public view returns (bool) {
-        // member is frozen if in grace period, credit terms are not paused, has not rebalanced,
-        // and has an invalid ITD
-        return inGracePeriod(member) && !creditPeriods[member].paused && !hasRebalanced(member)
-            && !hasValidITD(member);
     }
 
     /// @notice fetches a given member's credit terms state.
@@ -187,8 +172,8 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         override
         returns (bool)
     {
-        // update recipients terms if in an active credit period.
-        if (inActivePeriod(to)) {
+        // update recipients terms if credit period is initialized.
+        if (periodInitialized(to)) {
             updateMemberTerms(to, amount);
         }
         // if period is paused for member, validate member
@@ -212,25 +197,28 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         super.initializeCreditPeriod(member, periodExpiration, graceExpiration);
     }
 
-    /// @notice called when a member's credit period has expired and is not in good standing.
-    /// @dev resets credit terms and emits a default event if caller has outstanding debt.
+    /// @notice called when a member's credit period has expired
+    /// @dev deletes credit terms and emits a default event if caller is in default.
     /// @param member address of member to expire.
-    function expireCreditPeriod(address member) internal override {
-        // if member has rebalanced or has a valid ITD, re-initialize credit line, and try re-underwrite
-        if (inGoodStanding(member)) {
+    /// @return true if member is not in default, false if member is in default.
+    function expireCreditPeriod(address member) internal override returns (bool) {
+        // require member is not in active period (either in grace or expired)
+        require(!inActivePeriod(member), "Credit: period not expired");
+        // if member is in compliance, re-underwrite, reset terms, and initialize new period
+        if (inCompliance(member)) {
+            // TODO: re-underwrite
             // reset terms
             creditTerms[member].rebalanced = false;
             creditTerms[member].periodIncome = 0;
             CreditPeriod memory period = creditPeriods[member];
-            // TODO: try re-underwrite
             uint256 newExpiration = block.timestamp + (period.expiration - period.issuedAt);
             uint256 newGraceExpiration =
                 block.timestamp + (period.graceExpiration - period.issuedAt);
             // start new credit period
             initializeCreditPeriod(member, newExpiration, newGraceExpiration);
-            return;
+            return true;
         }
-        super.expireCreditPeriod(member);
+        return super.expireCreditPeriod(member);
     }
 
     /// @notice updates a given member's credit terms states: income and rebalanced.
