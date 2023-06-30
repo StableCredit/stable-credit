@@ -72,12 +72,16 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
 
     /* ========== VIEWS ========== */
 
+    /// @notice Returns whether a given member can pay a given amount of fees in credits
+    /// @param sender address of Member
+    /// @param amount amount of credits to transfer
+    /// @return whether member can pay fees in credits
     function canPayFeeInCredits(address sender, uint256 amount) public view returns (bool) {
-        bool feeManagerSet = address(feeManager) != address(0);
+        if (address(feeManager) == address(0)) return false;
         uint256 fee = IReSourceFeeManager(address(feeManager)).calculateFeeInCredits(sender, amount);
         bool sufficientBalance = balanceOf(sender) >= amount + fee;
         bool sufficientNetworkDebt = networkDebt() >= fee;
-        return feeManagerSet && sufficientBalance && sufficientNetworkDebt;
+        return sufficientBalance && sufficientNetworkDebt;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
