@@ -28,7 +28,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @param member address of member.
     /// @return whether member is in compliance with credit terms.
     function inCompliance(address member) public view override returns (bool) {
-        return hasRebalanced(member) || hasValidITD(member);
+        return !periodInitialized(member) || (hasRebalanced(member) || hasValidITD(member));
     }
 
     /// @notice fetches whether a given member has rebalanced within the current credit period.
