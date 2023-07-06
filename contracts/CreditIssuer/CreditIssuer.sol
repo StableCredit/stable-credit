@@ -119,7 +119,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member.
     /// @return expiration timestamp of member's credit grace period.
     function graceExpirationOf(address member) public view returns (uint256) {
-        return creditPeriods[member].graceExpiration;
+        return creditPeriods[member].expiration + creditPeriods[member].graceLength;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -171,9 +171,9 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice called by network operators to set the grace period length.
     /// @dev only callable by network operators.
     /// @param member address of member to set grace period for.
-    /// @param graceExpiration expiration timestamp of grace period.
-    function setGraceExpiration(address member, uint256 graceExpiration) public onlyIssuer {
-        creditPeriods[member].graceExpiration = graceExpiration;
+    /// @param graceLength length of grace period.
+    function setGraceLength(address member, uint256 graceLength) public onlyIssuer {
+        creditPeriods[member].graceLength = graceLength;
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
@@ -181,22 +181,20 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice responsible for initializing the given member's credit period.
     /// @param member address of member to initialize credit period for.
     /// @param periodExpiration expiration timestamp of credit period.
-    /// @param graceExpiration expiration timestamp of grace period.
-    function initializeCreditPeriod(
-        address member,
-        uint256 periodExpiration,
-        uint256 graceExpiration
-    ) internal virtual {
+    /// @param graceLength length of grace period.
+    function initializeCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
+        internal
+        virtual
+    {
         require(periodExpiration > block.timestamp, "CreditIssuer: period expiration in past");
-        require(graceExpiration > periodExpiration, "CreditIssuer: grace expiration in past");
         // create new credit period
         creditPeriods[member] = CreditPeriod({
             issuedAt: block.timestamp,
             expiration: periodExpiration,
-            graceExpiration: graceExpiration,
+            graceLength: graceLength,
             paused: false
         });
-        emit CreditPeriodCreated(member, periodExpiration, graceExpiration);
+        emit CreditPeriodCreated(member, periodExpiration, periodExpiration + graceLength);
     }
 
     /// @notice called when a member's credit period has expired

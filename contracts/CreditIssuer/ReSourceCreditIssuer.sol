@@ -135,9 +135,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
         // initialize credit line
         stableCredit.createCreditLine(member, creditLimit, balance);
         // initialize credit period
-        initializeCreditPeriod(
-            member, block.timestamp + periodLength, block.timestamp + periodLength + graceLength
-        );
+        initializeCreditPeriod(member, block.timestamp + periodLength, graceLength);
         emit CreditTermsCreated(member, feeRate, minITD);
     }
 
@@ -185,16 +183,15 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
     /// @notice responsible for initializing the given member's credit period.
     /// @param member address of member to initialize credit period for.
     /// @param periodExpiration timestamp of when the credit period expires.
-    /// @param graceExpiration timestamp of when the grace period expires.
-    function initializeCreditPeriod(
-        address member,
-        uint256 periodExpiration,
-        uint256 graceExpiration
-    ) internal override {
+    /// @param graceLength timestamp of when the grace period expires.
+    function initializeCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
+        internal
+        override
+    {
         // initialize credit terms
         creditTerms[member].rebalanced = false;
         creditTerms[member].periodIncome = 0;
-        super.initializeCreditPeriod(member, periodExpiration, graceExpiration);
+        super.initializeCreditPeriod(member, periodExpiration, graceLength);
     }
 
     /// @notice called when a member's credit period has expired
@@ -212,10 +209,8 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
             creditTerms[member].periodIncome = 0;
             CreditPeriod memory period = creditPeriods[member];
             uint256 newExpiration = block.timestamp + (period.expiration - period.issuedAt);
-            uint256 newGraceExpiration =
-                block.timestamp + (period.graceExpiration - period.issuedAt);
             // start new credit period
-            initializeCreditPeriod(member, newExpiration, newGraceExpiration);
+            initializeCreditPeriod(member, newExpiration, newExpiration + period.graceLength);
             return true;
         }
         return super.expireCreditPeriod(member);

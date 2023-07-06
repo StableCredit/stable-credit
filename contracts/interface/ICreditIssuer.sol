@@ -5,7 +5,7 @@ interface ICreditIssuer {
     struct CreditPeriod {
         uint256 issuedAt;
         uint256 expiration;
-        uint256 graceExpiration;
+        uint256 graceLength;
         bool paused;
     }
 

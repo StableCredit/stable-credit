@@ -382,8 +382,10 @@ contract ReSourceCreditIssuerTest is ReSourceStableCreditTest {
 
     function testSetGracePeriod() public {
         changePrank(deployer);
-        creditIssuer.setGraceExpiration(alice, block.timestamp + 100 days);
-        assertEq(creditIssuer.graceExpirationOf(alice), block.timestamp + 100 days);
+        creditIssuer.setGraceLength(alice, 200 days);
+        assertEq(
+            creditIssuer.graceExpirationOf(alice), creditIssuer.periodExpirationOf(alice) + 200 days
+        );
     }
 
     // TODO: testUnderwriteMember
