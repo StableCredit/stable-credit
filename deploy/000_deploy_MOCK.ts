@@ -232,6 +232,8 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await accessManager.grantOperator(launchPoolAddress)).wait()
   // grant creditPool operator access
   await (await accessManager.grantOperator(creditPoolAddress)).wait()
+  // grant feeManager operator access
+  await (await accessManager.grantOperator(feeManagerAddress)).wait()
   // set accessManager
   await (await stableCredit.setAccessManager(accessManagerAddress)).wait()
   // set feeManager

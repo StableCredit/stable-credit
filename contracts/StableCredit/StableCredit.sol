@@ -52,21 +52,6 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    /// @notice Enables members to transfer credits to other network participants
-    /// @param to address of recipient
-    /// @param amount amount of credits to transfer
-    function transfer(address to, uint256 amount)
-        public
-        virtual
-        override(ERC20Upgradeable, IERC20Upgradeable)
-        returns (bool)
-    {
-        if (address(feeManager) != address(0)) {
-            feeManager.collectFee(_msgSender(), to, amount);
-        }
-        return super.transfer(to, amount);
-    }
-
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt or pool debt to service.
     /// @return reimbursement amount from reserve pool
@@ -170,6 +155,9 @@ contract StableCredit is MutualCredit, IStableCredit {
         override
         senderIsMember(_from)
     {
+        if (address(feeManager) != address(0)) {
+            feeManager.collectFee(_msgSender(), _to, _amount);
+        }
         if (!creditIssuer.validateTransaction(_msgSender(), _to, _amount)) return;
         super._transfer(_from, _to, _amount);
     }

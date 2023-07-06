@@ -97,7 +97,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member.
     /// @return whether member is in default.
     function inDefault(address member) public view returns (bool) {
-        return periodExpired(member) && !inCompliance(member);
+        return periodInitialized(member) && periodExpired(member) && !inCompliance(member);
     }
 
     /// @notice returns whether a given member's credit line is frozen.

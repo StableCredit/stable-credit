@@ -94,7 +94,7 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         assertTrue(stableCredit.canPayFeeInCredits(bob, 100e6));
         // bob should just be paying base fee (no credit line)
         assertEq(feeManager.calculateFeeInCredits(bob, 10e6), 5e5);
-        stableCredit.approve(address(feeManager), 100e6);
+        stableCredit.approve(address(feeManager), 1000e6);
         assertEq(stableCredit.balanceOf(bob), 200e6);
         assertEq(reserveToken.balanceOf(bob), 100 ether);
         // bob sends credits to alice using credits as fee

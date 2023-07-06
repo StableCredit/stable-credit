@@ -41,10 +41,18 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
     }
 
     /// @notice Enables members to transfer credits to other network participants
+    /// @dev members are only able to pay tx fees in stable credits if there is network debt to service
+    /// and they are only using a positive balance (including tx fee)
     /// @param to address of recipient
     /// @param amount amount of credits to transfer
-    function transfer(address to, uint256 amount) public override returns (bool) {
-        bool result = super.transfer(to, amount);
+    function transferWithCredits(address to, uint256 amount) external returns (bool) {
+        require(
+            canPayFeeInCredits(_msgSender(), amount), "StableCredit: Cannot pay fees in credits"
+        );
+        // collect stable credit fee
+        IReSourceFeeManager(address(feeManager)).collectFeeInCredits(_msgSender(), to, amount);
+        // validate transaction
+        if (!creditIssuer.validateTransaction(_msgSender(), to, amount)) return false;
         IReSourceCreditIssuer reSourceIssuer = IReSourceCreditIssuer(address(creditIssuer));
         emit CreditLineStateUpdated(
             _msgSender(),
@@ -54,20 +62,9 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
             creditIssuer.inCompliance(_msgSender()),
             creditIssuer.inCompliance(to)
             );
-        return result;
-    }
 
-    /// @notice Enables members to transfer credits to other network participants
-    /// @dev members are only able to pay tx fees in stable credits if there is network debt to service
-    /// and they are only using a positive balance (including tx fee)
-    /// @param to address of recipient
-    /// @param amount amount of credits to transfer
-    function transferWithCredits(address to, uint256 amount) external returns (bool) {
-        require(
-            canPayFeeInCredits(_msgSender(), amount), "StableCredit: Cannot pay fees in credits"
-        );
-        IReSourceFeeManager(address(feeManager)).collectFeeInCredits(_msgSender(), to, amount);
-        return ERC20Upgradeable.transfer(to, amount);
+        MutualCredit._transfer(_msgSender(), to, amount);
+        return true;
     }
 
     /* ========== VIEWS ========== */
@@ -107,5 +104,25 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
     function setCreditPool(address _creditPool) external onlyAdmin {
         creditPool = ICreditPool(_creditPool);
         emit CreditPoolUpdated(_creditPool);
+    }
+
+    /// @notice Caller must approve feeManager to spend reserve tokens for transfer of credits.
+    /// @dev Validates the caller's credit line and synchronizes demurrage balance.
+    function _transfer(address _from, address _to, uint256 _amount)
+        internal
+        virtual
+        override
+        senderIsMember(_from)
+    {
+        super._transfer(_from, _to, _amount);
+        IReSourceCreditIssuer reSourceIssuer = IReSourceCreditIssuer(address(creditIssuer));
+        emit CreditLineStateUpdated(
+            _from,
+            _to,
+            reSourceIssuer.itdOf(_from),
+            reSourceIssuer.itdOf(_to),
+            creditIssuer.inCompliance(_from),
+            creditIssuer.inCompliance(_to)
+            );
     }
 }
