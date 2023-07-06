@@ -174,6 +174,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param graceLength length of grace period.
     function setGraceLength(address member, uint256 graceLength) public onlyIssuer {
         creditPeriods[member].graceLength = graceLength;
+        emit GraceLengthUpdated(member, graceLength);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
@@ -194,7 +195,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
             graceLength: graceLength,
             paused: false
         });
-        emit CreditPeriodCreated(member, periodExpiration, periodExpiration + graceLength);
+        emit CreditPeriodCreated(member, periodExpiration, graceLength);
     }
 
     /// @notice called when a member's credit period has expired

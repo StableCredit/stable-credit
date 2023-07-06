@@ -35,7 +35,6 @@ interface ICreditIssuer {
     event CreditTermsUnpaused(address member);
     event CreditLineDefaulted(address member);
     event CreditPeriodExpired(address member);
-    event CreditPeriodCreated(
-        address member, uint256 periodExpiration, uint256 gracePeriodExpiration
-    );
+    event CreditPeriodCreated(address member, uint256 periodExpiration, uint256 graceLength);
+    event GraceLengthUpdated(address member, uint256 graceLength);
 }

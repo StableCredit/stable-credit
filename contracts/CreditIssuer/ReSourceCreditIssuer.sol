@@ -210,7 +210,7 @@ contract ReSourceCreditIssuer is CreditIssuer, IReSourceCreditIssuer {
             CreditPeriod memory period = creditPeriods[member];
             uint256 newExpiration = block.timestamp + (period.expiration - period.issuedAt);
             // start new credit period
-            initializeCreditPeriod(member, newExpiration, newExpiration + period.graceLength);
+            initializeCreditPeriod(member, newExpiration, period.graceLength);
             return true;
         }
         return super.expireCreditPeriod(member);
