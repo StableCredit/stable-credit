@@ -73,6 +73,7 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
         uint256 reimbursement = stableCredit.burnNetworkDebt(fee);
         // transfer reimbursement to sender
         stableCredit.reservePool().reserveToken().safeTransfer(sender, reimbursement);
+        emit FeesCollectedInCredits(sender, fee);
         return;
     }
     /* ========== VIEWS ========== */

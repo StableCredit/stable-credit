@@ -156,9 +156,9 @@ contract StableCredit is MutualCredit, IStableCredit {
         senderIsMember(_from)
     {
         if (address(feeManager) != address(0)) {
-            feeManager.collectFee(_msgSender(), _to, _amount);
+            feeManager.collectFee(_from, _to, _amount);
         }
-        if (!creditIssuer.validateTransaction(_msgSender(), _to, _amount)) return;
+        if (!creditIssuer.validateTransaction(_from, _to, _amount)) return;
         super._transfer(_from, _to, _amount);
     }
 

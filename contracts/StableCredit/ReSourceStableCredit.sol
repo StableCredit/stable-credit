@@ -62,7 +62,6 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
             creditIssuer.inCompliance(_msgSender()),
             creditIssuer.inCompliance(to)
             );
-
         MutualCredit._transfer(_msgSender(), to, amount);
         return true;
     }

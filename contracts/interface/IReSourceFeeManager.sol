@@ -19,4 +19,8 @@ interface IReSourceFeeManager {
         external
         view
         returns (uint256);
+
+    /* ========== EVENTS ========== */
+
+    event FeesCollectedInCredits(address member, uint256 fee);
 }
