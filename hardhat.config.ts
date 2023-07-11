@@ -54,9 +54,9 @@ const config: HardhatUserConfig = {
       tags: ["local", "testing"],
       timeout: 100000000,
     },
-    test: {
-      url: "http://contracts:8545",
-      chainId: 31337,
+    ganache: {
+      url: "http://localhost:8545",
+      chainId: 1337,
       saveDeployments: true,
       tags: ["local", "testing"],
       timeout: 100000000,
