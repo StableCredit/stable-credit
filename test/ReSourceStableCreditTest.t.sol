@@ -84,6 +84,7 @@ contract ReSourceStableCreditTest is Test {
         // set credit pool limit to max
         stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
         stableCredit.setCreditPool(address(creditPool)); // set creditPool
+        accessManager.grantOperator(address(creditPool)); // grant creditPool operator access
     }
 
     function test() public {}

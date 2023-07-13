@@ -208,6 +208,9 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await accessManager.grantIssuer(ambassadorAddress)).wait()
   // grant operator role to ambassador
   await (await accessManager.grantOperator(ambassadorAddress)).wait()
+  // grant operator role to creditPool
+  await (await accessManager.grantOperator(creditPoolAddress)).wait()
+
   if ((await admin.owner()) != adminOwner) {
     // transfer admin ownership to adminOwner address
     await upgrades.admin.transferProxyAdminOwnership(adminOwner)

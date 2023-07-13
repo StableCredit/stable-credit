@@ -47,35 +47,6 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
         emit FeesCollected(sender, fee);
     }
 
-    /// @notice Called by a StableCredit instance to collect fees from the credit sender
-    /// @dev the sender must approve the feeManager to spend reserve tokens on their behalf before
-    /// fees can be collected.
-    /// @param sender stable credit sender address
-    /// @param recipient stable credit recipient address
-    /// @param amount stable credit amount
-    function collectFeeInCredits(address sender, address recipient, uint256 amount)
-        public
-        override
-        onlyStableCredit
-    {
-        if (!shouldChargeTx(sender, recipient)) {
-            return;
-        }
-        uint256 fee = calculateFeeInCredits(sender, amount);
-        // transaction amount and fee must be covered by positive balance
-        require(
-            stableCredit.balanceOf(sender) > amount + fee,
-            "FeeManager: Insufficient balance for fee in credits"
-        );
-        // collect tx fee in credits from sender
-        stableCredit.safeTransferFrom(sender, address(this), fee);
-        // use collected credits to burn network debt
-        uint256 reimbursement = stableCredit.burnNetworkDebt(fee);
-        // transfer reimbursement to sender
-        stableCredit.reservePool().reserveToken().safeTransfer(sender, reimbursement);
-        emit FeesCollectedInCredits(sender, fee);
-        return;
-    }
     /* ========== VIEWS ========== */
 
     /// @notice calculate fee to charge member in reserve token value

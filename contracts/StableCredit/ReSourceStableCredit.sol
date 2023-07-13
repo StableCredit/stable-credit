@@ -18,6 +18,7 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
 
     IAmbassador public ambassador;
     ICreditPool public creditPool;
+    mapping(address => bool) public creditFeesDisabled;
 
     /* ========== INITIALIZER ========== */
 
@@ -40,32 +41,6 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
         return super.burnNetworkDebt(amount);
     }
 
-    /// @notice Enables members to transfer credits to other network participants
-    /// @dev members are only able to pay tx fees in stable credits if there is network debt to service
-    /// and they are only using a positive balance (including tx fee)
-    /// @param to address of recipient
-    /// @param amount amount of credits to transfer
-    function transferWithCredits(address to, uint256 amount) external returns (bool) {
-        require(
-            canPayFeeInCredits(_msgSender(), amount), "StableCredit: Cannot pay fees in credits"
-        );
-        // collect stable credit fee
-        IReSourceFeeManager(address(feeManager)).collectFeeInCredits(_msgSender(), to, amount);
-        // validate transaction
-        if (!creditIssuer.validateTransaction(_msgSender(), to, amount)) return false;
-        IReSourceCreditIssuer reSourceIssuer = IReSourceCreditIssuer(address(creditIssuer));
-        emit CreditLineStateUpdated(
-            _msgSender(),
-            to,
-            reSourceIssuer.itdOf(_msgSender()),
-            reSourceIssuer.itdOf(to),
-            creditIssuer.inCompliance(_msgSender()),
-            creditIssuer.inCompliance(to)
-            );
-        MutualCredit._transfer(_msgSender(), to, amount);
-        return true;
-    }
-
     /* ========== VIEWS ========== */
 
     /// @notice Returns whether a given member can pay a given amount of fees in credits
@@ -81,6 +56,14 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
+
+    /// @notice Enables members to specify if fees should be paid in credits if possible
+    /// @param member address of member to set payFeesInCredits
+    /// @param disabled disable paying fees in credits when available
+    function setCreditFeesDisabled(address member, bool disabled) public {
+        require(member == _msgSender(), "StableCredit: Only member can set payFeesInCredits");
+        creditFeesDisabled[member] = disabled;
+    }
 
     /// @notice transfer a given member's debt to the network
     /// @param member address of member to write off
@@ -105,6 +88,34 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
         emit CreditPoolUpdated(_creditPool);
     }
 
+    /// @notice Enables members to transfer credits to other network participants
+    /// @dev members are only able to pay tx fees in stable credits if there is network debt to service
+    /// and they are only using a positive balance (including tx fee)
+    /// @param _from address of sender
+    /// @param _to address of recipient
+    /// @param _amount amount of credits to transfer
+    function _transferWithCreditFees(address _from, address _to, uint256 _amount)
+        internal
+        returns (bool)
+    {
+        require(canPayFeeInCredits(_from, _amount), "StableCredit: Cannot pay fees in credits");
+        uint256 fee = IReSourceFeeManager(address(feeManager)).calculateFeeInCredits(_from, _amount);
+        super.burnNetworkDebt(fee);
+        // validate transaction
+        if (!creditIssuer.validateTransaction(_from, _to, _amount)) return false;
+        IReSourceCreditIssuer reSourceIssuer = IReSourceCreditIssuer(address(creditIssuer));
+        emit CreditLineStateUpdated(
+            _from,
+            _to,
+            reSourceIssuer.itdOf(_from),
+            reSourceIssuer.itdOf(_to),
+            creditIssuer.inCompliance(_from),
+            creditIssuer.inCompliance(_to)
+            );
+        MutualCredit._transfer(_from, _to, _amount);
+        return true;
+    }
+
     /// @notice Caller must approve feeManager to spend reserve tokens for transfer of credits.
     /// @dev Validates the caller's credit line and synchronizes demurrage balance.
     function _transfer(address _from, address _to, uint256 _amount)
@@ -113,7 +124,14 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
         override
         senderIsMember(_from)
     {
-        super._transfer(_from, _to, _amount);
+        if (
+            !creditFeesDisabled[_from] && canPayFeeInCredits(_from, _amount)
+                && !access.isOperator(_to)
+        ) {
+            _transferWithCreditFees(_from, _to, _amount);
+        } else {
+            super._transfer(_from, _to, _amount);
+        }
         IReSourceCreditIssuer reSourceIssuer = IReSourceCreditIssuer(address(creditIssuer));
         emit CreditLineStateUpdated(
             _from,

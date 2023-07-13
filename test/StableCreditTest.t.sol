@@ -144,4 +144,40 @@ contract StableCreditTest is ReSourceStableCreditTest {
         // verify credit issuer is set
         assertEq(address(stableCredit.creditIssuer()), address(10));
     }
+
+    function testTransferWithPayFeesInCreditsTrue() public {
+        changePrank(deployer);
+        feeManager.unpauseFees();
+        // create credit balance for alice
+        changePrank(alice);
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
+        stableCredit.transfer(bob, 100e6);
+        // give tokens for repayment
+        changePrank(deployer);
+        reservePool.reserveToken().transfer(alice, 100 * 1 ether);
+        changePrank(alice);
+        // approve reserve tokens
+        reservePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        // repay full credit balance
+        stableCredit.repayCreditBalance(alice, uint128(100e6));
+        assertEq(stableCredit.networkDebt(), 100e6);
+        // send credits to bob from alice
+        changePrank(alice);
+        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
+        stableCredit.transfer(bob, 100e6);
+        changePrank(bob);
+        assertTrue(stableCredit.canPayFeeInCredits(bob, 100e6));
+        // bob should just be paying base fee (no credit line)
+        assertEq(feeManager.calculateFeeInCredits(bob, 10e6), 5e5);
+        assertEq(stableCredit.balanceOf(bob), 200e6);
+        assertEq(reserveToken.balanceOf(bob), 100 ether);
+        // bob sends credits to alice using credits as fee
+        stableCredit.transfer(alice, 10e6);
+        // bob's balance of credits should be - 10.5 credits (10 + fee)
+        assertEq(stableCredit.balanceOf(bob), 1895e5);
+        // bob's reserve token balance should be + .5 tokens
+        assertEq(reserveToken.balanceOf(bob), 100.5 ether);
+        // network debt should be reduced by fee (.5)
+        assertEq(stableCredit.networkDebt(), 995e5);
+    }
 }
