@@ -18,7 +18,6 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
 
     IAmbassador public ambassador;
     ICreditPool public creditPool;
-    mapping(address => bool) public creditFeesDisabled;
 
     /* ========== INITIALIZER ========== */
 
@@ -41,29 +40,7 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
         return super.burnNetworkDebt(amount);
     }
 
-    /* ========== VIEWS ========== */
-
-    /// @notice Returns whether a given member can pay a given amount of fees in credits
-    /// @param sender address of Member
-    /// @param amount amount of credits to transfer
-    /// @return whether member can pay fees in credits
-    function canPayFeeInCredits(address sender, uint256 amount) public view returns (bool) {
-        if (address(feeManager) == address(0)) return false;
-        uint256 fee = IReSourceFeeManager(address(feeManager)).calculateFeeInCredits(sender, amount);
-        bool sufficientBalance = balanceOf(sender) >= amount + fee;
-        bool sufficientNetworkDebt = networkDebt() >= fee;
-        return sufficientBalance && sufficientNetworkDebt;
-    }
-
     /* ========== RESTRICTED FUNCTIONS ========== */
-
-    /// @notice Enables members to specify if fees should be paid in credits if possible
-    /// @param member address of member to set payFeesInCredits
-    /// @param disabled disable paying fees in credits when available
-    function setCreditFeesDisabled(address member, bool disabled) public {
-        require(member == _msgSender(), "StableCredit: Only member can set payFeesInCredits");
-        creditFeesDisabled[member] = disabled;
-    }
 
     /// @notice transfer a given member's debt to the network
     /// @param member address of member to write off
@@ -98,7 +75,11 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
         internal
         returns (bool)
     {
-        require(canPayFeeInCredits(_from, _amount), "StableCredit: Cannot pay fees in credits");
+        IReSourceFeeManager reSourceFeeManager = IReSourceFeeManager(address(feeManager));
+        require(
+            reSourceFeeManager.canPayFeeInCredits(_from, _amount),
+            "StableCredit: Cannot pay fees in credits"
+        );
         uint256 fee = IReSourceFeeManager(address(feeManager)).calculateFeeInCredits(_from, _amount);
         super.burnNetworkDebt(fee);
         // validate transaction
@@ -124,9 +105,10 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
         override
         senderIsMember(_from)
     {
+        IReSourceFeeManager reSourceFeeManager = IReSourceFeeManager(address(feeManager));
         if (
-            !creditFeesDisabled[_from] && canPayFeeInCredits(_from, _amount)
-                && !access.isOperator(_to)
+            !reSourceFeeManager.creditFeesDisabled(_from)
+                && reSourceFeeManager.canPayFeeInCredits(_from, _amount) && !access.isOperator(_to)
         ) {
             _transferWithCreditFees(_from, _to, _amount);
         } else {

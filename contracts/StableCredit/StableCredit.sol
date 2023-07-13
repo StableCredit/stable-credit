@@ -40,7 +40,7 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /// @notice Network account that manages the rectification of defaulted debt accounts.
     /// @return amount of debt owned by the network.
-    function networkDebt() public view returns (uint256) {
+    function networkDebt() public view override returns (uint256) {
         return creditBalanceOf(address(this));
     }
 

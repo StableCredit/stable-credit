@@ -15,7 +15,7 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
     using SafeERC20Upgradeable for IStableCredit;
 
     /* ========== STATE VARIABLES ========== */
-    mapping(address => bool) public serviceDebt;
+    mapping(address => bool) public _creditFeesDisabled;
 
     /* ========== INITIALIZER ========== */
 
@@ -45,6 +45,14 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
         // update total fees collected
         collectedFees += fee - ambassadorFee;
         emit FeesCollected(sender, fee);
+    }
+
+    /// @notice Enables members to specify if fees should be paid in credits if possible
+    /// @param member address of member to set payFeesInCredits
+    /// @param disabled disable paying fees in credits when available
+    function setCreditFeesDisabled(address member, bool disabled) public {
+        require(member == _msgSender(), "StableCredit: Only member can set payFeesInCredits");
+        _creditFeesDisabled[member] = disabled;
     }
 
     /* ========== VIEWS ========== */
@@ -79,6 +87,21 @@ contract ReSourceFeeManager is FeeManager, IReSourceFeeManager {
         }
         // if member is using positive balance return base fee calculation
         return super.calculateFee(member, amount);
+    }
+
+    /// @notice Returns whether a given member can pay a given amount of fees in credits
+    /// @param sender address of Member
+    /// @param amount amount of credits to transfer
+    /// @return whether member can pay fees in credits
+    function canPayFeeInCredits(address sender, uint256 amount) public view returns (bool) {
+        uint256 fee = calculateFeeInCredits(sender, amount);
+        bool sufficientBalance = stableCredit.balanceOf(sender) >= amount + fee;
+        bool sufficientNetworkDebt = stableCredit.networkDebt() >= fee;
+        return sufficientBalance && sufficientNetworkDebt;
+    }
+
+    function creditFeesDisabled(address member) external view override returns (bool) {
+        return _creditFeesDisabled[member];
     }
 
     /// @notice calculate fee to charge member in stable credits

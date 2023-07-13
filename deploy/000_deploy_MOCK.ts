@@ -256,8 +256,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await accessManager.grantIssuer(ambassadorAddress)).wait()
   // grant operator role to ambassador
   await (await accessManager.grantOperator(ambassadorAddress)).wait()
-  // grant operator role to creditPool
-  await (await accessManager.grantOperator(creditPoolAddress)).wait()
   // set add network to registry
   await (await stableCreditRegistry.addNetwork(stableCreditAddress)).wait()
 }

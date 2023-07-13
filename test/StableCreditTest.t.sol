@@ -145,7 +145,7 @@ contract StableCreditTest is ReSourceStableCreditTest {
         assertEq(address(stableCredit.creditIssuer()), address(10));
     }
 
-    function testTransferWithPayFeesInCreditsTrue() public {
+    function testTransferWithCreditFees() public {
         changePrank(deployer);
         feeManager.unpauseFees();
         // create credit balance for alice
@@ -166,7 +166,7 @@ contract StableCreditTest is ReSourceStableCreditTest {
         reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
         stableCredit.transfer(bob, 100e6);
         changePrank(bob);
-        assertTrue(stableCredit.canPayFeeInCredits(bob, 100e6));
+        assertTrue(feeManager.canPayFeeInCredits(bob, 100e6));
         // bob should just be paying base fee (no credit line)
         assertEq(feeManager.calculateFeeInCredits(bob, 10e6), 5e5);
         assertEq(stableCredit.balanceOf(bob), 200e6);
