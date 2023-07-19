@@ -83,7 +83,13 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /// @param sender stable credit sender address
     /// @param recipient stable credit recipient address
     /// @return true if tx should be charged fees, false otherwise
-    function shouldChargeTx(address sender, address recipient) public view virtual returns (bool) {
+    function shouldChargeTx(address sender, address recipient)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
         if (
             paused() || stableCredit.access().isOperator(sender)
                 || recipient == address(stableCredit)

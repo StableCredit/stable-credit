@@ -113,7 +113,7 @@ contract StableCreditTest is ReSourceStableCreditTest {
         accessManager.grantOperator(bob);
         changePrank(bob);
         // burn network debt
-        stableCredit.burnNetworkDebt(100e6);
+        stableCredit.burnNetworkDebt(bob, 100e6);
         assertEq(stableCredit.networkDebt(), 0);
     }
 

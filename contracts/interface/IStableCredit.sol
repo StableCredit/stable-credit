@@ -34,7 +34,7 @@ interface IStableCredit is IMutualCredit, IERC20Upgradeable {
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt or pool debt to service.
     /// @return reimbursement amount from reserve pool
-    function burnNetworkDebt(uint256 amount) external returns (uint256);
+    function burnNetworkDebt(address member, uint256 amount) external returns (uint256);
     /// @notice Network account that manages the rectification of defaulted debt accounts.
     /// @return amount of debt owned by the network.
     function networkDebt() external view returns (uint256);

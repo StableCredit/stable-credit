@@ -36,8 +36,13 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
 
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt or pool debt to service.
-    function burnNetworkDebt(uint256 amount) public override onlyOperator returns (uint256) {
-        return super.burnNetworkDebt(amount);
+    function burnNetworkDebt(address member, uint256 amount)
+        public
+        override
+        onlyOperator
+        returns (uint256)
+    {
+        return super.burnNetworkDebt(member, amount);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -81,7 +86,7 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
             "StableCredit: Cannot pay fees in credits"
         );
         uint256 fee = IReSourceFeeManager(address(feeManager)).calculateFeeInCredits(_from, _amount);
-        super.burnNetworkDebt(fee);
+        super.burnNetworkDebt(_from, fee);
         // validate transaction
         if (!creditIssuer.validateTransaction(_from, _to, _amount)) return false;
         IReSourceCreditIssuer reSourceIssuer = IReSourceCreditIssuer(address(creditIssuer));
@@ -106,9 +111,10 @@ contract ReSourceStableCredit is StableCredit, IReSourceStableCredit {
         senderIsMember(_from)
     {
         IReSourceFeeManager reSourceFeeManager = IReSourceFeeManager(address(feeManager));
+        // allow transfer with credit fees if credit fees are enabled and the sender is not an operator
         if (
-            !reSourceFeeManager.creditFeesDisabled(_from)
-                && reSourceFeeManager.canPayFeeInCredits(_from, _amount) && !access.isOperator(_to)
+            feeManager.shouldChargeTx(_from, _to) && !reSourceFeeManager.creditFeesDisabled(_from)
+                && reSourceFeeManager.canPayFeeInCredits(_from, _amount)
         ) {
             _transferWithCreditFees(_from, _to, _amount);
         } else {

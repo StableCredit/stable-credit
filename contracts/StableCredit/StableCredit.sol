@@ -55,14 +55,19 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt or pool debt to service.
     /// @return reimbursement amount from reserve pool
-    function burnNetworkDebt(uint256 amount) public virtual override returns (uint256) {
-        require(balanceOf(_msgSender()) >= amount, "StableCredit: Insufficient balance");
+    function burnNetworkDebt(address member, uint256 amount)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        require(balanceOf(member) >= amount, "StableCredit: Insufficient balance");
         require(amount <= networkDebt(), "StableCredit: Insufficient network debt");
-        _transfer(_msgSender(), address(this), amount);
+        _transfer(member, address(this), amount);
         uint256 reimbursement = reservePool.reimburseAccount(
-            _msgSender(), reservePool.convertCreditTokenToReserveToken(amount)
+            member, reservePool.convertCreditTokenToReserveToken(amount)
         );
-        emit NetworkDebtBurned(_msgSender(), amount);
+        emit NetworkDebtBurned(member, amount);
         return reimbursement;
     }
 

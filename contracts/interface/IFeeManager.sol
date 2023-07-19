@@ -17,6 +17,12 @@ interface IFeeManager {
     /// @return reserve token amount to charge given member
     function calculateFee(address member, uint256 amount) external view returns (uint256);
 
+    /// @notice check if sender should be charged fee for tx
+    /// @param sender stable credit sender address
+    /// @param recipient stable credit recipient address
+    /// @return true if tx should be charged fees, false otherwise
+    function shouldChargeTx(address sender, address recipient) external view returns (bool);
+
     /* ========== EVENTS ========== */
 
     event FeesCollected(address member, uint256 totalFee);

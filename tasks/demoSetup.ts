@@ -14,6 +14,7 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     const riskOracle = await ethers.getContract("RiskOracle")
     const creditPool = await ethers.getContract("CreditPool")
     const ambassador = await ethers.getContract("Ambassador")
+    const accessManager = await ethers.getContract("AccessManager")
 
     // Unpause fees if paused
     const feesPaused = await feeManager.paused()
@@ -187,6 +188,11 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     await (
       await stableCredit.createCreditLine(creditPool.address, parseStableCredits("1000"), 0)
     ).wait()
+
+    // grant operator to Request ERC20 Proxy
+    const erc20Proxy = "0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4"
+
+    await (await accessManager.grantOperator(erc20Proxy)).wait()
 
     console.log("🚀 demo configured")
   }
