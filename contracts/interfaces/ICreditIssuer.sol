@@ -10,11 +10,11 @@ interface ICreditIssuer {
     }
 
     /// @notice called by the StableCredit contract when members transfer credits.
-    /// @param from sender address of stable credit transaction.
-    /// @param to recipient address of stable credit transaction.
+    /// @param sender address of stable credit transaction.
+    /// @param recipient recipient address of stable credit transaction.
     /// @param amount of credits in transaction.
     /// @return transaction validation result.
-    function validateTransaction(address from, address to, uint256 amount)
+    function validateCreditTransaction(address sender, address recipient, uint256 amount)
         external
         returns (bool);
 

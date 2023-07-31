@@ -1,90 +1,104 @@
 const fs = require("fs")
-const chalk = require("chalk")
-require("dotenv").config()
-
-import "hardhat-deploy"
-import "hardhat-preprocessor"
-import "@nomiclabs/hardhat-waffle"
-import "@typechain/hardhat"
-import "@openzeppelin/hardhat-upgrades"
-import "hardhat-gas-reporter"
-import "solidity-coverage"
-import "hardhat-contract-sizer"
-import "hardhat-dependency-compiler"
-
-import { utils } from "ethers"
-
 import { HardhatUserConfig, task } from "hardhat/config"
+import { NetworkUserConfig } from "hardhat/types"
+import { config as dotenvConfig } from "dotenv"
+import { resolve } from "path"
+import "hardhat-dependency-compiler"
+import "hardhat-preprocessor"
+import "hardhat-deploy"
+import "hardhat-deploy-ethers"
+import "@typechain/hardhat"
+import "@nomicfoundation/hardhat-ethers"
+import "@openzeppelin/hardhat-upgrades"
 
-import "./tasks/accounts"
-import "./tasks/clean"
-import "./tasks/fundedwallet"
-import "./tasks/generate"
+import "@primitivefi/hardhat-dodoc"
+
 import "./tasks/demoSetup"
-import "./tasks/syncCreditPeriod"
 
-const { isAddress, getAddress, formatUnits, parseUnits } = utils
+dotenvConfig({ path: resolve(__dirname, "./.env") })
 
-//
-// Select the network you want to deploy to here:
-//
-const defaultNetwork = "localhost"
+const chainIds = {
+  ganache: 1337,
+  goerli: 5,
+  hardhat: 31337,
+  kovan: 42,
+  mainnet: 1,
+  rinkeby: 4,
+  ropsten: 3,
+}
 
-function mnemonic() {
-  const path = "./mnemonic.txt"
-  if (fs.existsSync(path)) {
-    try {
-      return fs.readFileSync("./mnemonic.txt").toString().trim()
-    } catch (e) {
-      console.log("Mnemonic: ", e)
-    }
-  } else {
-    return ""
+const MNEMONIC = process.env.MNEMONIC || ""
+const INFURA_API_KEY = process.env.INFURA_API_KEY || ""
+
+function createTestnetConfig(network: keyof typeof chainIds): NetworkUserConfig {
+  const url: string = "https://" + network + ".infura.io/v3/" + INFURA_API_KEY
+  return {
+    accounts: {
+      count: 10,
+      initialIndex: 0,
+      mnemonic: MNEMONIC,
+      path: "m/44'/60'/0'/0",
+    },
+    chainId: chainIds[network],
+    url,
+    saveDeployments: true,
   }
 }
 
-const config: HardhatUserConfig = {
-  defaultNetwork,
+// You need to export an object to set up your config
+// Go to https://hardhat.org/config/ to learn more
 
+const config: HardhatUserConfig = {
+  defaultNetwork: "hardhat",
   networks: {
-    localhost: {
-      url: "http://localhost:8545",
-      chainId: 31337,
+    hardhat: {
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+      chainId: chainIds.hardhat,
       saveDeployments: true,
-      tags: ["local", "testing"],
-      timeout: 100000000,
     },
+    mainnet: createTestnetConfig("mainnet"),
+    goerli: createTestnetConfig("goerli"),
+    kovan: createTestnetConfig("kovan"),
+    rinkeby: createTestnetConfig("rinkeby"),
+    ropsten: createTestnetConfig("ropsten"),
     ganache: {
       url: "http://localhost:8545",
-      chainId: 1337,
+      chainId: chainIds.ganache,
       saveDeployments: true,
-      tags: ["local", "testing"],
-      timeout: 100000000,
-    },
-    celo: {
-      url: "https://forno.celo.org",
-      chainId: 42220,
-      accounts: { mnemonic: mnemonic() },
-      saveDeployments: true,
-      tags: ["production", "mainnet"],
-      timeout: 100000000,
-    },
-    "celo-alfajores": {
-      url: "https://alfajores-forno.celo-testnet.org",
-      chainId: 44787,
-      accounts: { mnemonic: mnemonic() },
-      saveDeployments: true,
-      tags: ["alfajores", "staging"],
-      timeout: 100000000,
     },
   },
   solidity: {
-    compilers: [{ version: "0.8.17" }],
+    compilers: [
+      {
+        version: "0.8.15",
+      },
+    ],
   },
-  namedAccounts: {
-    deployer: {
-      default: 0,
-    },
+  typechain: {
+    outDir: "types",
+    target: "ethers-v5",
+  },
+  paths: {
+    artifacts: "./artifacts",
+    cache: "./cache",
+    sources: "./contracts",
+    tests: "./test",
+    deployments: "./deployments",
+    deploy: "./deploy",
+    imports: "./artifacts",
+  },
+  dependencyCompiler: {
+    paths: [
+      "lib/v3-periphery/contracts/interfaces/ISwapRouter.sol",
+      "lib/v3-periphery/contracts/libraries/TransferHelper.sol",
+      "lib/v3-periphery/contracts/lens/Quoter.sol",
+      "test/mock/CreditIssuerMock.sol",
+      "test/mock/FeeManagerMock.sol",
+      "test/mock/MockERC20.sol",
+      "test/mock/StableCreditMock.sol",
+    ],
   },
   preprocess: {
     eachLine: (hre) => ({
@@ -100,71 +114,14 @@ const config: HardhatUserConfig = {
       },
     }),
   },
-  paths: {
-    artifacts: "./artifacts",
-    cache: "./cache",
-    sources: "./contracts",
-    tests: "./test",
-    deployments: "./deployments",
-    deploy: "./deploy",
-    imports: "./artifacts",
+  dodoc: {
+    runOnCompile: true,
+    debugMode: false,
+    include: ["StableCredit", "AccessManager", "Assurance", "CreditIssuer", "FeeManager"],
+    exclude: ["StableCreditMock", "CreditIssuerMock", "FeeManagerMock", "ExtraMath", "interfaces"],
+    outputDir: "./docs",
+    freshOutput: true,
   },
-  dependencyCompiler: {
-    paths: [
-      "lib/risk-management/contracts/ReservePool.sol",
-      "lib/risk-management/contracts/RiskOracle.sol",
-      "lib/risk-management/contracts/StableCreditRegistry.sol",
-      "test/MockERC20.sol",
-    ],
-  },
-  typechain: {
-    outDir: "types",
-    target: "ethers-v5",
-    externalArtifacts: ["./lib/risk-management/artifacts/*.json"],
-  },
-}
-
-export default config
-
-export const DEBUG = false
-
-export function debug(text) {
-  if (DEBUG) {
-    console.log(text)
-  }
-}
-
-export async function addr(ethers, addr) {
-  if (isAddress(addr)) {
-    return getAddress(addr)
-  }
-  const accounts = await ethers.provider.listAccounts()
-  if (accounts[addr] !== undefined) {
-    return accounts[addr]
-  }
-  throw `Could not normalize address: ${addr}`
-}
-
-task("blockNumber", "Prints the block number", async (_, { ethers }) => {
-  const blockNumber = await ethers.provider.getBlockNumber()
-  console.log(blockNumber)
-})
-
-task("balance", "Prints an account's balance")
-  .addParam("account", "The account's address")
-  .setAction(async (taskArgs, { ethers }) => {
-    const balance = await ethers.provider.getBalance(await addr(ethers, taskArgs.account))
-    console.log(formatUnits(balance, "ether"), "ETH")
-  })
-
-export function send(signer, txparams) {
-  return signer.sendTransaction(txparams, (error, transactionHash) => {
-    if (error) {
-      debug(`Error: ${error}`)
-    }
-    debug(`transactionHash: ${transactionHash}`)
-    // checkForReceipt(2, params, transactionHash, resolve)
-  })
 }
 
 task("send", "Send ETH")
@@ -174,26 +131,29 @@ task("send", "Send ETH")
   .addOptionalParam("data", "Data included in transaction")
   .addOptionalParam("gasPrice", "Price you are willing to pay in gwei")
   .addOptionalParam("gasLimit", "Limit of how much gas to spend")
-
   .setAction(async (taskArgs, { network, ethers }) => {
-    const from = await addr(ethers, taskArgs.from)
-    debug(`Normalized from address: ${from}`)
+    const from = ethers.getAddress(taskArgs.from)
     const fromSigner = await ethers.provider.getSigner(from)
 
     let to
     if (taskArgs.to) {
-      to = await addr(ethers, taskArgs.to)
-      debug(`Normalized to address: ${to}`)
+      to = ethers.getAddress(taskArgs.to)
     }
 
     const txRequest = {
-      value: parseUnits(taskArgs.amount ? taskArgs.amount : "0", "ether").toHexString(),
-      from: await fromSigner.getAddress(),
+      value: ethers.parseUnits(taskArgs.amount ? taskArgs.amount : "0", "ether"),
+      from: await fromSigner.address,
       to,
     }
 
-    return send(fromSigner, txRequest)
+    return await send(fromSigner, txRequest)
   })
+
+export async function send(signer, txparams) {
+  return await signer.sendTransaction(txparams)
+}
+
+export default config
 
 function getRemappings() {
   return fs

@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "./interface/IAccessManager.sol";
+import "./interfaces/IAccessManager.sol";
 
 /// @title AccessManager
-/// @author ReSource
 /// @notice This contract is responsible for the RBAC logic within the StableCredit protocol
 /// @dev Addresses with the operator role are able to grant and revoke operator and member role access
 contract AccessManager is AccessControlUpgradeable, IAccessManager {
@@ -19,6 +18,28 @@ contract AccessManager is AccessControlUpgradeable, IAccessManager {
         _setupRole("MEMBER", admin);
         _setupRole("ISSUER", admin);
         _setRoleAdmin("MEMBER", "OPERATOR");
+    }
+
+    /* ========== VIEWS ========== */
+
+    /// @notice returns true if the given address has admin access
+    function isAdmin(address admin) public view override returns (bool) {
+        return hasRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    /// @notice returns true if the given address has member access
+    function isMember(address member) public view override returns (bool) {
+        return hasRole("MEMBER", member) || isOperator(member);
+    }
+
+    /// @notice returns true if the given address has issuer access
+    function isIssuer(address issuer) public view override returns (bool) {
+        return hasRole("ISSUER", issuer) || isOperator(issuer);
+    }
+    /// @notice returns true if the given address has operator access
+
+    function isOperator(address operator) public view override returns (bool) {
+        return hasRole("OPERATOR", operator) || hasRole(DEFAULT_ADMIN_ROLE, operator);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -93,28 +114,6 @@ contract AccessManager is AccessControlUpgradeable, IAccessManager {
         emit IssuerRemoved(issuer);
     }
 
-    /* ========== VIEWS ========== */
-
-    /// @notice returns true if the given address has admin access
-    function isAdmin(address admin) public view override returns (bool) {
-        return hasRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    /// @notice returns true if the given address has member access
-    function isMember(address member) public view override returns (bool) {
-        return hasRole("MEMBER", member) || isOperator(member);
-    }
-
-    /// @notice returns true if the given address has issuer access
-    function isIssuer(address issuer) public view override returns (bool) {
-        return hasRole("ISSUER", issuer) || isOperator(issuer);
-    }
-    /// @notice returns true if the given address has operator access
-
-    function isOperator(address operator) public view override returns (bool) {
-        return hasRole("OPERATOR", operator) || hasRole(DEFAULT_ADMIN_ROLE, operator);
-    }
-
     /* ========== MODIFIERS ========== */
 
     modifier noAdminAccess(address admin) {
@@ -138,12 +137,12 @@ contract AccessManager is AccessControlUpgradeable, IAccessManager {
     }
 
     modifier onlyAdmin() {
-        require(isAdmin(msg.sender), "AccessManager: caller does not have admin access");
+        require(isAdmin(_msgSender()), "AccessManager: caller does not have admin access");
         _;
     }
 
     modifier onlyOperator() {
-        require(isOperator(msg.sender), "AccessManager: caller does not have operator access");
+        require(isOperator(_msgSender()), "AccessManager: caller does not have operator access");
         _;
     }
 

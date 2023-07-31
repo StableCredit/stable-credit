@@ -1,56 +1,55 @@
-```
-   _____       _____
-  |  __ \     / ____|
-  | |__) |___| (___   ___  _   _ _ __ ___ ___
-  |  _  // _ \\___ \ / _ \| | | | '__/ __/ _ \
-  | | \ \  __/____) | (_) | |_| | | | (_|  __/
-  |_|  \_\___|_____/ \___/ \__,_|_|  \___\___|
-```
+# ⚖️ Stable Credits
 
-# ⚖️ ReSource Stable Credits
+**Stable Credits** are decentralized complementary currencies within on-chain mutual credit networks.
 
-**Stable Credits** are decentralized complementary currencies within on-chain mutual credit networks. For more information on the properties and advantages of mutual credit clearing, visit our [docs](https://www.blog.resource.finance/chapter-1-what-is-mutual-credit).
+The main problem most mutual credit networks face is achieving sustainable stability at scale. To address this problem, **Stable Credit** networks enable external risk management infrastructure to analyze and mitigate credit risks.
 
-The main problem most mutual credit networks face is achieving sustainable stability at scale. To address this problem, **Stable Credit** networks rely on the [**ReSource Risk Management**](https://github.com/ReSource-Network/risk-management) infrastructure to analyze and mitigate credit risks.
+|                                 ![alt text](./Diagram.png)                                  |
+| :-----------------------------------------------------------------------------------------: |
+| This diagram depicts the key stabilizing mechanisms that make up the StableCredit protocol. |
 
-For more information on **ReSource Risk Management** check out the [docs](https://github.com/ReSource-Network/risk-management).
+# ⚠️ Risk Management
 
-|                                                         ![alt text](./Diagram.png)                                                          |
-| :-----------------------------------------------------------------------------------------------------------------------------------------: |
-| This diagram depicts the mechanisms **Stable Credit** networks utilize to enable stabilization via proper underwriting and risk management. |
+Each **StableCredit** is outfitted with an **AssurancePool** that is responsible for providing credit networks with the means to autonomously manage credit risk. The **AssurancePool** is responsible for storing reserve deposits that are used to incentive the reduction of bad debt introduced by the decoupling of StableCredits and the original minter's debt balance. More information on StableCredit risk management can be found [here](https://docs.stablecredit.io).
 
 # 📃 Contracts:
 
 - **`StableCredit.sol`**: An extension of the base `MutualCredit.sol` and `ERC20.sol` contracts responsible for managing positive and negative balances of network members.
 - **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions.
 - **`AccessManager.sol`**: Responsible for role based access control of **Stable Credit** networks.
-- **`CreditIssuer.sol`**: Responsible for underwriting network participants to issue credit terms.
-- **`CreditPool.sol`**: Enables network participants to take on mutual credit debt in exchange for reserve currency supplied by third parties at a discounted rate.
-- **`LaunchPool.sol`**: Enables external parties to pool reserve currency deposits in order to service all deposits within the credit pool simultaneously, effectively "launching" the network.
+- **`CreditIssuer.sol`**: Responsible for issuing credit lines to network members and storing/managing credit periods
+- **`AssurancePool.sol`**: Responsible for _assuring_ the value of each stable credit by maintaining network reserve funds according to the analyzed risk of the network.
+- **`AssuranceOracle.sol`**: Responsible for serving the necessary data to network contracts to assist in managing network credit risk.
 
 # 🔒 Roles
 
-1. **Admin** - Capable of granting/revoking _operator_ and _issuer_ role access. Addresses granted this role should be as limited as possible (ideally a **Gnosis Safe**). The provided `ADMIN_OWNER_ADDRESS` is granted this role by default.
-2. **Issuer** - Capable of granting/revoking _member_ access as well as the following:
-   - initializing new credit lines
-   - updating default credit terms
-   - updating member credit terms
-3. **Operator** - Extends issuer capabilities to include the following:
-   - launching the network
-   - managing the launch expiration
-   - managing the credit pool discount rate
-   - pausing/unpausing fees
-   - pausing/unpausing member credit terms
-   - pausing/unpausing launch pool deposits
-   - pausing/unpausing credit pool withdrawals
-4. **Member** - Capable of transferring credits.
+1. **Admin** - Capable of granting/revoking all other role access as well as reassigning contract connections within the protocol.
 
 > **Note**
-> Example automation infrastructure [OpenZeppelin Defender](https://www.openzeppelin.com/defender) or [Gelato](https://www.gelato.network/automate)
+> The `ADMIN_OWNER_ADDRESS` provided in the `.env` file is granted the admin role at network deployment. Addresses granted this role should be as limited as possible, ideally a **Gnosis Safe**, as addresses with this role have the ability to cause irreversible damage to the network.
+
+2. **Issuer** - Capable of granting/revoking _member_ access as well as the following:
+   - initializing new credit lines
+   - updating existing credit terms
+   - writing off expired debt balances
+   - pausing/unpausing credit periods
+3. **Operator** - Extends issuer access to include the following:
+
+   - pausing/unpausing fee collection
+   - updating base fee rate
+   - updating reserve token
+   - updating deposit token
+   - withdrawing/reallocating excess reserve balance
+
+4. **Member** - Capable of the following:
+   - transferring stable credits
+   - utilizing an issued credit line to mint stable credits
+   - burning network debt using stable credits
+   - repaying credit balances of credits with reserve tokens
 
 # 🏄‍♂️ Quick Start
 
-This project uses [Foundry](https://github.com/foundry-rs/foundry) as the development framework and [Hardhat](https://github.com/NomicFoundation/hardhat) for the deployment framework.
+This project uses [Foundry](https://github.com/foundry-rs/foundry) for the development framework and [Hardhat](https://github.com/NomicFoundation/hardhat) for the deployment framework.
 
 #### Dependencies
 
@@ -64,6 +63,12 @@ forge install
 
 ```bash
 yarn install
+```
+
+3. Next, duplicate the `.env.example` file and rename it to `.env`. Register for an **Infura** account and add your api key to the `.env` file along with the other example values:
+
+```bash
+INFURA_API_KEY=<YOUR_API_KEY>
 ```
 
 #### Compilation
@@ -80,7 +85,7 @@ yarn compile
 #### Testing
 
 ```bash
-forge test
+yarn test
 ```
 
 #### Coverage
@@ -104,8 +109,6 @@ yarn generate
 
 This will create a `.txt` file containing the seed phrase of your deploy account. The file's name is the account's address. Be sure to fund this account before proceeding.
 
-Next, duplicate the `.env.example` file and rename it to `.env`. Replace each `<<insert ... here>>` with the necessary inputs.
-
 To deploy to a specific network, be sure to update the `networks` field in the hardhat.config.ts file.
 
 #### Deploy
@@ -121,9 +124,13 @@ This will run the **Openzeppelin Hardhat upgrades** plugin script that deploys t
 
 # 🔄 Automated State Sync
 
-In order to reduce the cost of gas for network participants, some state synchronization is delayed. In order to ensure that state stays synchronized in a predictable and timely manner, the following functions should be called on configured time intervals:
+> **Note**
+> Example automation infrastructure [OpenZeppelin Defender](https://www.openzeppelin.com/defender) or [Gelato](https://www.gelato.network/automate)
+
+In order to reduce the cost of gas for network participants, some state synchronization is delayed. To ensure that state stays synchronized in a predictable and timely manner, the following functions should be called on configured time intervals:
 |Function &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Contract|Details|Suggested Interval|
 |-----------|-----------|-----------|-----------|
 |`syncCreditPeriod(address member)`|**CreditIssuer.sol**|Should be called at the end of the provided member's credit period in order to prompt renewal or credit default.|EO Credit period|
-|`distributeFees()`|**FeeManager.sol**|Distributes collected fees to the network reserve. Should at least be called daily.|daily|
-|`serviceDeposits(uint256 quantity)`|**CreditPool.sol**|Uses deposited reserve tokens from credit withdrawals to service deposits. Provided quantity depends on gas limitations.|daily|
+|`depositFeesToAssurancePool()`|**FeeManager.sol**|Distributes collected fees to the network reserve. Should at least be called daily.|daily|
+|`allocate()`|**AssurancePool.sol**|Enables caller to allocate unallocated reserve tokens into the needed reserve balance.|daily|
+|`convertDeposits()`|**AssurancePool.sol**|Enables caller to swap collected deposit tokens for reserve tokens and allocate into the necessary RTD dependant reserve. (only necessary if deposit token differs from reserve token)|daily|

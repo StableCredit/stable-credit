@@ -1,27 +1,31 @@
+import { Contract } from "ethers"
 import { task } from "hardhat/config"
 import { send } from "../hardhat.config"
 import { parseStableCredits } from "../utils/utils"
-
 import { DEMO_SETUP } from "./task-names"
 
 task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
-  async (taskArgs, { ethers }) => {
+  async (taskArgs, hardhat) => {
+    const { ethers } = hardhat
+    const [deployer] = await ethers.getSigners()
     // Initialize contracts
-    const stableCredit = await ethers.getContract("StableCredit")
-    const feeManager = await ethers.getContract("FeeManager")
-    const creditIssuer = await ethers.getContract("CreditIssuer")
-    const reserveToken = await ethers.getContract("ReserveToken")
-    const riskOracle = await ethers.getContract("RiskOracle")
-    const creditPool = await ethers.getContract("CreditPool")
-    const ambassador = await ethers.getContract("Ambassador")
-    const accessManager = await ethers.getContract("AccessManager")
+    const stableCreditAddress = await (await ethers.getContract("StableCredit")).getAddress()
+    const stableCredit = await ethers.getContractAt("StableCredit", stableCreditAddress)
+    const creditIssuerAddress = await (await ethers.getContract("CreditIssuer")).getAddress()
+    const creditIssuer = await ethers.getContractAt("CreditIssuer", creditIssuerAddress)
+    const accessManagerAddress = await (await ethers.getContract("AccessManager")).getAddress()
+    const accessManager = await ethers.getContractAt("AccessManager", accessManagerAddress)
+    const feeManagerAddress = await (await ethers.getContract("FeeManager")).getAddress()
+    const feeManager = await ethers.getContractAt("FeeManager", feeManagerAddress)
+    const reserveTokenAddress = await (await ethers.getContract("MockERC20")).getAddress()
+    const reserveToken = await ethers.getContractAt("MockERC20", reserveTokenAddress)
 
     // Unpause fees if paused
     const feesPaused = await feeManager.paused()
     if (feesPaused) await (await feeManager.unpauseFees()).wait()
 
     // set base fee to 20%
-    await (await riskOracle.setBaseFeeRate(stableCredit.address, (20e16).toString())).wait()
+    await (await feeManager.setBaseFeeRate((20e16).toString())).wait()
 
     const signers = await ethers.getSigners()
     const accountA = signers[1]
@@ -36,33 +40,26 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
       await (
         await creditIssuer.initializeCreditLine(
           signers[i].address,
-          90 * 24 * 60 * 60, // 90 days
-          30 * 24 * 60 * 60, // 30 days
           parseStableCredits("10000"),
-          (5e16).toString(),
-          (10e16).toString(),
-          0
+          0,
+          90 * 24 * 60 * 60, // 90 days in seconds
+          30 * 24 * 60 * 60 // 30 days in seconds
         )
       ).wait()
 
       // send gas to account
       const tx = {
         to: signers[i].address,
-        value: ethers.utils.parseEther("1"),
+        value: ethers.parseEther("1"),
       }
-      send(ethers.provider.getSigner(), tx)
+      send(deployer, tx)
 
       // send reserve tokens to account
-      await (
-        await reserveToken.transfer(signers[i].address, ethers.utils.parseEther("2000"))
-      ).wait()
+      await (await reserveToken.transfer(signers[i].address, ethers.parseEther("2000"))).wait()
 
       // approve reserve tokens for feeManager
-      await (
-        await reserveToken
-          .connect(signers[i])
-          .approve(feeManager.address, ethers.constants.MaxUint256)
-      ).wait()
+      const reserveTokenI = (await reserveToken.connect(signers[i])) as Contract
+      await (await reserveTokenI.approve(await feeManager.getAddress(), ethers.MaxUint256)).wait()
     }
 
     // ~~~~~~~~~~~~~~~~~~ initialize account 1 ~~~~~~~~~~~~~~~~~~
@@ -70,14 +67,14 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     // configure defaultingAccount
     let tx = {
       to: "0x77dE279ee3dDfAEC727dDD2bb707824C795514EE",
-      value: ethers.utils.parseEther("1"),
+      value: ethers.parseEther("1"),
     }
-    send(ethers.provider.getSigner(), tx)
+    send(deployer, tx)
 
     await (
       await reserveToken.transfer(
         "0x77dE279ee3dDfAEC727dDD2bb707824C795514EE",
-        ethers.utils.parseEther("2000")
+        ethers.parseEther("2000")
       )
     ).wait()
 
@@ -85,46 +82,37 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
 
     const defaultingAccount = new ethers.Wallet(
       "cc17b52b3a9287777ae9fbf8f634908e7d5246a205c2fc53d043534c0f8667e8",
-      ethers.provider
+      deployer.provider
     )
 
     // assign defaulting credit line to defaultingAccount
     await (
       await creditIssuer.initializeCreditLine(
         defaultingAccount.address,
-        100, // 100 second
-        1, // 1 second
         parseStableCredits("1000"), // 1000 limit
-        (5e16).toString(), // 5% risk fee rate
-        (10e16).toString(), // 10% minITD
-        0
+        0,
+        100, // 100 second
+        1 // 1 second
       )
     ).wait()
     tx = {
       to: defaultingAccount.address,
-      value: ethers.utils.parseEther("1"),
+      value: ethers.parseEther("1"),
     }
-    send(ethers.provider.getSigner(), tx)
+    send(deployer, tx)
 
     // send reserve tokens to defaultingAccount
 
-    await (
-      await reserveToken.transfer(defaultingAccount.address, ethers.utils.parseEther("2000"))
-    ).wait()
+    await (await reserveToken.transfer(defaultingAccount.address, ethers.parseEther("2000"))).wait()
 
     // approve feeManager to spend defaultingAccount's reserve tokens
+    const reserveTokenDefault = (await reserveToken.connect(defaultingAccount)) as Contract
     await (
-      await reserveToken
-        .connect(defaultingAccount)
-        .approve(feeManager.address, ethers.constants.MaxUint256)
+      await reserveTokenDefault.approve(await feeManager.getAddress(), ethers.MaxUint256)
     ).wait()
 
     // send 200 from defaultingAccount to accountB
-    await (
-      await stableCredit
-        .connect(defaultingAccount)
-        .transfer(accountB.address, parseStableCredits("200"))
-    ).wait()
+    await (await reserveTokenDefault.transfer(accountB.address, parseStableCredits("200"))).wait()
 
     // increase time to cause default
 
@@ -138,56 +126,38 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     await (
       await creditIssuer.initializeCreditLine(
         account3Address,
-        90 * 24 * 60 * 60, // 90 days
-        30 * 24 * 60 * 60, // 30 days
         parseStableCredits("1000"),
-        (30e16).toString(),
-        (10e16).toString(),
-        0
+        0,
+        90 * 24 * 60 * 60, // 90 days
+        30 * 24 * 60 * 60 // 30 days
       )
     ).wait()
 
     tx = {
       to: account3Address,
-      value: ethers.utils.parseEther("1"),
+      value: ethers.parseEther("1"),
     }
-    send(ethers.provider.getSigner(), tx)
+    send(deployer, tx)
 
-    await (await reserveToken.transfer(account3Address, ethers.utils.parseEther("2000"))).wait()
-
-    // initialize ambassador
-
-    const ambassadorAddress = "0x3e528D33C77B3e9724adBf9de08f81E211402F23"
-
-    await (await ambassador.addAmbassador(ambassadorAddress)).wait()
-
-    await (await ambassador.assignMembership(accountA.address, ambassadorAddress)).wait()
+    await (await reserveToken.transfer(account3Address, ethers.parseEther("2000"))).wait()
 
     // send 1400 from A to B
-    await (
-      await stableCredit.connect(accountA).transfer(accountB.address, parseStableCredits("1400"))
-    ).wait()
-    await (await feeManager.distributeFees()).wait()
+    const stableCreditA = (await stableCredit.connect(accountA)) as Contract
+    const stableCreditB = (await stableCredit.connect(accountB)) as Contract
+    const stableCreditC = (await stableCredit.connect(accountC)) as Contract
+    const stableCreditD = (await stableCredit.connect(accountD)) as Contract
+
+    await (await stableCreditA.transfer(accountB.address, parseStableCredits("1400"))).wait()
+    await (await feeManager.depositFeesToAssurancePool()).wait()
     // send 2200 from C to D
-    await (
-      await stableCredit.connect(accountC).transfer(accountD.address, parseStableCredits("2200"))
-    ).wait()
+    await (await stableCreditC.transfer(accountD.address, parseStableCredits("2200"))).wait()
     // send 1100 from B to A
-    await (
-      await stableCredit.connect(accountB).transfer(accountA.address, parseStableCredits("1100"))
-    ).wait()
+    await (await stableCreditB.transfer(accountA.address, parseStableCredits("1100"))).wait()
     // send 2500 from D to E
-    await (
-      await stableCredit.connect(accountD).transfer(accountE.address, parseStableCredits("2500"))
-    ).wait()
+    await (await stableCreditD.transfer(accountE.address, parseStableCredits("2500"))).wait()
 
     // reset base fee to 5%
-    await (await riskOracle.setBaseFeeRate(stableCredit.address, (5e16).toString())).wait()
-
-    // set initial credit pool limit
-    await (
-      await stableCredit.createCreditLine(creditPool.address, parseStableCredits("1000"), 0)
-    ).wait()
+    await (await feeManager.setBaseFeeRate((5e16).toString())).wait()
 
     // grant operator to Request ERC20 Proxy
     const erc20Proxy = "0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4"

@@ -7,6 +7,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
+  
 
 jobs:
   run-ci:
@@ -25,5 +26,13 @@ jobs:
       - name: Install yarn
         run: yarn install
 
+      - name: create env file
+        run: |
+          touch .env
+          echo INFURA_API_KEY=$INFURA_API_KEY >> .env
+          echo SWAP_ROUTER_ADDRESS=$SWAP_ROUTER_ADDRESS >> .env
+        env:
+          INFURA_API_KEY: ${{ vars.INFURA_API_KEY }}
+          SWAP_ROUTER_ADDRESS: ${{ vars.SWAP_ROUTER_ADDRESS }}
       - name: Run tests
-        run: forge test
+        run: yarn test

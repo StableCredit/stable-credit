@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-import "./ReSourceStableCreditTest.t.sol";
+import "./StableCreditBaseTest.t.sol";
 
-contract AccessManagerTest is ReSourceStableCreditTest {
+contract AccessManagerTest is StableCreditBaseTest {
     function setUp() public {
-        setUpReSourceTest();
+        setUpStableCreditTest();
     }
 
     function testAccessInitializer() public {
@@ -44,5 +44,15 @@ contract AccessManagerTest is ReSourceStableCreditTest {
         // revoke member
         accessManager.revokeIssuer(address(10));
         assertTrue(!accessManager.isIssuer(address(10)));
+    }
+
+    function testAdminRoleAccess() public {
+        changePrank(deployer);
+        // grant admin
+        accessManager.grantAdmin(address(10));
+        assertTrue(accessManager.isAdmin(address(10)));
+        // revoke admin
+        accessManager.revokeAdmin(address(10));
+        assertTrue(!accessManager.isAdmin(address(10)));
     }
 }

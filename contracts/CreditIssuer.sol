@@ -4,12 +4,11 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "../interface/IStableCredit.sol";
-import "../interface/IMutualCredit.sol";
-import "../interface/ICreditIssuer.sol";
+import "./interfaces/IStableCredit.sol";
+import "./interfaces/IMutualCredit.sol";
+import "./interfaces/ICreditIssuer.sol";
 
 /// @title CreditIssuer
-/// @author ReSource
 /// @notice Issue Credit to network members and store/manage credit periods.
 /// @dev This contract is intended to be extended by a parent contract that implements
 /// custom credit terms and underwriting logic.
@@ -28,36 +27,12 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         stableCredit = IStableCredit(_stableCredit);
     }
 
-    /* ========== MUTATIVE FUNCTIONS ========== */
-
-    /// @notice called by the StableCredit contract when members transfer credits.
-    /// @param from sender address of stable credit transaction.
-    /// @param to recipient address of stable credit transaction.
-    /// @param amount of credits in transaction.
-    /// @return transaction validation result.
-    function validateTransaction(address from, address to, uint256 amount)
-        external
-        onlyStableCredit
-        returns (bool)
-    {
-        return _validateTransaction(from, to, amount);
-    }
-
-    /// @notice syncs the credit period state and returns validation status.
-    /// @dev this function is intended to be called after credit expiration to ensure that defaulted debt
-    /// is written off to the network debt account.
-    /// @param member address of member to sync credit line for.
-    /// @return transaction validation result.
-    function syncCreditPeriod(address member) external returns (bool) {
-        return _validateTransaction(member, address(0), 0);
-    }
-
     /* ========== VIEWS ========== */
 
     /// @notice returns whether a given member's credit period is initialized.
     /// @param member address of member.
     /// @return whether member's credit period is initialized.
-    function periodInitialized(address member) public view returns (bool) {
+    function inInitializedPeriod(address member) public view returns (bool) {
         return creditPeriods[member].expiration > 0;
     }
 
@@ -65,7 +40,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member.
     /// @return whether member is in an active credit period.
     function inActivePeriod(address member) public view returns (bool) {
-        return periodInitialized(member) && block.timestamp < periodExpirationOf(member);
+        return inInitializedPeriod(member) && block.timestamp < periodExpirationOf(member);
     }
 
     /// @notice returns whether a given member is in an active grace period.
@@ -79,8 +54,8 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice returns whether a given member's credit period has expired.
     /// @param member address of member.
     /// @return whether member's credit period has expired.
-    function periodExpired(address member) public view returns (bool) {
-        return periodInitialized(member) && !inActivePeriod(member) && !inGracePeriod(member);
+    function inExpiredPeriod(address member) public view returns (bool) {
+        return inInitializedPeriod(member) && !inActivePeriod(member) && !inGracePeriod(member);
     }
 
     /// @notice returns whether a given member is in compliance with credit terms.
@@ -97,7 +72,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @param member address of member.
     /// @return whether member is in default.
     function inDefault(address member) public view returns (bool) {
-        return periodInitialized(member) && periodExpired(member) && !inCompliance(member);
+        return inInitializedPeriod(member) && inExpiredPeriod(member) && !inCompliance(member);
     }
 
     /// @notice returns whether a given member's credit line is frozen.
@@ -122,6 +97,30 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         return creditPeriods[member].expiration + creditPeriods[member].graceLength;
     }
 
+    /* ========== MUTATIVE FUNCTIONS ========== */
+
+    /// @notice called by the StableCredit contract when members transfer credits.
+    /// @param sender sender address of stable credit transaction.
+    /// @param recipient recipient address of stable credit transaction.
+    /// @param amount of credits in transaction.
+    /// @return transaction validation result.
+    function validateCreditTransaction(address sender, address recipient, uint256 amount)
+        external
+        onlyStableCredit
+        returns (bool)
+    {
+        return _validateCreditTransaction(sender, recipient, amount);
+    }
+
+    /// @notice syncs the credit period state and returns validation status.
+    /// @dev this function is intended to be called after credit expiration to ensure that defaulted debt
+    /// is written off to the network debt account.
+    /// @param member address of member to sync credit line for.
+    /// @return transaction validation result.
+    function syncCreditPeriod(address member) external returns (bool) {
+        return _validateCreditTransaction(member, address(0), 0);
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /// @notice called by network authorized to issue credit.
@@ -137,25 +136,49 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         require(!inActivePeriod(member), "CreditIssuer: member already in active credit period");
     }
 
-    /// @notice called by network authorized to issue credit.
-    /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
-    /// @param member address of member.
-    function grantMember(address member) public virtual notNull(member) canIssueCreditTo(member) {
-        require(!stableCredit.access().isMember(member), "CreditIssuer: member already exists");
+    /// @notice enables issuer authorized address recipient manually initialize a member's credit line with
+    /// provided credit terms.
+    /// @dev the caller must have issuer authorization.
+    /// @param member address of member to initialize credit line for.
+    /// @param limit credit limit of credit line.
+    /// @param initialBalance initial balance of member.
+    /// @param periodLength length of credit period.
+    /// @param graceLength length of grace period.
+    function initializeCreditLine(
+        address member,
+        uint256 limit,
+        uint256 initialBalance,
+        uint256 periodLength,
+        uint256 graceLength
+    ) external virtual onlyIssuer notNull(member) notInActivePeriod(member) {
+        stableCredit.createCreditLine(member, limit, initialBalance);
+        _updateCreditPeriod(member, block.timestamp + periodLength, graceLength);
     }
 
-    /// @notice enables network operators to pause a given member's credit terms.
+    /// @notice responsible for initializing the given member's credit period.
+    /// @param member address of member to initialize credit period for.
+    /// @param periodExpiration expiration timestamp of credit period.
+    /// @param graceLength length of grace period.
+    function updateCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
+        public
+        virtual
+        onlyIssuer
+    {
+        _updateCreditPeriod(member, periodExpiration, graceLength);
+    }
+
+    /// @notice enables network operators to pause a given member's credit period.
     /// @dev caller must have network operator role access.
     /// @param member address of member to pause terms for.
-    function pauseTermsOf(address member) external onlyIssuer {
+    function pausePeriodOf(address member) external onlyIssuer {
         creditPeriods[member].paused = true;
         emit CreditTermsPaused(member);
     }
 
-    /// @notice enables network operators to unpause a given member's credit terms.
+    /// @notice enables network operators to unpause a given member's credit period.
     /// @dev caller must have network operator role access.
-    /// @param member address of member to unpause terms for.
-    function unpauseTermsOf(address member) external onlyIssuer {
+    /// @param member address of member to unpause period for.
+    function unpausePeriodOf(address member) external onlyIssuer {
         creditPeriods[member].paused = false;
         emit CreditTermsUnpaused(member);
     }
@@ -164,7 +187,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @dev only callable by network operators.
     /// @param member address of member to set period expiration for.
     /// @param periodExpiration expiration timestamp of credit period.
-    function setPeriodExpiration(address member, uint256 periodExpiration) public onlyIssuer {
+    function setPeriodExpirationOf(address member, uint256 periodExpiration) public onlyIssuer {
         creditPeriods[member].expiration = periodExpiration;
     }
 
@@ -172,31 +195,12 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @dev only callable by network operators.
     /// @param member address of member to set grace period for.
     /// @param graceLength length of grace period.
-    function setGraceLength(address member, uint256 graceLength) public onlyIssuer {
+    function setGraceLengthOf(address member, uint256 graceLength) public onlyIssuer {
         creditPeriods[member].graceLength = graceLength;
         emit GraceLengthUpdated(member, graceLength);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
-
-    /// @notice responsible for initializing the given member's credit period.
-    /// @param member address of member to initialize credit period for.
-    /// @param periodExpiration expiration timestamp of credit period.
-    /// @param graceLength length of grace period.
-    function initializeCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
-        internal
-        virtual
-    {
-        require(periodExpiration > block.timestamp, "CreditIssuer: period expiration in past");
-        // create new credit period
-        creditPeriods[member] = CreditPeriod({
-            issuedAt: block.timestamp,
-            expiration: periodExpiration,
-            graceLength: graceLength,
-            paused: false
-        });
-        emit CreditPeriodCreated(member, periodExpiration, graceLength);
-    }
 
     /// @notice called when a member's credit period has expired
     /// @dev deletes credit terms and emits a default event if caller is in default.
@@ -223,27 +227,50 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     /// @notice called with each stable credit transaction to validate the transaction and update
     /// credit term state.
     /// @dev Hook that is called before any transfer of credits and credit line state sync.
-    /// @param from address of member sending credits in given stable credit transaction.
-    /// @param to address of member receiving credits in given stable credit transaction.
+    /// @param sender address of member sending credits in given stable credit transaction.
+    /// @param recipient address of member receiving credits in given stable credit transaction.
     /// @param amount of stable credits in transaction.
     /// @return whether the given transaction is in compliance with given obligations.
-    function _validateTransaction(address from, address to, uint256 amount)
+    function _validateCreditTransaction(address sender, address recipient, uint256 amount)
         internal
         virtual
         returns (bool)
     {
         // valid if sender is not using credit.
-        if (amount > 0 && amount <= stableCredit.balanceOf(from)) {
+        if (amount > 0 && amount <= stableCredit.balanceOf(sender)) {
             return true;
         }
         // valid if sender period is not initialized.
-        if (!periodInitialized(from)) return true;
+        if (!inInitializedPeriod(sender)) return true;
         // valid if sender is not in an active period.
-        if (inActivePeriod(from)) return true;
+        if (inActivePeriod(sender)) return true;
+        // valid if sender's period is paused
+        if (creditPeriods[sender].paused) return true;
         // if member is in grace period invalidate transaction
-        if (isFrozen(from)) return false;
+        if (isFrozen(sender)) return false;
         // if end of active credit period, handle expiration
-        return expireCreditPeriod(from);
+        return expireCreditPeriod(sender);
+    }
+
+    /// @notice initializes the credit period for a given member.
+    /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
+    /// @param member address of member to initialize credit period for.
+    /// @param periodExpiration expiration timestamp of credit period.
+    /// @param graceLength length of grace period.
+    function _updateCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
+        /// rename?
+        internal
+        virtual
+    {
+        require(periodExpiration > block.timestamp, "CreditIssuer: period expiration in past");
+        // create new credit period
+        creditPeriods[member] = CreditPeriod({
+            issuedAt: block.timestamp,
+            expiration: periodExpiration,
+            graceLength: graceLength,
+            paused: false
+        });
+        emit CreditPeriodCreated(member, periodExpiration, graceLength);
     }
 
     /* ========== MODIFIERS ========== */
@@ -262,11 +289,6 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         _;
     }
 
-    modifier onlyOperator() {
-        require(stableCredit.access().isOperator(_msgSender()), "CreditIssuer: Unauthorized caller");
-        _;
-    }
-
     modifier onlyStableCredit() {
         require(
             _msgSender() == address(stableCredit), "CreditIssuer: can only be called by network"
@@ -280,7 +302,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     }
 
     modifier notNull(address member) {
-        require(member != address(0), "ReSourceCreditIssuer: member address can't be null ");
+        require(member != address(0), "CreditIssuer: member address can't be null ");
         _;
     }
 }
