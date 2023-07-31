@@ -28,9 +28,9 @@ interface IStableCredit is IMutualCredit, IERC20Upgradeable {
     /// @notice update existing credit lines
     /// @param creditLimit must be greater than given member's outstanding debt
     function updateCreditLimit(address member, uint256 creditLimit) external;
-    /// @notice Calculates the a credit amount in reserve token value.
+    /// @notice Calculates the a credit amount in eth value.
     /// @param amount credit amount to convert
-    function convertCreditsToReserveToken(uint256 amount) external view returns (uint256);
+    function convertCreditsToEth(uint256 amount) external view returns (uint256);
     /// @notice Reduces network debt in exchange for reserve reimbursement.
     /// @dev Must have sufficient network debt or pool debt to service.
     /// @return reimbursement amount from reserve pool

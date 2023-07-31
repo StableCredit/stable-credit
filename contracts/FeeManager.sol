@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "../interface/IStableCredit.sol";
-import "../interface/IFeeManager.sol";
+import "./interface/IStableCredit.sol";
+import "./interface/IFeeManager.sol";
 
 /// @title FeeManager
 /// @author ReSource
@@ -25,6 +25,44 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
         __Pausable_init();
         _pause();
         stableCredit = IStableCredit(_stableCredit);
+    }
+
+    /* ========== VIEWS ========== */
+
+    /// @notice calculate fee to charge member in reserve token value
+    /// @dev intended to be overwritten in parent implementation to include custom fee calculation logic.
+    /// @param member address of member to calculate fee for
+    /// @param amount stable credit amount to base fee off of
+    /// @return reserve token amount to charge given member
+    function calculateFee(address member, uint256 amount) public view virtual returns (uint256) {
+        // if contract is paused or risk oracle is not set, return 0
+        if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
+            return 0;
+        }
+        // calculate base fee rate * amount
+        uint256 feeInCredits = stableCredit.reservePool().riskOracle().baseFeeRate(
+            address(stableCredit)
+        ) * amount / 1 ether;
+        // return calculated fee in Eth amount
+        return stableCredit.convertCreditsToEth(feeInCredits);
+    }
+
+    /// @notice check if sender should be charged fee for tx
+    /// @param sender stable credit sender address
+    /// @param recipient stable credit recipient address
+    /// @return true if tx should be charged fees, false otherwise
+    function shouldChargeTx(address sender, address recipient)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        if (
+            paused() || stableCredit.access().isOperator(sender)
+                || recipient == address(stableCredit)
+        ) return false;
+        return true;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -58,43 +96,6 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
         stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), fee);
         collectedFees += fee;
         emit FeesCollected(sender, fee);
-    }
-
-    /* ========== VIEWS ========== */
-
-    /// @notice calculate fee to charge member in reserve token value
-    /// @dev intended to be overwritten in parent implementation to include custom fee calculation logic.
-    /// @param member address of member to calculate fee for
-    /// @param amount stable credit amount to base fee off of
-    /// @return reserve token amount to charge given member
-    function calculateFee(address member, uint256 amount) public view virtual returns (uint256) {
-        // if contract is paused or risk oracle is not set, return 0
-        if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
-            return 0;
-        }
-        uint256 feeInCredits = stableCredit.reservePool().riskOracle().baseFeeRate(
-            address(stableCredit)
-        ) * amount / 1 ether;
-        // return base fee rate * amount
-        return stableCredit.convertCreditsToReserveToken(feeInCredits);
-    }
-
-    /// @notice check if sender should be charged fee for tx
-    /// @param sender stable credit sender address
-    /// @param recipient stable credit recipient address
-    /// @return true if tx should be charged fees, false otherwise
-    function shouldChargeTx(address sender, address recipient)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
-        if (
-            paused() || stableCredit.access().isOperator(sender)
-                || recipient == address(stableCredit)
-        ) return false;
-        return true;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

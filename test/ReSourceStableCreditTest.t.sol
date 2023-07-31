@@ -5,11 +5,10 @@ import "forge-std/Test.sol";
 
 import "@resource-risk-management/ReservePool.sol";
 import "@resource-risk-management/RiskOracle.sol";
-import "../contracts/CreditIssuer/ReSourceCreditIssuer.sol";
-import "../contracts/FeeManager/ReSourceFeeManager.sol";
-import "../contracts/StableCredit/ReSourceStableCredit.sol";
+import "../contracts/CreditIssuer.sol";
+import "../contracts/FeeManager.sol";
+import "../contracts/StableCredit/StableCredit.sol";
 import "../contracts/AccessManager.sol";
-import "../contracts/Pools/CreditPool.sol";
 import "./MockERC20.sol";
 
 contract ReSourceStableCreditTest is Test {
@@ -23,12 +22,11 @@ contract ReSourceStableCreditTest is Test {
     RiskOracle public riskOracle;
 
     // stable credit network contracts
-    ReSourceStableCredit public stableCredit;
+    StableCredit public stableCredit;
     MockERC20 public reserveToken;
     AccessManager public accessManager;
-    ReSourceFeeManager public feeManager;
-    ReSourceCreditIssuer public creditIssuer;
-    CreditPool public creditPool;
+    FeeManager public feeManager;
+    CreditIssuer public creditIssuer;
 
     function setUpReSourceTest() public {
         alice = address(2);
@@ -48,19 +46,19 @@ contract ReSourceStableCreditTest is Test {
         accessManager = new AccessManager();
         accessManager.initialize(deployer);
         // deploy mock StableCredit network
-        stableCredit = new ReSourceStableCredit();
-        stableCredit.initialize("mock", "MOCK", address(accessManager));
+        stableCredit = new StableCredit();
+        stableCredit.__StableCredit_init("mock", "MOCK", address(accessManager));
         // deploy reservePool
         reservePool = new ReservePool();
         reservePool.initialize(
             address(stableCredit), address(reserveToken), deployer, address(riskOracle)
         );
         //deploy feeManager
-        feeManager = new ReSourceFeeManager();
-        feeManager.initialize(address(stableCredit));
+        feeManager = new FeeManager();
+        feeManager.__FeeManager_init(address(stableCredit));
         // deploy creditIssuer
-        creditIssuer = new ReSourceCreditIssuer();
-        creditIssuer.initialize(address(stableCredit));
+        creditIssuer = new CreditIssuer();
+        creditIssuer.__CreditIssuer_init(address(stableCredit));
         // initialize contract variables
         accessManager.grantOperator(address(stableCredit)); // grant stableCredit operator access
         accessManager.grantOperator(address(creditIssuer)); // grant creditIssuer operator access
@@ -78,13 +76,6 @@ contract ReSourceStableCreditTest is Test {
         accessManager.grantMember(bob);
         // initialize alice credit line
         creditIssuer.initializeCreditLine(alice, 90 days, 30 days, 1000e6, 5e16, 10e16, 0);
-        // deploy credit pool
-        creditPool = new CreditPool();
-        creditPool.initialize(address(stableCredit));
-        // set credit pool limit to max
-        stableCredit.createCreditLine(address(creditPool), type(uint128).max - 1, 0);
-        stableCredit.setCreditPool(address(creditPool)); // set creditPool
-        accessManager.grantOperator(address(creditPool)); // grant creditPool operator access
     }
 
     function test() public {}

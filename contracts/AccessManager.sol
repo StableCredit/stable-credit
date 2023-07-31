@@ -21,6 +21,28 @@ contract AccessManager is AccessControlUpgradeable, IAccessManager {
         _setRoleAdmin("MEMBER", "OPERATOR");
     }
 
+    /* ========== VIEWS ========== */
+
+    /// @notice returns true if the given address has admin access
+    function isAdmin(address admin) public view override returns (bool) {
+        return hasRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    /// @notice returns true if the given address has member access
+    function isMember(address member) public view override returns (bool) {
+        return hasRole("MEMBER", member) || isOperator(member);
+    }
+
+    /// @notice returns true if the given address has issuer access
+    function isIssuer(address issuer) public view override returns (bool) {
+        return hasRole("ISSUER", issuer) || isOperator(issuer);
+    }
+    /// @notice returns true if the given address has operator access
+
+    function isOperator(address operator) public view override returns (bool) {
+        return hasRole("OPERATOR", operator) || hasRole(DEFAULT_ADMIN_ROLE, operator);
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /// @notice grants admin access to a given address
@@ -91,28 +113,6 @@ contract AccessManager is AccessControlUpgradeable, IAccessManager {
     function revokeIssuer(address issuer) external onlyOperator {
         revokeRole("ISSUER", issuer);
         emit IssuerRemoved(issuer);
-    }
-
-    /* ========== VIEWS ========== */
-
-    /// @notice returns true if the given address has admin access
-    function isAdmin(address admin) public view override returns (bool) {
-        return hasRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    /// @notice returns true if the given address has member access
-    function isMember(address member) public view override returns (bool) {
-        return hasRole("MEMBER", member) || isOperator(member);
-    }
-
-    /// @notice returns true if the given address has issuer access
-    function isIssuer(address issuer) public view override returns (bool) {
-        return hasRole("ISSUER", issuer) || isOperator(issuer);
-    }
-    /// @notice returns true if the given address has operator access
-
-    function isOperator(address operator) public view override returns (bool) {
-        return hasRole("OPERATOR", operator) || hasRole(DEFAULT_ADMIN_ROLE, operator);
     }
 
     /* ========== MODIFIERS ========== */

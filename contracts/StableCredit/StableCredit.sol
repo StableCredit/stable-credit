@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@resource-risk-management/interface/IReservePool.sol";
+import "@resource-risk-management/interface/IAssurancePool.sol";
 import "./MutualCredit.sol";
 import "../interface/IStableCredit.sol";
 
@@ -19,7 +19,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /* ========== STATE VARIABLES ========== */
 
     IAccessManager public access;
-    IReservePool public reservePool;
+    IAssurancePool public assurancePool;
     IFeeManager public feeManager;
     ICreditIssuer public creditIssuer;
 
@@ -44,10 +44,10 @@ contract StableCredit is MutualCredit, IStableCredit {
         return creditBalanceOf(address(this));
     }
 
-    /// @notice Calculates the a credit amount in reserve token value.
+    /// @notice Calculates the a credit amount in eth value.
     /// @param amount credit amount to convert
-    function convertCreditsToReserveToken(uint256 amount) external view returns (uint256) {
-        return reservePool.convertCreditTokenToReserveToken(amount);
+    function convertCreditsToEth(uint256 amount) external view returns (uint256) {
+        return reservePool.convertCreditsToEth(amount);
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */

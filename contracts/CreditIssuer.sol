@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "../interface/IStableCredit.sol";
-import "../interface/IMutualCredit.sol";
-import "../interface/ICreditIssuer.sol";
+import "./interface/IStableCredit.sol";
+import "./interface/IMutualCredit.sol";
+import "./interface/ICreditIssuer.sol";
 
 /// @title CreditIssuer
 /// @author ReSource
@@ -26,30 +26,6 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         __Ownable_init();
         __Pausable_init();
         stableCredit = IStableCredit(_stableCredit);
-    }
-
-    /* ========== MUTATIVE FUNCTIONS ========== */
-
-    /// @notice called by the StableCredit contract when members transfer credits.
-    /// @param from sender address of stable credit transaction.
-    /// @param to recipient address of stable credit transaction.
-    /// @param amount of credits in transaction.
-    /// @return transaction validation result.
-    function validateTransaction(address from, address to, uint256 amount)
-        external
-        onlyStableCredit
-        returns (bool)
-    {
-        return _validateTransaction(from, to, amount);
-    }
-
-    /// @notice syncs the credit period state and returns validation status.
-    /// @dev this function is intended to be called after credit expiration to ensure that defaulted debt
-    /// is written off to the network debt account.
-    /// @param member address of member to sync credit line for.
-    /// @return transaction validation result.
-    function syncCreditPeriod(address member) external returns (bool) {
-        return _validateTransaction(member, address(0), 0);
     }
 
     /* ========== VIEWS ========== */
@@ -122,6 +98,30 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         return creditPeriods[member].expiration + creditPeriods[member].graceLength;
     }
 
+    /* ========== MUTATIVE FUNCTIONS ========== */
+
+    /// @notice called by the StableCredit contract when members transfer credits.
+    /// @param from sender address of stable credit transaction.
+    /// @param to recipient address of stable credit transaction.
+    /// @param amount of credits in transaction.
+    /// @return transaction validation result.
+    function validateTransaction(address from, address to, uint256 amount)
+        external
+        onlyStableCredit
+        returns (bool)
+    {
+        return _validateTransaction(from, to, amount);
+    }
+
+    /// @notice syncs the credit period state and returns validation status.
+    /// @dev this function is intended to be called after credit expiration to ensure that defaulted debt
+    /// is written off to the network debt account.
+    /// @param member address of member to sync credit line for.
+    /// @return transaction validation result.
+    function syncCreditPeriod(address member) external returns (bool) {
+        return _validateTransaction(member, address(0), 0);
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /// @notice called by network authorized to issue credit.
@@ -135,13 +135,6 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         canIssueCreditTo(member)
     {
         require(!inActivePeriod(member), "CreditIssuer: member already in active credit period");
-    }
-
-    /// @notice called by network authorized to issue credit.
-    /// @dev intended to be overwritten in parent implementation to include custom underwriting logic.
-    /// @param member address of member.
-    function grantMember(address member) public virtual notNull(member) canIssueCreditTo(member) {
-        require(!stableCredit.access().isMember(member), "CreditIssuer: member already exists");
     }
 
     /// @notice enables network operators to pause a given member's credit terms.
