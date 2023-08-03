@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-pragma abicoder v2;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -9,8 +8,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-import "./interface/IAssurancePool.sol";
+import "../interface/IAssurancePool.sol";
+import "../interface/IAssuranceOracle.sol";
 
 /// @title AssurancePool
 /// @author ReSource
@@ -20,33 +19,38 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     using SafeERC20Upgradeable for IERC20Upgradeable;
     /* ========== STATE VARIABLES ========== */
 
-    IERC20Upgradeable public creditToken;
+    IERC20Upgradeable public stableCredit;
     IERC20Upgradeable public reserveToken;
     IERC20Upgradeable public depositToken;
-    IRiskOracle public riskOracle;
+    IAssuranceOracle public assuranceOracle;
     ISwapRouter public swapRouter;
     address public riskManager;
+    uint256 public unsettledBalance;
     uint256 public primaryBalance;
     uint256 public peripheralBalance;
     uint256 public excessBalance;
     uint256 public targetRTD;
+    uint256 public conversionRate;
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(
-        address _creditToken,
+    function __AssurancePool_init(
+        address _stableCredit,
         address _reserveToken,
-        address _riskManager,
-        address _riskOracle,
-        address _swapRouter
-    ) public initializer {
+        address _depositToken,
+        address _assuranceOracle,
+        address _swapRouter,
+        address _riskManager
+    ) public onlyInitializing {
         __ReentrancyGuard_init();
         __Ownable_init();
-        creditToken = IERC20Upgradeable(_creditToken);
+        stableCredit = IERC20Upgradeable(_stableCredit);
         reserveToken = IERC20Upgradeable(_reserveToken);
-        riskOracle = IRiskOracle(_riskOracle);
-        riskManager = _riskManager;
+        depositToken = IERC20Upgradeable(_depositToken);
+        assuranceOracle = IAssuranceOracle(_assuranceOracle);
         swapRouter = ISwapRouter(_swapRouter);
+        riskManager = _riskManager;
+        conversionRate = 1 ether;
     }
 
     /* ========== VIEW FUNCTIONS ========== */
@@ -62,11 +66,11 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     function RTD() public view returns (uint256) {
         // if primary balance is empty return 0% RTD ratio
         if (primaryBalance == 0) return 0;
-        // if credit token has no debt, return 0% RTD ratio
-        if (creditToken.totalSupply() == 0) return 0;
+        // if stable credit has no debt, return 0% RTD ratio
+        if (stableCredit.totalSupply() == 0) return 0;
         // return primary balance amount divided by total debt amount
-        return
-            (primaryBalance * 1 ether) / convertCreditTokenToReserveToken(creditToken.totalSupply());
+        return (primaryBalance * 1 ether)
+            / convertStableCreditToReserveToken(stableCredit.totalSupply());
     }
 
     /// @notice returns true if the primary reserve is greater than or equal to the target RTD.
@@ -84,33 +88,34 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     function neededReserves() public view returns (uint256) {
         if (hasValidRTD()) return 0;
         // (target RTD - current RTD) * total debt amount
-        return ((targetRTD - RTD()) * convertCreditTokenToReserveToken(creditToken.totalSupply()))
+        return ((targetRTD - RTD()) * convertStableCreditToReserveToken(stableCredit.totalSupply()))
             / 1 ether;
     }
 
-    /// @notice converts the credit token amount to the reserve token denomination.
-    /// @param creditAmount credit token amount to convert to reserve currency denomination.
+    /// @notice converts the stable credit amount to the reserve token denomination.
+    /// @param creditAmount stable credit amount to convert to reserve currency denomination.
     /// @return reserve currency conversion.
-    function convertCreditTokenToReserveToken(uint256 creditAmount) public view returns (uint256) {
+    function convertStableCreditToReserveToken(uint256 creditAmount)
+        public
+        view
+        returns (uint256)
+    {
         if (creditAmount == 0) return creditAmount;
         // create decimal conversion
         uint256 reserveDecimals = IERC20Metadata(address(reserveToken)).decimals();
-        uint256 creditDecimals = IERC20Metadata(address(creditToken)).decimals();
+        uint256 creditDecimals = IERC20Metadata(address(stableCredit)).decimals();
+        if (creditDecimals == reserveDecimals) return creditAmount * conversionRate / 1 ether;
         uint256 decimalConversion = creditDecimals > reserveDecimals
             ? ((creditAmount / 10 ** (creditDecimals - reserveDecimals)))
             : ((creditAmount * 10 ** (reserveDecimals - creditDecimals)));
 
-        // if no risk oracle or conversion rate is unset, return decimal conversion
-        if (address(riskOracle) == address(0)) {
-            return decimalConversion;
-        }
-        return decimalConversion * riskOracle.reserveConversionRateOf(address(this)) / 1 ether;
+        return decimalConversion * conversionRate / 1 ether;
     }
 
-    /// @notice converts the reserve token amount to the credit token denomination.
+    /// @notice converts the reserve token amount to the stable credit denomination.
     /// @param reserveAmount reserve token amount to convert to credit currency denomination.
     /// @return credit currency conversion.
-    function convertReserveTokenToCreditToken(uint256 reserveAmount)
+    function convertReserveTokenToStableCredit(uint256 reserveAmount)
         public
         view
         returns (uint256)
@@ -118,35 +123,22 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         if (reserveAmount == 0) return reserveAmount;
         // create decimal conversion
         uint256 reserveDecimals = IERC20Metadata(address(reserveToken)).decimals();
-        uint256 creditDecimals = IERC20Metadata(address(creditToken)).decimals();
+        uint256 creditDecimals = IERC20Metadata(address(stableCredit)).decimals();
+        if (creditDecimals == reserveDecimals) return reserveAmount * conversionRate / 1 ether;
         uint256 decimalConversion = creditDecimals > reserveDecimals
             ? ((reserveAmount * 10 ** (creditDecimals - reserveDecimals)))
             : ((reserveAmount / 10 ** (reserveDecimals - creditDecimals)));
 
-        // if no risk oracle or conversion rate is unset, return decimal conversion
-        if (address(riskOracle) == address(0)) {
-            return decimalConversion;
-        }
-        return decimalConversion * riskOracle.reserveConversionRateOf(address(this)) / 1 ether;
+        return decimalConversion * conversionRate / 1 ether;
     }
 
-    /// @notice converts the reserve token amount to the credit token denomination.
-    /// @param reserveAmount reserve token amount to convert to credit currency denomination.
+    /// @notice converts the credit amount to the deposit token denomination.
+    /// @param creditAmount credit amount to convert to deposit token denomination.
     /// @return credit currency conversion.
-    function convertReserveTokenToEth(uint256 reserveAmount) public view returns (uint256) {
-        if (reserveAmount == 0) return reserveAmount;
-        // create decimal conversion
-        uint256 reserveDecimals = IERC20Metadata(address(reserveToken)).decimals();
-        uint256 creditDecimals = IERC20Metadata(address(creditToken)).decimals();
-        uint256 decimalConversion = creditDecimals > reserveDecimals
-            ? ((reserveAmount * 10 ** (reserveDecimals - creditDecimals)))
-            : ((reserveAmount / 10 ** (creditDecimals - reserveDecimals)));
-
-        // if no risk oracle or conversion rate is unset, return decimal conversion
-        if (address(riskOracle) == address(0)) {
-            return decimalConversion;
-        }
-        return decimalConversion * riskOracle.reserveConversionRateOf(address(this)) / 1 ether;
+    function convertCreditsToDepositToken(uint256 creditAmount) public view returns (uint256) {
+        uint256 reserveAmount = convertStableCreditToReserveToken(creditAmount);
+        if (depositToken == reserveToken) return reserveAmount;
+        return assuranceOracle.quote(address(depositToken), address(reserveToken), reserveAmount);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -183,40 +175,15 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         emit ExcessReserveDeposited(amount);
     }
 
-    /// @notice enables caller to convert collected eth into reserve token and deposit into the
-    /// necessary RTD dependant reserve.
-    /// @param tokenIn token to swap for reserve tokens.
-    /// @param poolFee pool fee to use for settlement swap.
-    /// @param amountOutMinimum minimum amount of reserve tokens to receive from tokenIn swap.
-    function settleDeposits(address tokenIn, uint24 poolFee, uint256 amountOutMinimum)
-        external
-        nonReentrant
-    {
-        // Swap tokenIn for reserve tokens
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: tokenIn,
-            tokenOut: address(reserveToken),
-            fee: poolFee,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: address(this).balance,
-            amountOutMinimum: amountOutMinimum,
-            sqrtPriceLimitX96: 0
-        });
-        uint256 reserveAmount = swapRouter.exactInputSingle(params);
-        // calculate reserves needed to reach target RTD
-        uint256 _neededReserves = neededReserves();
-        // if neededReserve is greater than amount, deposit full amount into primary reserve
-        if (_neededReserves > reserveAmount) {
-            depositIntoPrimaryReserve(reserveAmount);
+    /// @notice enables caller to deposit reserve tokens into the excess reserve.
+    /// @param amount amount of deposit token to deposit.
+    function deposit(uint256 amount) public override {
+        // collect deposit tokens from caller
+        depositToken.safeTransferFrom(_msgSender(), address(this), amount);
+        if (depositToken == reserveToken) {
+            unsettledBalance += amount;
             return;
         }
-        // deposit neededReserves into primary reserve
-        if (_neededReserves > 0) {
-            depositIntoPrimaryReserve(_neededReserves);
-        }
-        // deposit remaining amount into excess reserve
-        depositIntoExcessReserve(reserveAmount - _neededReserves);
     }
 
     /// @notice enables caller to withdraw reserve tokens from the excess reserve.
@@ -231,19 +198,39 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         emit ExcessReserveWithdrawn(amount);
     }
 
+    /// @notice enables caller to settle unsettled reserve tokens into the needed reserve balance.
+    function settle() public nonReentrant {
+        // calculate reserves needed to reach target RTD
+        uint256 _neededReserves = neededReserves();
+        // if neededReserve is greater than amount, deposit full amount into primary reserve
+        if (_neededReserves > unsettledBalance) {
+            primaryBalance += unsettledBalance;
+            unsettledBalance = 0;
+            return;
+        }
+        // deposit neededReserves into primary reserve
+        if (_neededReserves > 0) {
+            primaryBalance += _neededReserves;
+            unsettledBalance -= _neededReserves;
+        }
+        // deposit remaining amount into excess reserve
+        excessBalance += unsettledBalance - _neededReserves;
+        unsettledBalance -= unsettledBalance - _neededReserves;
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    /// @notice Called by the credit token implementation to reimburse an account.
+    /// @notice Called by the stable credit implementation to reimburse an account.
     /// If the amount is covered by the peripheral reserve, the peripheral reserve is depleted first,
     /// followed by the primary reserve.
-    /// @dev The credit token implementation should not expose this function to the public as it could be
+    /// @dev The stable credit implementation should not expose this function to the public as it could be
     /// exploited to drain the reserves.
     /// @param account address to reimburse from reserves.
     /// @param amount amount reserve tokens to withdraw from the excess reserve.
-    function reimburseAccount(address account, uint256 amount)
+    function reimburse(address account, uint256 amount)
         external
         override
-        onlyCreditToken
+        onlyStableCredit
         nonReentrant
         returns (uint256)
     {
@@ -272,11 +259,38 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         return amount;
     }
 
+    /// @notice enables caller to convert collected eth into reserve token and deposit into the
+    /// necessary RTD dependant reserve.
+    /// @param tokenIn token to swap for reserve tokens.
+    /// @param poolFee pool fee to use for settlement swap.
+    /// @param amountOutMinimum minimum amount of reserve tokens to receive from tokenIn swap.
+    function convertDeposits(address tokenIn, uint24 poolFee, uint256 amountOutMinimum)
+        external
+        nonReentrant
+        onlyRiskManager
+    {
+        require(tokenIn != address(reserveToken), "AssurancePool: Cannot convert reserve token");
+        // Swap tokenIn for reserve tokens
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: address(reserveToken),
+            fee: poolFee,
+            recipient: address(this),
+            deadline: block.timestamp,
+            amountIn: IERC20Upgradeable(tokenIn).balanceOf(address(this)),
+            amountOutMinimum: amountOutMinimum,
+            sqrtPriceLimitX96: 0
+        });
+        unsettledBalance += swapRouter.exactInputSingle(params);
+        // settle the new unsettled balance
+        settle();
+    }
+
     /// @notice This function allows the risk manager to set the target RTD.
     /// If the target RTD is increased and there is an excess reserve balance, the excess reserve is reallocated
     /// to the primary reserve to attempt to reach the new target RTD.
     /// @param _targetRTD new target RTD.
-    function setTargetRTD(uint256 _targetRTD) external override onlyRiskManager {
+    function setTargetRTD(uint256 _targetRTD) external onlyRiskManager {
         uint256 currentTarget = targetRTD;
         // update target RTD
         targetRTD = _targetRTD;
@@ -287,6 +301,13 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         emit TargetRTDUpdated(_targetRTD);
     }
 
+    /// @notice enables the riskManager to set the conversion rate between the reserve token and stable credit.
+    /// @param _conversionRate new conversion rate between the reserve token and stable credit.
+    function setConversionRate(uint256 _conversionRate) external onlyRiskManager {
+        conversionRate = _conversionRate;
+        emit ConversionRateUpdated(_conversionRate);
+    }
+
     /// @notice This function allows the risk manager to set the reserve token.
     /// @dev Updating the reserve token will not affect the stored reserves of the previous reserve token.
     /// @param _reserveToken address of the new reserve token.
@@ -295,11 +316,12 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         emit ReserveTokenUpdated(_reserveToken);
     }
 
-    /// @notice This function allows the risk manager to set the risk oracle.
-    /// @param _riskOracle address of the new risk oracle.
-    function setRiskOracle(address _riskOracle) external onlyRiskManager {
-        riskOracle = IRiskOracle(_riskOracle);
-        emit RiskOracleUpdated(_riskOracle);
+    /// @notice This function allows the risk manager to set the deposit token.
+    /// @param _depositToken address of the new deposit token.
+    /// @dev Setting the deposit token to 0x0 will allow the AssurancePool to accept ETH (native currency) deposits.
+    function setDepositToken(address _depositToken) external onlyRiskManager {
+        reserveToken = IERC20Upgradeable(_depositToken);
+        emit ReserveTokenUpdated(_depositToken);
     }
 
     /* ========== PRIVATE ========== */
@@ -320,10 +342,10 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyCreditToken() {
+    modifier onlyStableCredit() {
         require(
-            _msgSender() == address(creditToken) || _msgSender() == owner(),
-            "ReservePool: Caller is not reserve owner"
+            _msgSender() == address(stableCredit),
+            "ReservePool: Caller is not the stable credit or owner"
         );
         _;
     }

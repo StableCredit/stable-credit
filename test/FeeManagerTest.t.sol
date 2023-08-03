@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "./ReSourceStableCreditTest.t.sol";
+import "./StableCreditBaseTest.t.sol";
 
-contract FeeManagerTest is ReSourceStableCreditTest {
+contract FeeManagerTest is StableCreditBaseTest {
     function setUp() public {
         setUpReSourceTest();
         changePrank(deployer);
@@ -13,36 +13,36 @@ contract FeeManagerTest is ReSourceStableCreditTest {
 
     function testCalculateFee() public {
         changePrank(alice);
-        // 10 reserve tokens
-        uint256 tokenAmount = 10e18;
-        assertEq(feeManager.calculateFee(alice, 100e6), tokenAmount);
+        // 100 credits should be charged 5 reserve tokens
+        assertEq(feeManager.calculateFee(alice, 100e6), 5e18);
     }
 
     function testFeeCollection() public {
         changePrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100e18);
-        assertEq(reservePool.reserveToken().balanceOf(alice), 1000e18);
-        // alice transfer 100 stable credits to bob with 10 reserve token fee
+        assurancePool.reserveToken().approve(address(feeManager), 100e18);
+        assertEq(assurancePool.reserveToken().balanceOf(alice), 1000e18);
+        // alice transfer 100 stable credits to bob with 5 reserve token fee
         stableCredit.transfer(bob, 100e6);
-        assertEq(reservePool.reserveToken().balanceOf(alice), 990e18);
+        assertEq(assurancePool.reserveToken().balanceOf(alice), 995e18);
     }
 
-    function testFeeDistributionToReservePool() public {
+    function testFeeDistributionToAssurancePool() public {
         changePrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
+        assurancePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
         // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100e6);
-        assertEq(reservePool.reserveBalance(), 0);
+        assertEq(assurancePool.reserveBalance(), 0);
         // distribute fees from fee manager to reserve pool
         feeManager.distributeFees();
+        assurancePool.settle();
         // check network's reserve size
-        assertEq(reservePool.reserveBalance(), 10 * 1 ether);
+        assertEq(assurancePool.reserveBalance(), 5 * 1 ether);
     }
 
     function testPauseFees() public {
         changePrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
-        assertEq(reservePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
+        assurancePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
+        assertEq(assurancePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
         changePrank(deployer);
         // pause fees
         feeManager.pauseFees();
@@ -50,7 +50,7 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         // alice transfer 100 stable credits to bob
         stableCredit.transfer(bob, 100e6);
         // check no fees charged
-        assertEq(reservePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
+        assertEq(assurancePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
     }
 
     function testCalculateFeesWhilePaused() public {
@@ -60,35 +60,23 @@ contract FeeManagerTest is ReSourceStableCreditTest {
         assertEq(feeManager.calculateFee(alice, 100), 0);
     }
 
-    function testCalculateFeesWithoutOracleSet() public {
-        changePrank(deployer);
-        // set risk oracle to zero address
-        reservePool.setRiskOracle(address(0));
-        assertEq(feeManager.calculateFee(alice, 100), 0);
-    }
-
-    function testCalculateFeesInCredits() public {
-        changePrank(alice);
-        assertEq(feeManager.calculateFeeInCredits(alice, 100e6), 10e6);
-    }
-
     function testUnpauseFees() public {
         changePrank(deployer);
         // pause fees
         feeManager.pauseFees();
         changePrank(alice);
-        reservePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
+        assurancePool.reserveToken().approve(address(feeManager), 100 * 1 ether);
         // alice transfers 10 credits to bob
         stableCredit.transfer(bob, 10e6);
         // verify no fees charged
-        assertEq(reservePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
+        assertEq(assurancePool.reserveToken().balanceOf(alice), 1000 * 1 ether);
         changePrank(deployer);
         // unpause fees
         feeManager.unpauseFees();
         changePrank(alice);
         // alice transfer 100 stable credits to bob with 10 reserve token fee
         stableCredit.transfer(bob, 100e6);
-        assertEq(reservePool.reserveToken().balanceOf(alice), 990 * 1 ether);
+        assertEq(assurancePool.reserveToken().balanceOf(alice), 995 * 1 ether);
     }
 
     function testCalculateBaseFee() public {

@@ -18,6 +18,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /* ========== STATE VARIABLES ========== */
     IStableCredit public stableCredit;
     uint256 public collectedFees;
+    uint256 public baseFeeRate;
 
     /* ========== INITIALIZER ========== */
 
@@ -36,15 +37,13 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /// @return reserve token amount to charge given member
     function calculateFee(address member, uint256 amount) public view virtual returns (uint256) {
         // if contract is paused or risk oracle is not set, return 0
-        if (paused() || address(stableCredit.reservePool().riskOracle()) == address(0)) {
+        if (paused()) {
             return 0;
         }
         // calculate base fee rate * amount
-        uint256 feeInCredits = stableCredit.reservePool().riskOracle().baseFeeRate(
-            address(stableCredit)
-        ) * amount / 1 ether;
-        // return calculated fee in Eth amount
-        return stableCredit.convertCreditsToEth(feeInCredits);
+        uint256 feeInCredits = baseFeeRate * amount / 1 ether;
+        // return calculated fee in deposit token
+        return stableCredit.assurancePool().convertCreditsToDepositToken(feeInCredits);
     }
 
     /// @notice check if sender should be charged fee for tx
@@ -70,10 +69,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
     /// @notice Distributes collected fees to the reserve pool.
     /// @dev intended to be overwritten in parent implementation to include custom fee distribution logic
     function distributeFees() external virtual {
-        stableCredit.reservePool().reserveToken().approve(
-            address(stableCredit.reservePool()), collectedFees
+        stableCredit.assurancePool().reserveToken().approve(
+            address(stableCredit.assurancePool()), collectedFees
         );
-        stableCredit.reservePool().deposit(collectedFees);
+        stableCredit.assurancePool().deposit(collectedFees);
         emit FeesDistributed(collectedFees);
         collectedFees = 0;
     }
@@ -93,7 +92,7 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
             return;
         }
         uint256 fee = calculateFee(address(0), amount);
-        stableCredit.reservePool().reserveToken().safeTransferFrom(sender, address(this), fee);
+        stableCredit.assurancePool().reserveToken().safeTransferFrom(sender, address(this), fee);
         collectedFees += fee;
         emit FeesCollected(sender, fee);
     }
@@ -106,6 +105,10 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
 
     function unpauseFees() external onlyOperator {
         _unpause();
+    }
+
+    function setBaseFeeRate(uint256 _baseFeeRate) external onlyOperator {
+        baseFeeRate = _baseFeeRate;
     }
 
     /* ========== MODIFIERS ========== */

@@ -137,18 +137,38 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         require(!inActivePeriod(member), "CreditIssuer: member already in active credit period");
     }
 
-    /// @notice enables network operators to pause a given member's credit terms.
+    /// @notice responsible for initializing the given member's credit period.
+    /// @param member address of member to initialize credit period for.
+    /// @param periodExpiration expiration timestamp of credit period.
+    /// @param graceLength length of grace period.
+    function initializeCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
+        public
+        virtual
+        onlyIssuer
+    {
+        require(periodExpiration > block.timestamp, "CreditIssuer: period expiration in past");
+        // create new credit period
+        creditPeriods[member] = CreditPeriod({
+            issuedAt: block.timestamp,
+            expiration: periodExpiration,
+            graceLength: graceLength,
+            paused: false
+        });
+        emit CreditPeriodCreated(member, periodExpiration, graceLength);
+    }
+
+    /// @notice enables network operators to pause a given member's credit period.
     /// @dev caller must have network operator role access.
     /// @param member address of member to pause terms for.
-    function pauseTermsOf(address member) external onlyIssuer {
+    function pausePeriodOf(address member) external onlyIssuer {
         creditPeriods[member].paused = true;
         emit CreditTermsPaused(member);
     }
 
-    /// @notice enables network operators to unpause a given member's credit terms.
+    /// @notice enables network operators to unpause a given member's credit period.
     /// @dev caller must have network operator role access.
-    /// @param member address of member to unpause terms for.
-    function unpauseTermsOf(address member) external onlyIssuer {
+    /// @param member address of member to unpause period for.
+    function unpausePeriodOf(address member) external onlyIssuer {
         creditPeriods[member].paused = false;
         emit CreditTermsUnpaused(member);
     }
@@ -171,25 +191,6 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
-
-    /// @notice responsible for initializing the given member's credit period.
-    /// @param member address of member to initialize credit period for.
-    /// @param periodExpiration expiration timestamp of credit period.
-    /// @param graceLength length of grace period.
-    function initializeCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
-        internal
-        virtual
-    {
-        require(periodExpiration > block.timestamp, "CreditIssuer: period expiration in past");
-        // create new credit period
-        creditPeriods[member] = CreditPeriod({
-            issuedAt: block.timestamp,
-            expiration: periodExpiration,
-            graceLength: graceLength,
-            paused: false
-        });
-        emit CreditPeriodCreated(member, periodExpiration, graceLength);
-    }
 
     /// @notice called when a member's credit period has expired
     /// @dev deletes credit terms and emits a default event if caller is in default.
@@ -233,6 +234,8 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         if (!periodInitialized(from)) return true;
         // valid if sender is not in an active period.
         if (inActivePeriod(from)) return true;
+        // valid if sender's period is paused
+        if (creditPeriods[from].paused) return true;
         // if member is in grace period invalidate transaction
         if (isFrozen(from)) return false;
         // if end of active credit period, handle expiration
@@ -273,7 +276,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
     }
 
     modifier notNull(address member) {
-        require(member != address(0), "ReSourceCreditIssuer: member address can't be null ");
+        require(member != address(0), "CreditIssuer: member address can't be null ");
         _;
     }
 }

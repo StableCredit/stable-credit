@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "./IAccessManager.sol";
 import "./IFeeManager.sol";
 import "./ICreditIssuer.sol";
-import "@resource-risk-management/interface/IReservePool.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "./IAssurancePool.sol";
 import "./IMutualCredit.sol";
 
 interface IStableCredit is IMutualCredit, IERC20Upgradeable {
     /// @dev the reserve pool contract which holds and manages reserve tokens
-    function reservePool() external view returns (IReservePool);
+    function assurancePool() external view returns (IAssurancePool);
     /// @dev the fee manager contract which manages transaction fee collection and distribution
     function feeManager() external view returns (IFeeManager);
     /// @dev the access manager contract which manages network role access control
@@ -30,10 +30,6 @@ interface IStableCredit is IMutualCredit, IERC20Upgradeable {
     function updateCreditLimit(address member, uint256 creditLimit) external;
     /// @notice Calculates the a credit amount in eth value.
     /// @param amount credit amount to convert
-    function convertCreditsToEth(uint256 amount) external view returns (uint256);
-    /// @notice Reduces network debt in exchange for reserve reimbursement.
-    /// @dev Must have sufficient network debt or pool debt to service.
-    /// @return reimbursement amount from reserve pool
     function burnNetworkDebt(address member, uint256 amount) external returns (uint256);
     /// @notice Network account that manages the rectification of defaulted debt accounts.
     /// @return amount of debt owned by the network.

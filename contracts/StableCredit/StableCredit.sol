@@ -4,9 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@resource-risk-management/interface/IAssurancePool.sol";
-import "./MutualCredit.sol";
 import "../interface/IStableCredit.sol";
+import "./MutualCredit.sol";
 
 /// @title StableCredit contract
 /// @author ReSource
@@ -44,12 +43,6 @@ contract StableCredit is MutualCredit, IStableCredit {
         return creditBalanceOf(address(this));
     }
 
-    /// @notice Calculates the a credit amount in eth value.
-    /// @param amount credit amount to convert
-    function convertCreditsToEth(uint256 amount) external view returns (uint256) {
-        return reservePool.convertCreditsToEth(amount);
-    }
-
     /* ========== PUBLIC FUNCTIONS ========== */
 
     /// @notice Reduces network debt in exchange for reserve reimbursement.
@@ -64,9 +57,8 @@ contract StableCredit is MutualCredit, IStableCredit {
         require(balanceOf(member) >= amount, "StableCredit: Insufficient balance");
         require(amount <= networkDebt(), "StableCredit: Insufficient network debt");
         _transfer(member, address(this), amount);
-        uint256 reimbursement = reservePool.reimburseAccount(
-            member, reservePool.convertCreditTokenToReserveToken(amount)
-        );
+        uint256 reimbursement =
+            assurancePool.reimburse(member, assurancePool.convertStableCreditToReserveToken(amount));
         emit NetworkDebtBurned(member, amount);
         return reimbursement;
     }
@@ -76,10 +68,10 @@ contract StableCredit is MutualCredit, IStableCredit {
     function repayCreditBalance(address member, uint128 amount) external {
         uint256 creditBalance = creditBalanceOf(member);
         require(amount <= creditBalance, "StableCredit: invalid payment amount");
-        uint256 reserveTokenAmount = reservePool.convertCreditTokenToReserveToken(amount);
-        reservePool.reserveToken().transferFrom(_msgSender(), address(this), reserveTokenAmount);
-        reservePool.reserveToken().approve(address(reservePool), reserveTokenAmount);
-        reservePool.depositIntoPeripheralReserve(reserveTokenAmount);
+        uint256 reserveTokenAmount = assurancePool.convertStableCreditToReserveToken(amount);
+        assurancePool.reserveToken().transferFrom(_msgSender(), address(this), reserveTokenAmount);
+        assurancePool.reserveToken().approve(address(assurancePool), reserveTokenAmount);
+        assurancePool.depositIntoPeripheralReserve(reserveTokenAmount);
         _transfer(address(this), member, amount);
         emit CreditBalanceRepaid(member, amount);
     }
@@ -129,11 +121,11 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit AccessManagerUpdated(_access);
     }
 
-    /// @notice enables network admin to set the reserve pool address
-    /// @param _reservePool address of reserve pool contract
-    function setReservePool(address _reservePool) public onlyAdmin {
-        reservePool = IReservePool(_reservePool);
-        emit ReservePoolUpdated(_reservePool);
+    /// @notice enables network admin to set the assurance pool address
+    /// @param _assurancePool address of assurance pool contract
+    function setAssurancePool(address _assurancePool) public onlyAdmin {
+        assurancePool = IAssurancePool(_assurancePool);
+        emit ReservePoolUpdated(_assurancePool);
     }
 
     /// @notice enables network admin to set the fee manager address

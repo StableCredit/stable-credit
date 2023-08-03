@@ -79,7 +79,7 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    compilers: [{ version: "0.8.17" }],
+    compilers: [{ version: "0.8.15" }],
   },
   namedAccounts: {
     deployer: {
@@ -111,10 +111,9 @@ const config: HardhatUserConfig = {
   },
   dependencyCompiler: {
     paths: [
-      "lib/risk-management/contracts/ReservePool.sol",
-      "lib/risk-management/contracts/RiskOracle.sol",
-      "lib/risk-management/contracts/StableCreditRegistry.sol",
-      "test/MockERC20.sol",
+      "lib/v3-periphery/contracts/interfaces/ISwapRouter.sol",
+      "lib/v3-periphery/contracts/libraries/TransferHelper.sol",
+      "lib/v3-periphery/contracts/lens/Quoter.sol",
     ],
   },
   typechain: {
