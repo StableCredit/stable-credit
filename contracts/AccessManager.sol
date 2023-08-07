@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "./interface/IAccessManager.sol";
 
 /// @title AccessManager
-/// @author ReSource
 /// @notice This contract is responsible for the RBAC logic within the StableCredit protocol
 /// @dev Addresses with the operator role are able to grant and revoke operator and member role access
 contract AccessManager is AccessControlUpgradeable, IAccessManager {

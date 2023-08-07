@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.0;
 
 import "./StableCreditBaseTest.t.sol";
 
@@ -42,10 +42,10 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100 * 1 ether);
+        assurancePool.reserveToken().transfer(alice, 100e6);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e6);
         // check over repayment reverts
         vm.expectRevert(bytes("StableCredit: invalid payment amount"));
         stableCredit.repayCreditBalance(alice, uint128(101e6));
@@ -57,13 +57,13 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100 * 1 ether);
+        assurancePool.reserveToken().transfer(alice, 100e6);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e6);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
-        assertEq(assurancePool.peripheralBalance(), 100 * 1 ether);
+        assertEq(assurancePool.peripheralBalance(), 100e6);
     }
 
     function testReserveCurrencyPaymentCreditBalance() public {
@@ -72,10 +72,10 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100 * 1 ether);
+        assurancePool.reserveToken().transfer(alice, 100e6);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e6);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
         assertEq(stableCredit.creditBalanceOf(alice), 0);
@@ -87,10 +87,10 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100 * 1 ether);
+        assurancePool.reserveToken().transfer(alice, 100e6);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e6);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
         assertEq(stableCredit.networkDebt(), 100e6);
@@ -102,10 +102,10 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100 * 1 ether);
+        assurancePool.depositToken().transfer(alice, 100e6);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100 * 1 ether);
+        assurancePool.depositToken().approve(address(stableCredit), 100e6);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
         assertEq(stableCredit.networkDebt(), 100e6);

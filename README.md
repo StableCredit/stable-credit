@@ -1,23 +1,16 @@
-```
-   _____       _____
-  |  __ \     / ____|
-  | |__) |___| (___   ___  _   _ _ __ ___ ___
-  |  _  // _ \\___ \ / _ \| | | | '__/ __/ _ \
-  | | \ \  __/____) | (_) | |_| | | | (_|  __/
-  |_|  \_\___|_____/ \___/ \__,_|_|  \___\___|
-```
+# ⚖️ Stable Credits
 
-# ⚖️ ReSource Stable Credits
+**Stable Credits** are decentralized complementary currencies within on-chain mutual credit networks. For more information on the properties and advantages of mutual credit clearing, visit the [**Stable Credit Docs**](https://www.blog.resource.finance/chapter-1-what-is-mutual-credit).
 
-**Stable Credits** are decentralized complementary currencies within on-chain mutual credit networks. For more information on the properties and advantages of mutual credit clearing, visit our [docs](https://www.blog.resource.finance/chapter-1-what-is-mutual-credit).
+The main problem most mutual credit networks face is achieving sustainable stability at scale. To address this problem, **Stable Credit** networks enable external risk management infrastructure to analyze and mitigate credit risks.
 
-The main problem most mutual credit networks face is achieving sustainable stability at scale. To address this problem, **Stable Credit** networks rely on the [**ReSource Risk Management**](https://github.com/ReSource-Network/risk-management) infrastructure to analyze and mitigate credit risks.
+|                                 ![alt text](./Diagram.png)                                  |
+| :-----------------------------------------------------------------------------------------: |
+| This diagram depicts the key stabilizing mechanisms that make up the StableCredit protocol. |
 
-For more information on **ReSource Risk Management** check out the [docs](https://github.com/ReSource-Network/risk-management).
+# ⚠️ Risk Management
 
-|                                                         ![alt text](./Diagram.png)                                                          |
-| :-----------------------------------------------------------------------------------------------------------------------------------------: |
-| This diagram depicts the mechanisms **Stable Credit** networks utilize to enable stabilization via proper underwriting and risk management. |
+Each **StableCredit** is outfitted with an **AssurancePool** that is responsible for providing credit networks with the means to autonomously manage credit risk. The **AssurancePool** is responsible for storing reserve deposits that are used to incentives the reduction of bad debt introduced by the decoupling of StableCredits and the original minter's debt balance. More information on Stable Credit Risk Management can be found [here](https://docs.resource.finance/stable-credit/credit-risk).
 
 # 📃 Contracts:
 
@@ -25,8 +18,7 @@ For more information on **ReSource Risk Management** check out the [docs](https:
 - **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions.
 - **`AccessManager.sol`**: Responsible for role based access control of **Stable Credit** networks.
 - **`CreditIssuer.sol`**: Responsible for underwriting network participants to issue credit terms.
-- **`CreditPool.sol`**: Enables network participants to take on mutual credit debt in exchange for reserve currency supplied by third parties at a discounted rate.
-- **`LaunchPool.sol`**: Enables external parties to pool reserve currency deposits in order to service all deposits within the credit pool simultaneously, effectively "launching" the network.
+- **`AssurancePool.sol`**: Responsible for _assuring_ the value of each stable credit by maintaining network reserve funds according to the analyzed risk of the network.
 
 # 🔒 Roles
 
@@ -44,9 +36,6 @@ For more information on **ReSource Risk Management** check out the [docs](https:
    - pausing/unpausing launch pool deposits
    - pausing/unpausing credit pool withdrawals
 4. **Member** - Capable of transferring credits.
-
-> **Note**
-> Example automation infrastructure [OpenZeppelin Defender](https://www.openzeppelin.com/defender) or [Gelato](https://www.gelato.network/automate)
 
 # 🏄‍♂️ Quick Start
 
@@ -121,9 +110,12 @@ This will run the **Openzeppelin Hardhat upgrades** plugin script that deploys t
 
 # 🔄 Automated State Sync
 
+> **Note**
+> Example automation infrastructure [OpenZeppelin Defender](https://www.openzeppelin.com/defender) or [Gelato](https://www.gelato.network/automate)
+
 In order to reduce the cost of gas for network participants, some state synchronization is delayed. In order to ensure that state stays synchronized in a predictable and timely manner, the following functions should be called on configured time intervals:
 |Function &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Contract|Details|Suggested Interval|
 |-----------|-----------|-----------|-----------|
 |`syncCreditPeriod(address member)`|**CreditIssuer.sol**|Should be called at the end of the provided member's credit period in order to prompt renewal or credit default.|EO Credit period|
 |`distributeFees()`|**FeeManager.sol**|Distributes collected fees to the network reserve. Should at least be called daily.|daily|
-|`serviceDeposits(uint256 quantity)`|**CreditPool.sol**|Uses deposited reserve tokens from credit withdrawals to service deposits. Provided quantity depends on gas limitations.|daily|
+|`allocate()`|**AssurancePool.sol**|enables caller to allocate unallocated reserve tokens into the needed reserve balance.|daily|

@@ -1,17 +1,10 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { DeployFunction } from "hardhat-deploy/types"
 import { deployProxyAndSave, deployProxyAndSaveAs } from "../utils/utils"
-import {
-  AccessManager__factory,
-  ReservePool__factory,
-  ReSourceStableCredit__factory,
-  ReSourceCreditIssuer__factory,
-  ERC20,
-  RiskOracle__factory,
-  StableCreditRegistry__factory,
-} from "../types"
+import { AccessManager__factory } from "../types"
 import { ethers } from "hardhat"
 import { parseEther } from "ethers/lib/utils"
+import { ERC20 } from "../types/ERC20"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
   // deploy mock reserve token

@@ -3,14 +3,13 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "@uniswap/v3-periphery/contracts/lens/Quoter.sol";
-import "../contracts/CreditIssuer.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../contracts/AccessManager.sol";
 import "../contracts/Assurance/AssuranceOracle.sol";
 import "./mock/FeeManagerMock.sol";
 import "./mock/AssurancePoolMock.sol";
 import "./mock/StableCreditMock.sol";
 import "./mock/CreditIssuerMock.sol";
-import "./mock/MockERC20.sol";
 
 contract StableCreditBaseTest is Test {
     address alice;
@@ -21,7 +20,7 @@ contract StableCreditBaseTest is Test {
     AssurancePoolMock public assurancePool;
     AssuranceOracle public assuranceOracle;
     StableCreditMock public stableCredit;
-    MockERC20 public reserveToken;
+    IERC20 public reserveToken;
     AccessManager public accessManager;
     FeeManagerMock public feeManager;
     CreditIssuerMock public creditIssuer;
@@ -34,16 +33,14 @@ contract StableCreditBaseTest is Test {
     Quoter quoter = Quoter(0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6);
 
     function setUpReSourceTest() public {
-        alice = address(2);
-        bob = address(3);
-        carol = address(4);
+        alice = makeAddr("alice");
+        bob = makeAddr("bob");
+        carol = makeAddr("carol");
         vm.deal(alice, 100 ether);
         vm.deal(bob, 100 ether);
         deployer = address(1);
         vm.startPrank(deployer);
-
-        // deploy reserve token
-        reserveToken = new MockERC20(1000000e18, "Reserve Token", "REZ");
+        reserveToken = IERC20(uSDCAddress);
         // deploy accessManager
         accessManager = new AccessManager();
         accessManager.initialize(deployer);
@@ -79,9 +76,9 @@ contract StableCreditBaseTest is Test {
         assurancePool.setTargetRTD(20e16); // set targetRTD to 20%
         feeManager.setBaseFeeRate(5e16); // set base fee rate to 5%
         // send members reserve tokens
-        reserveToken.transfer(alice, 1000 ether);
-        reserveToken.transfer(bob, 100 ether);
-        reserveToken.transfer(carol, 100 ether);
+        reserveToken.transfer(alice, 1000e6);
+        reserveToken.transfer(bob, 100e6);
+        reserveToken.transfer(carol, 100e6);
         accessManager.grantMember(bob);
         // set credit limit
         stableCredit.createCreditLine(alice, 1000e6, 0);

@@ -8,7 +8,6 @@ import "./interface/IStableCredit.sol";
 import "./interface/IFeeManager.sol";
 
 /// @title FeeManager
-/// @author ReSource
 /// @notice Collects fees from network members and distributes collected fees to the
 /// network's reserve pool.
 contract FeeManager is IFeeManager, PausableUpgradeable {
@@ -99,14 +98,20 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
+    /// @notice Called by network operator to pause fee collection
+    /// @dev can only be called by network operator
     function pauseFees() external onlyOperator {
         _pause();
     }
 
+    /// @notice Called by network operator to unpause fee collection
+    /// @dev can only be called by network operator
     function unpauseFees() external onlyOperator {
         _unpause();
     }
 
+    /// @notice Called by network operator to set base fee rate
+    /// @dev can only be called by network operator
     function setBaseFeeRate(uint256 _baseFeeRate) external onlyOperator {
         baseFeeRate = _baseFeeRate;
     }

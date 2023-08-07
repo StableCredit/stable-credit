@@ -2,15 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "./StableCreditBaseTest.t.sol";
+import "./mock/MockERC20.sol";
 
-contract AssurancePoolTest is StableCreditBaseTest {
+contract AssuranceTest is StableCreditBaseTest {
     function setUp() public {
         setUpReSourceTest();
         changePrank(deployer);
         reserveToken.approve(address(assurancePool), type(uint256).max);
     }
-
-    // TODO: finish these tests
 
     // deposit into primary reserve updates total reserve and primary reserve
     function testDepositIntoPrimaryReserve() public {
@@ -24,8 +23,8 @@ contract AssurancePoolTest is StableCreditBaseTest {
         // check primary reserve
         assertEq(assurancePool.primaryBalance(), amount);
     }
-
     // deposit into peripheral reserve updates total reserve and peripheral reserve
+
     function testDepositIntoPeripheralReserve() public {
         changePrank(deployer);
         uint256 amount = 100;
@@ -38,28 +37,26 @@ contract AssurancePoolTest is StableCreditBaseTest {
     }
 
     // deposit needed reserves updates excess pool when RTD is above target
-    function testSettleReserveWithHighRTD() public {
+    function testAllocateReserveWithHighRTD() public {
         changePrank(deployer);
-        uint256 amount = 100 ether;
         assertEq(assurancePool.excessBalance(), 0);
-        assurancePool.deposit(amount);
-        assurancePool.settle();
+        assurancePool.deposit(100e6);
+        assurancePool.allocate();
         // check excess reserve
-        assertEq(assurancePool.excessBalance(), amount);
+        assertEq(assurancePool.excessBalance(), 100e6);
     }
 
     // deposit fees updates reserve when RTD is below target
-    function testSettleReserveWithWithLowRTD() public {
-        // deposit fees updates fees in reserve pool
+    function testAllocateReserveWithWithLowRTD() public {
         changePrank(alice);
         // create 100 supply of stable credit
         stableCredit.transfer(bob, 100e6);
         changePrank(deployer);
         assertEq(assurancePool.excessBalance(), 0);
         assurancePool.deposit(100e6);
-        assurancePool.settle();
-        assertEq(assurancePool.reserveBalance(), 20);
-        assertEq(assurancePool.excessBalance(), 80);
+        assurancePool.allocate();
+        assertEq(assurancePool.reserveBalance(), 20e6);
+        assertEq(assurancePool.excessBalance(), 80e6);
     }
 
     function testUpdateBaseFeeRate() public {
@@ -85,26 +82,24 @@ contract AssurancePoolTest is StableCreditBaseTest {
     function testReimburseAccountWithPrimaryReserve() public {
         changePrank(deployer);
         // deposit into primary reserve
-        uint256 amount = 100 * 10e6;
-        assurancePool.depositIntoPrimaryReserve(amount);
+        assurancePool.depositIntoPrimaryReserve(100e6);
         changePrank(address(stableCredit));
-        assurancePool.reimburse(bob, 10 * 10e6);
-        assertEq(assurancePool.primaryBalance(), 90 * 10e6);
-        assertEq(reserveToken.balanceOf(bob), 10 * 10e6);
+        assurancePool.reimburse(bob, 10e6);
+        assertEq(assurancePool.primaryBalance(), 90e6);
+        assertEq(reserveToken.balanceOf(bob), 110e6);
     }
 
     function testReimburseAccountWithPrimaryAndPeripheralReserve() public {
         changePrank(deployer);
         // deposit into primary reserve
-        uint256 amount = 100 * 10e6;
-        assurancePool.depositIntoPrimaryReserve(amount);
+        assurancePool.depositIntoPrimaryReserve(100e6);
         // deposit into peripheral reserve
-        assurancePool.depositIntoPeripheralReserve(amount);
+        assurancePool.depositIntoPeripheralReserve(100e6);
         changePrank(address(stableCredit));
-        assurancePool.reimburse(bob, 10 * 10e6);
-        assertEq(assurancePool.primaryBalance(), 100 * 10e6);
-        assertEq(assurancePool.peripheralBalance(), 90 * 10e6);
-        assertEq(reserveToken.balanceOf(bob), 10 * 10e6);
+        assurancePool.reimburse(bob, 10e6);
+        assertEq(assurancePool.primaryBalance(), 100e6);
+        assertEq(assurancePool.peripheralBalance(), 90e6);
+        assertEq(reserveToken.balanceOf(bob), 110e6);
     }
 
     function testConvertStableCreditToReserveToken() public {
@@ -113,6 +108,16 @@ contract AssurancePoolTest is StableCreditBaseTest {
                 100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
             ),
             100 * (10 ** IERC20Metadata(address(reserveToken)).decimals())
+        );
+
+        MockERC20 newReserveToken = new MockERC20(100000 ether, "New Reserve Token", "NRT");
+        assurancePool.setReserveToken(address(newReserveToken));
+
+        assertEq(
+            assurancePool.convertStableCreditToReserveToken(
+                100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+            ),
+            100 * (10 ** IERC20Metadata(address(newReserveToken)).decimals())
         );
     }
 
@@ -123,20 +128,40 @@ contract AssurancePoolTest is StableCreditBaseTest {
             ),
             100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
         );
+        // set new reserve token
+        MockERC20 newReserveToken = new MockERC20(100000 ether, "New Reserve Token", "NRT");
+        assurancePool.setReserveToken(address(newReserveToken));
+
+        assertEq(
+            assurancePool.convertReserveTokenToStableCredit(
+                100 * (10 ** IERC20Metadata(address(newReserveToken)).decimals())
+            ),
+            100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+        );
+    }
+
+    function testConvertCreditsToDepositToken() public {
+        assurancePool.setDepositToken(wETHAddress);
+        assertEq(
+            assurancePool.convertCreditsToDepositToken(
+                100 * (10 ** IERC20Metadata(address(stableCredit)).decimals())
+            ),
+            100 * (10 ** IERC20Metadata(wETHAddress).decimals())
+        );
     }
 
     function testReimburseAccountWithInsufficientReserve() public {
         changePrank(deployer);
         // deposit into primary reserve
-        uint256 amount = 25 * 10e6;
-        assurancePool.depositIntoPrimaryReserve(amount);
+        assurancePool.depositIntoPrimaryReserve(25e6);
         // deposit into peripheral reserve
-        assurancePool.depositIntoPeripheralReserve(amount);
+        assurancePool.depositIntoPeripheralReserve(25e6);
         changePrank(address(stableCredit));
-        assurancePool.reimburse(bob, 60 * 10e6);
+        assertEq(reserveToken.balanceOf(bob), 100e6);
+        assurancePool.reimburse(bob, 60e6);
         assertEq(assurancePool.primaryBalance(), 0);
         assertEq(assurancePool.peripheralBalance(), 0);
-        assertEq(reserveToken.balanceOf(bob), 50 * 10e6);
+        assertEq(reserveToken.balanceOf(bob), 150e6);
     }
 
     function testNeededReserves() public {
@@ -159,6 +184,18 @@ contract AssurancePoolTest is StableCreditBaseTest {
         changePrank(deployer);
         uint256 rtd = assurancePool.RTD();
         assertEq(rtd, 0);
+    }
+
+    function testRTDWithDebt() public {
+        changePrank(alice);
+        // alice sends bob 100 credits
+        stableCredit.transfer(bob, 100e6);
+        changePrank(deployer);
+        // deposit 50 reserve tokens into primary reserve
+        assurancePool.depositIntoPrimaryReserve(50e6);
+        uint256 rtd = assurancePool.RTD();
+        // check RTD should be 50%
+        assertEq(rtd, 50e16);
     }
 
     function testSetTargetRTD() public {
@@ -197,11 +234,29 @@ contract AssurancePoolTest is StableCreditBaseTest {
         assertEq(assurancePool.excessBalance(), 90e6);
     }
 
-    // TODO:
-    // function testConvertDeposits() public {
-    //     // quote the swap
-    //     uint256 quote = quoter.quoteExactInputSingle(
-    //         wETHAddress, address(reserveToken), 3000, address(assurancePool).balance, 0
-    //     );
-    // }
+    function testSetConversionRate() public {
+        changePrank(deployer);
+        assurancePool.setConversionRate(1000);
+        assertEq(assurancePool.conversionRate(), 1000);
+    }
+
+    function testSetDepositToken() public {
+        changePrank(deployer);
+        assurancePool.setDepositToken(wETHAddress);
+        assertEq(address(assurancePool.depositToken()), wETHAddress);
+    }
+
+    function testConvertDeposits() public {
+        uint256 wETHAmount = 100000000000;
+        uint24 poolFee = 500;
+        changePrank(deployer);
+        assurancePool.setDepositToken(wETHAddress);
+        ERC20(wETHAddress).approve(address(assurancePool), wETHAmount);
+        assurancePool.deposit(wETHAmount); // deposit wETH
+        assertEq(ERC20(wETHAddress).balanceOf(address(assurancePool)), wETHAmount);
+        uint256 quote =
+            quoter.quoteExactInputSingle(wETHAddress, uSDCAddress, poolFee, wETHAmount, 0);
+        assurancePool.convertDeposits(wETHAddress, poolFee, quote);
+        assertEq(assurancePool.excessBalance(), quote);
+    }
 }

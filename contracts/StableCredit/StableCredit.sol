@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../interface/IStableCredit.sol";
 import "./MutualCredit.sol";
 
 /// @title StableCredit contract
-/// @author ReSource
 /// @notice Extends the ERC20 standard to include mutual credit functionality where users
 /// can mint tokens into existence by utilizing their lines of credit. Credit defaults result
 /// in the transfer of the outstanding credit balance to the network debt balance.

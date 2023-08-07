@@ -52,6 +52,7 @@
   "scripts": {
     "chain": "yarn hardhat node --network hardhat --no-deploy",
     "test": "forge test --fork-url https://mainnet.infura.io/v3/d3d4b9de93c64ea98a46306b336ef458",
+    "coverage": "forge coverage --fork-url https://mainnet.infura.io/v3/d3d4b9de93c64ea98a46306b336ef458 --report lcov",
     "postcompile": "yarn typechain",
     "compile": "yarn hardhat compile",
     "typechain": "yarn hardhat typechain",

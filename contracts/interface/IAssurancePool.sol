@@ -4,6 +4,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IAssurancePool {
+    struct Reserve {
+        uint256 unallocatedBalance;
+        uint256 primaryBalance;
+        uint256 peripheralBalance;
+        uint256 excessBalance;
+    }
+
     /// @notice enables caller to deposit reserve tokens into the excess reserve.
     /// @param amount amount of deposit token to deposit.
     function deposit(uint256 amount) external;

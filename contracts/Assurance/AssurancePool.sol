@@ -8,11 +8,11 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "../interface/IAssurancePool.sol";
 import "../interface/IAssuranceOracle.sol";
 
 /// @title AssurancePool
-/// @author ReSource
 /// @notice Stores and manages reserve tokens according to pool
 /// configurations set by the RiskManager.
 contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpgradeable {
@@ -25,12 +25,9 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     IAssuranceOracle public assuranceOracle;
     ISwapRouter public swapRouter;
     address public riskManager;
-    uint256 public unsettledBalance;
-    uint256 public primaryBalance;
-    uint256 public peripheralBalance;
-    uint256 public excessBalance;
     uint256 public targetRTD;
     uint256 public conversionRate;
+    mapping(address => Reserve) public reserve;
 
     /* ========== INITIALIZER ========== */
 
@@ -58,18 +55,18 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     /// @notice returns the total amount of reserve tokens in the primary and peripheral reserves.
     /// @return total amount of reserve tokens in the primary and peripheral reserves.
     function reserveBalance() public view returns (uint256) {
-        return primaryBalance + peripheralBalance;
+        return primaryBalance() + peripheralBalance();
     }
 
     /// @notice returns the ratio of primary reserve to total debt, where 1 ether == 100%.
     /// @return ratio of primary reserve to total debt, where 1 ether == 100%.
     function RTD() public view returns (uint256) {
         // if primary balance is empty return 0% RTD ratio
-        if (primaryBalance == 0) return 0;
+        if (primaryBalance() == 0) return 0;
         // if stable credit has no debt, return 0% RTD ratio
         if (stableCredit.totalSupply() == 0) return 0;
         // return primary balance amount divided by total debt amount
-        return (primaryBalance * 1 ether)
+        return (primaryBalance() * 1 ether)
             / convertStableCreditToReserveToken(stableCredit.totalSupply());
     }
 
@@ -141,6 +138,26 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         return assuranceOracle.quote(address(depositToken), address(reserveToken), reserveAmount);
     }
 
+    /// @notice returns the amount of current reserve token's unallocated balance.
+    function unallocatedBalance() public view returns (uint256) {
+        return reserve[address(reserveToken)].unallocatedBalance;
+    }
+
+    /// @notice returns the amount of current reserve token's primary balance.
+    function primaryBalance() public view returns (uint256) {
+        return reserve[address(reserveToken)].primaryBalance;
+    }
+
+    /// @notice returns the amount of current reserve token's peripheral balance.
+    function peripheralBalance() public view returns (uint256) {
+        return reserve[address(reserveToken)].peripheralBalance;
+    }
+
+    /// @notice returns the amount of current reserve token's excess balance.
+    function excessBalance() public view returns (uint256) {
+        return reserve[address(reserveToken)].excessBalance;
+    }
+
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /// @notice enables caller to deposit reserve tokens into the primary reserve.
@@ -148,7 +165,7 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     function depositIntoPrimaryReserve(uint256 amount) public {
         require(amount > 0, "ReservePool: Cannot deposit 0");
         // add deposit to primary balance
-        primaryBalance += amount;
+        reserve[address(reserveToken)].primaryBalance += amount;
         // collect reserve token deposit from caller
         reserveToken.safeTransferFrom(_msgSender(), address(this), amount);
         emit PrimaryReserveDeposited(amount);
@@ -159,7 +176,7 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     function depositIntoPeripheralReserve(uint256 amount) public override nonReentrant {
         require(amount > 0, "ReservePool: Cannot deposit 0");
         // add deposit to peripheral balance
-        peripheralBalance += amount;
+        reserve[address(reserveToken)].peripheralBalance += amount;
         // collect reserve token deposit from caller
         reserveToken.safeTransferFrom(_msgSender(), address(this), amount);
         emit PeripheralReserveDeposited(amount);
@@ -171,7 +188,7 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         // collect remaining amount from caller
         reserveToken.safeTransferFrom(_msgSender(), address(this), amount);
         // deposit remaining amount into excess balance
-        excessBalance += amount;
+        reserve[address(reserveToken)].excessBalance += amount;
         emit ExcessReserveDeposited(amount);
     }
 
@@ -181,7 +198,7 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         // collect deposit tokens from caller
         depositToken.safeTransferFrom(_msgSender(), address(this), amount);
         if (depositToken == reserveToken) {
-            unsettledBalance += amount;
+            reserve[address(reserveToken)].unallocatedBalance += amount;
             return;
         }
     }
@@ -190,32 +207,34 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     /// @param amount amount of reserve tokens to withdraw from the excess reserve.
     function withdraw(uint256 amount) public nonReentrant {
         require(amount > 0, "ReservePool: Cannot withdraw 0");
-        require(amount <= excessBalance, "ReservePool: Insufficient excess reserve");
+        require(amount <= excessBalance(), "ReservePool: Insufficient excess reserve");
         // reduce excess balance
-        excessBalance -= amount;
+        reserve[address(reserveToken)].excessBalance -= amount;
         // transfer reserve token to caller
         reserveToken.safeTransfer(_msgSender(), amount);
         emit ExcessReserveWithdrawn(amount);
     }
 
-    /// @notice enables caller to settle unsettled reserve tokens into the needed reserve balance.
-    function settle() public nonReentrant {
+    /// @notice enables caller to allocate unallocated reserve tokens into the needed reserve balance.
+    /// @dev this function should be called on a time frame to ensure collected deposits are allocated to the
+    /// necessary reserve balances.
+    function allocate() public nonReentrant {
         // calculate reserves needed to reach target RTD
         uint256 _neededReserves = neededReserves();
         // if neededReserve is greater than amount, deposit full amount into primary reserve
-        if (_neededReserves > unsettledBalance) {
-            primaryBalance += unsettledBalance;
-            unsettledBalance = 0;
+        if (_neededReserves > unallocatedBalance()) {
+            reserve[address(reserveToken)].primaryBalance += unallocatedBalance();
+            reserve[address(reserveToken)].unallocatedBalance = 0;
             return;
         }
         // deposit neededReserves into primary reserve
         if (_neededReserves > 0) {
-            primaryBalance += _neededReserves;
-            unsettledBalance -= _neededReserves;
+            reserve[address(reserveToken)].primaryBalance += _neededReserves;
+            reserve[address(reserveToken)].unallocatedBalance -= _neededReserves;
         }
         // deposit remaining amount into excess reserve
-        excessBalance += unsettledBalance - _neededReserves;
-        unsettledBalance -= unsettledBalance - _neededReserves;
+        reserve[address(reserveToken)].excessBalance += unallocatedBalance();
+        reserve[address(reserveToken)].unallocatedBalance = 0;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -237,19 +256,19 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         // if no reserves, return
         if (reserveBalance() == 0) return 0;
         // if amount is covered by peripheral, reimburse only from peripheral
-        if (amount < peripheralBalance) {
-            peripheralBalance -= amount;
+        if (amount < peripheralBalance()) {
+            reserve[address(reserveToken)].peripheralBalance -= amount;
             // check if total amount can be covered by reserve
         } else if (amount < reserveBalance()) {
             // use both reserves to cover amount
-            primaryBalance -= amount - peripheralBalance;
-            peripheralBalance = 0;
+            reserve[address(reserveToken)].primaryBalance -= amount - peripheralBalance();
+            reserve[address(reserveToken)].peripheralBalance = 0;
         } else {
             // use entire reserve to cover amount
             uint256 reserveAmount = reserveBalance();
             // empty both reserves
-            peripheralBalance = 0;
-            primaryBalance = 0;
+            reserve[address(reserveToken)].peripheralBalance = 0;
+            reserve[address(reserveToken)].primaryBalance = 0;
             // set amount to available reserves
             amount = reserveAmount;
         }
@@ -261,15 +280,19 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
 
     /// @notice enables caller to convert collected eth into reserve token and deposit into the
     /// necessary RTD dependant reserve.
+    /// @dev this requires the caller to provide the most efficient "pool fee" as well as the
+    /// most recently quoted "minimum amount out" in the context of the referenced liquidity pool.
     /// @param tokenIn token to swap for reserve tokens.
     /// @param poolFee pool fee to use for settlement swap.
     /// @param amountOutMinimum minimum amount of reserve tokens to receive from tokenIn swap.
     function convertDeposits(address tokenIn, uint24 poolFee, uint256 amountOutMinimum)
         external
-        nonReentrant
         onlyRiskManager
     {
         require(tokenIn != address(reserveToken), "AssurancePool: Cannot convert reserve token");
+        uint256 tokenInAmount = IERC20Upgradeable(tokenIn).balanceOf(address(this));
+        // approve swap router to spend tokenIn
+        TransferHelper.safeApprove(tokenIn, address(swapRouter), tokenInAmount);
         // Swap tokenIn for reserve tokens
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: tokenIn,
@@ -277,13 +300,13 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
             fee: poolFee,
             recipient: address(this),
             deadline: block.timestamp,
-            amountIn: IERC20Upgradeable(tokenIn).balanceOf(address(this)),
+            amountIn: tokenInAmount,
             amountOutMinimum: amountOutMinimum,
             sqrtPriceLimitX96: 0
         });
-        unsettledBalance += swapRouter.exactInputSingle(params);
-        // settle the new unsettled balance
-        settle();
+        reserve[address(reserveToken)].unallocatedBalance += swapRouter.exactInputSingle(params);
+        // allocate the new unallocated balance
+        allocate();
     }
 
     /// @notice This function allows the risk manager to set the target RTD.
@@ -295,7 +318,7 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         // update target RTD
         targetRTD = _targetRTD;
         // if increasing target RTD and there is excess reserves, reallocate excess reserve to primary
-        if (_targetRTD > currentTarget && excessBalance > 0) {
+        if (_targetRTD > currentTarget && excessBalance() > 0) {
             reallocateExcessBalance();
         }
         emit TargetRTDUpdated(_targetRTD);
@@ -320,7 +343,7 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     /// @param _depositToken address of the new deposit token.
     /// @dev Setting the deposit token to 0x0 will allow the AssurancePool to accept ETH (native currency) deposits.
     function setDepositToken(address _depositToken) external onlyRiskManager {
-        reserveToken = IERC20Upgradeable(_depositToken);
+        depositToken = IERC20Upgradeable(_depositToken);
         emit ReserveTokenUpdated(_depositToken);
     }
 
@@ -330,14 +353,14 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     /// primary reserve to attempt to reach the target RTD.
     function reallocateExcessBalance() private {
         uint256 _neededReserves = neededReserves();
-        if (_neededReserves > excessBalance) {
-            primaryBalance += excessBalance;
-            excessBalance = 0;
+        if (_neededReserves > excessBalance()) {
+            reserve[address(reserveToken)].primaryBalance += excessBalance();
+            reserve[address(reserveToken)].excessBalance = 0;
         } else {
-            primaryBalance += _neededReserves;
-            excessBalance -= _neededReserves;
+            reserve[address(reserveToken)].primaryBalance += _neededReserves;
+            reserve[address(reserveToken)].excessBalance -= _neededReserves;
         }
-        emit ExcessReallocated(excessBalance, primaryBalance);
+        emit ExcessReallocated(excessBalance(), primaryBalance());
     }
 
     /* ========== MODIFIERS ========== */

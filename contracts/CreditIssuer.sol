@@ -9,7 +9,6 @@ import "./interface/IMutualCredit.sol";
 import "./interface/ICreditIssuer.sol";
 
 /// @title CreditIssuer
-/// @author ReSource
 /// @notice Issue Credit to network members and store/manage credit periods.
 /// @dev This contract is intended to be extended by a parent contract that implements
 /// custom credit terms and underwriting logic.
