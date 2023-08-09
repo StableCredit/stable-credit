@@ -1,14 +1,22 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 import { DeployFunction } from "hardhat-deploy/types"
-import { deployProxyAndSave, deployProxyAndSaveAs } from "../utils/utils"
-import { AccessManager__factory } from "../types"
+import { deployProxyAndSave, deployProxyAndSaveAs, getConfig } from "../utils/utils"
+import {
+  AccessManager__factory,
+  AssurancePool__factory,
+  StableCredit__factory,
+  StableCreditRegistry__factory,
+  FeeManager__factory,
+} from "../types"
 import { ethers } from "hardhat"
 import { parseEther } from "ethers/lib/utils"
 import { ERC20 } from "../types/ERC20"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
+  let { reserveTokenAddress, adminOwner, swapRouterAddress } = getConfig()
+
   // deploy mock reserve token
-  let reserveTokenAddress = (await hardhat.deployments.getOrNull("ReserveToken"))?.address
+  reserveTokenAddress = (await hardhat.deployments.getOrNull("ReserveToken"))?.address || ""
   if (!reserveTokenAddress) {
     const erc20Factory = await ethers.getContractFactory("MockERC20")
 
@@ -30,16 +38,16 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     reserveTokenAddress = reserveToken.address
   }
 
-  // deploy riskOracle
-  let riskOracleAddress = (await hardhat.deployments.getOrNull("RiskOracle"))?.address
-  if (!riskOracleAddress) {
-    const riskOracleAbi = (await hardhat.artifacts.readArtifact("RiskOracle")).abi
-    const riskOracleArgs = [(await hardhat.ethers.getSigners())[0].address]
-    riskOracleAddress = await deployProxyAndSave(
-      "RiskOracle",
-      riskOracleArgs,
+  // deploy assurance oracle
+  let assuranceOracleAddress = (await hardhat.deployments.getOrNull("AssuranceOracle"))?.address
+  if (!assuranceOracleAddress) {
+    const assuranceOracleAbi = (await hardhat.artifacts.readArtifact("AssuranceOracle")).abi
+    const assuranceOracleArgs = []
+    assuranceOracleAddress = await deployProxyAndSave(
+      "AssuranceOracle",
+      assuranceOracleArgs,
       hardhat,
-      riskOracleAbi,
+      assuranceOracleAbi,
       true
     )
   }
@@ -75,12 +83,12 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   }
 
   // deploy stable credit
-  let stableCreditAddress = (await hardhat.deployments.getOrNull("ReSourceStableCredit"))?.address
+  let stableCreditAddress = (await hardhat.deployments.getOrNull("StableCreditMock"))?.address
   if (!stableCreditAddress) {
-    const stableCreditAbi = (await hardhat.artifacts.readArtifact("ReSourceStableCredit")).abi
+    const stableCreditAbi = (await hardhat.artifacts.readArtifact("StableCreditMock")).abi
     const stableCreditArgs = ["ReSource Network", "rUSD", accessManagerAddress]
     stableCreditAddress = await deployProxyAndSaveAs(
-      "ReSourceStableCredit",
+      "StableCreditMock",
       "StableCredit",
       stableCreditArgs,
       hardhat,
@@ -89,32 +97,35 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     )
   }
 
-  // deploy reservePool
-  let reservePoolAddress = (await hardhat.deployments.getOrNull("ReservePool"))?.address
-  if (!reservePoolAddress) {
-    const reservePoolAbi = (await hardhat.artifacts.readArtifact("ReservePool")).abi
-    const reservePoolArgs = [
+  // deploy assurance pool
+  let assurancePoolAddress = (await hardhat.deployments.getOrNull("AssurancePoolMock"))?.address
+  if (!assurancePoolAddress) {
+    const assurancePoolAbi = (await hardhat.artifacts.readArtifact("AssurancePoolMock")).abi
+    const assurancePoolArgs = [
       stableCreditAddress,
       reserveTokenAddress,
+      reserveTokenAddress,
+      assuranceOracleAddress,
+      swapRouterAddress || ethers.constants.AddressZero,
       (await hardhat.ethers.getSigners())[0].address,
-      riskOracleAddress,
     ]
-    reservePoolAddress = await deployProxyAndSave(
-      "ReservePool",
-      reservePoolArgs,
+    assurancePoolAddress = await deployProxyAndSaveAs(
+      "AssurancePoolMock",
+      "AssurancePool",
+      assurancePoolArgs,
       hardhat,
-      reservePoolAbi,
+      assurancePoolAbi,
       true
     )
   }
 
   // deploy feeManager
-  let feeManagerAddress = (await hardhat.deployments.getOrNull("ReSourceFeeManager"))?.address
+  let feeManagerAddress = (await hardhat.deployments.getOrNull("FeeManagerMock"))?.address
   if (!feeManagerAddress) {
-    const feeManagerAbi = (await hardhat.artifacts.readArtifact("ReSourceFeeManager")).abi
+    const feeManagerAbi = (await hardhat.artifacts.readArtifact("FeeManagerMock")).abi
     const feeManagerArgs = [stableCreditAddress]
     feeManagerAddress = await deployProxyAndSaveAs(
-      "ReSourceFeeManager",
+      "FeeManagerMock",
       "FeeManager",
       feeManagerArgs,
       hardhat,
@@ -124,12 +135,12 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   }
 
   // deploy creditIssuer
-  let creditIssuerAddress = (await hardhat.deployments.getOrNull("ReSourceCreditIssuer"))?.address
+  let creditIssuerAddress = (await hardhat.deployments.getOrNull("CreditIssuerMock"))?.address
   if (!creditIssuerAddress) {
-    const creditIssuerAbi = (await hardhat.artifacts.readArtifact("ReSourceCreditIssuer")).abi
+    const creditIssuerAbi = (await hardhat.artifacts.readArtifact("CreditIssuerMock")).abi
     const creditIssuerArgs = [stableCreditAddress]
     creditIssuerAddress = await deployProxyAndSaveAs(
-      "ReSourceCreditIssuer",
+      "CreditIssuerMock",
       "CreditIssuer",
       creditIssuerArgs,
       hardhat,
@@ -138,63 +149,9 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     )
   }
 
-  // deploy ambassador
-  let ambassadorAddress = (await hardhat.deployments.getOrNull("Ambassador"))?.address
-  if (!ambassadorAddress) {
-    const ambassadorAbi = (await hardhat.artifacts.readArtifact("Ambassador")).abi
-    // initialize ambassador with:
-    //      30% depositRate,
-    //      5% debtAssumptionRate,
-    //      50% debtServiceRate,
-    //      2 credit promotion amount
-    const ambassadorArgs = [
-      stableCreditAddress,
-      (30e16).toString(),
-      (5e16).toString(),
-      (50e16).toString(),
-      (2e6).toString(),
-    ]
-
-    ambassadorAddress = await deployProxyAndSave(
-      "Ambassador",
-      ambassadorArgs,
-      hardhat,
-      ambassadorAbi,
-      true
-    )
-  }
-
-  // deploy credit pool
-  let creditPoolAddress = (await hardhat.deployments.getOrNull("CreditPool"))?.address
-  if (!creditPoolAddress) {
-    const creditPoolAbi = (await hardhat.artifacts.readArtifact("CreditPool")).abi
-    const creditPoolArgs = [stableCreditAddress]
-    creditPoolAddress = await deployProxyAndSave(
-      "CreditPool",
-      creditPoolArgs,
-      hardhat,
-      creditPoolAbi,
-      true
-    )
-  }
-
-  // deploy launch pool
-  let launchPoolAddress = (await hardhat.deployments.getOrNull("LaunchPool"))?.address
-  if (!launchPoolAddress) {
-    const launchPoolAbi = (await hardhat.artifacts.readArtifact("LaunchPool")).abi
-    const launchPoolArgs = [stableCreditAddress, creditPoolAddress, 30 * 24 * 60 * 60]
-    launchPoolAddress = await deployProxyAndSave(
-      "LaunchPool",
-      launchPoolArgs,
-      hardhat,
-      launchPoolAbi,
-      true
-    )
-  }
-
   // ============ Initialize Contracts State ============ //
 
-  const stableCredit = ReSourceStableCredit__factory.connect(
+  const stableCredit = StableCredit__factory.connect(
     stableCreditAddress,
     (await ethers.getSigners())[0]
   )
@@ -202,29 +159,23 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     accessManagerAddress,
     (await ethers.getSigners())[0]
   )
-  const reservePool = ReservePool__factory.connect(
-    reservePoolAddress,
+  const assurancePool = AssurancePool__factory.connect(
+    assurancePoolAddress,
     (await ethers.getSigners())[0]
   )
-  const creditIssuer = ReSourceCreditIssuer__factory.connect(
-    creditIssuerAddress,
-    (await ethers.getSigners())[0]
-  )
-  const riskOracle = RiskOracle__factory.connect(riskOracleAddress, (await ethers.getSigners())[0])
+  const feeManager = FeeManager__factory.connect(feeManagerAddress, (await ethers.getSigners())[0])
 
   const stableCreditRegistry = StableCreditRegistry__factory.connect(
     stableCreditRegistryAddress,
     (await ethers.getSigners())[0]
   )
 
+  // grant admin access
+  if (adminOwner) await (await accessManager.grantAdmin(adminOwner)).wait()
   // grant stableCredit operator access
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   // grant creditIssuer operator access
   await (await accessManager.grantOperator(creditIssuerAddress)).wait()
-  // grant launchPool operator access
-  await (await accessManager.grantOperator(launchPoolAddress)).wait()
-  // grant creditPool operator access
-  await (await accessManager.grantOperator(creditPoolAddress)).wait()
   // grant feeManager operator access
   await (await accessManager.grantOperator(feeManagerAddress)).wait()
   // set accessManager
@@ -233,22 +184,12 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set creditIssuer
   await (await stableCredit.setCreditIssuer(creditIssuerAddress)).wait()
-  // set feeManager
-  await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set reservePool
-  await (await stableCredit.setReservePool(reservePoolAddress)).wait()
-  // set creditPool
-  await (await stableCredit.setCreditPool(creditPoolAddress)).wait()
-  // set ambassador
-  await (await stableCredit.setAmbassador(ambassadorAddress)).wait()
+  await (await stableCredit.setAssurancePool(assurancePoolAddress)).wait()
   // set targetRTD to 20%
-  await (await reservePool.setTargetRTD((20e16).toString())).wait()
+  await (await assurancePool.setTargetRTD((20e16).toString())).wait()
   // set base fee rate to 5%
-  await (await riskOracle.setBaseFeeRate(stableCredit.address, (5e16).toString())).wait()
-  // grant issuer role to ambassador
-  await (await accessManager.grantIssuer(ambassadorAddress)).wait()
-  // grant operator role to ambassador
-  await (await accessManager.grantOperator(ambassadorAddress)).wait()
+  await (await feeManager.setBaseFeeRate((5e16).toString())).wait()
   // set add network to registry
   await (await stableCreditRegistry.addNetwork(stableCreditAddress)).wait()
 }

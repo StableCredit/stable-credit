@@ -114,7 +114,11 @@ const config: HardhatUserConfig = {
       "lib/v3-periphery/contracts/interfaces/ISwapRouter.sol",
       "lib/v3-periphery/contracts/libraries/TransferHelper.sol",
       "lib/v3-periphery/contracts/lens/Quoter.sol",
+      "test/mock/AssurancePoolMock.sol",
+      "test/mock/CreditIssuerMock.sol",
+      "test/mock/FeeManagerMock.sol",
       "test/mock/MockERC20.sol",
+      "test/mock/StableCreditMock.sol",
     ],
   },
   typechain: {
