@@ -28,20 +28,18 @@ Each **StableCredit** is outfitted with an **AssurancePool** that is responsible
 > **Note**
 > The `ADMIN_OWNER_ADDRESS` provided in the `.env` file is granted the admin role at network deployment. Addresses granted this role should be as limited as possible, ideally a **Gnosis Safe**, as addresses with this role have the ability to cause irreversible damage to the network.
 
-2. **Issuer** - Capable of granting/revoking _member_ access as well as the following:
+2. **Operator** - Capable of granting/revoking _member_ access as well as the following:
+
    - initializing new credit lines
    - updating existing credit terms
-   - writing off expired debt balances
    - pausing/unpausing credit periods
-3. **Operator** - Extends issuer access to include the following:
-
    - pausing/unpausing fee collection
    - updating base fee rate
    - updating reserve token
    - updating deposit token
    - withdrawing/reallocating excess reserve balance
 
-4. **Member** - Capable of the following:
+3. **Member** - Capable of the following:
    - transferring stable credits
    - utilizing an issued credit line to mint stable credits
    - burning network debt using stable credits

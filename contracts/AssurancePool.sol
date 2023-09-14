@@ -25,6 +25,7 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     IERC20Upgradeable public depositToken;
     IAssuranceOracle public assuranceOracle;
     ISwapRouter public swapRouter;
+    // reserve token address => Reserve data
     mapping(address => Reserve) public reserve;
 
     /* ========== INITIALIZER ========== */

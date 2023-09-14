@@ -181,7 +181,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     }
 
     modifier onlyCreditIssuer() {
-        require(access.isIssuer(_msgSender()), "StableCredit: Unauthorized caller");
+        require(_msgSender() == address(creditIssuer), "StableCredit: Unauthorized caller");
         _;
     }
 }

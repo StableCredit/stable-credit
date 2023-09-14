@@ -9,7 +9,7 @@ contract StableCreditTest is StableCreditBaseTest {
     }
 
     function testCreateCreditLineWithBalance() public {
-        changePrank(deployer);
+        changePrank(address(creditIssuer));
         // initialize alice credit line
         stableCredit.createCreditLine(bob, 1000e6, 100e6);
         // check that bob's balance is +100 credits
@@ -20,7 +20,7 @@ contract StableCreditTest is StableCreditBaseTest {
 
     function testUpdateCreditLimit() public {
         // update alice's credit line to 500
-        changePrank(deployer);
+        changePrank(address(creditIssuer));
         stableCredit.updateCreditLimit(alice, 500e6);
         // check credit limit is 500
         assertEq(stableCredit.creditLimitOf(alice), 500e6);
@@ -30,7 +30,7 @@ contract StableCreditTest is StableCreditBaseTest {
         // check address(10) does not have membership
         assertTrue(!accessManager.isMember(address(10)));
         // assign address(10) credit line
-        changePrank(deployer);
+        changePrank(address(creditIssuer));
         stableCredit.createCreditLine(address(10), 100e6, 0);
         // check address(10) has membership
         assertTrue(accessManager.isMember(address(10)));

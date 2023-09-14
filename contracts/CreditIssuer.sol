@@ -136,9 +136,10 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         require(!inActivePeriod(member), "CreditIssuer: member already in active credit period");
     }
 
-    /// @notice enables issuer authorized address recipient manually initialize a member's credit line with
+    /// @notice enables authorized address recipient manually initialize a member's credit line with
     /// provided credit terms.
-    /// @dev the caller must have issuer authorization.
+    /// @dev by default the caller must have operator authorization.
+    /// Child implementations should employ authorization logic that is appropriate for the given use case.
     /// @param member address of member to initialize credit line for.
     /// @param limit credit limit of credit line.
     /// @param initialBalance initial balance of member.
@@ -150,52 +151,58 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
         uint256 initialBalance,
         uint256 periodLength,
         uint256 graceLength
-    ) external virtual onlyIssuer notNull(member) notInActivePeriod(member) {
+    ) external virtual onlyOperator notNull(member) notInActivePeriod(member) {
         stableCredit.createCreditLine(member, limit, initialBalance);
         _updateCreditPeriod(member, block.timestamp + periodLength, graceLength);
     }
 
     /// @notice responsible for initializing the given member's credit period.
+    /// @dev by default the caller must have operator authorization.
+    /// Child implementations should employ authorization logic that is appropriate for the given use case.
     /// @param member address of member to initialize credit period for.
     /// @param periodExpiration expiration timestamp of credit period.
     /// @param graceLength length of grace period.
     function updateCreditPeriod(address member, uint256 periodExpiration, uint256 graceLength)
         public
         virtual
-        onlyIssuer
+        onlyOperator
     {
         _updateCreditPeriod(member, periodExpiration, graceLength);
     }
 
     /// @notice enables network operators to pause a given member's credit period.
-    /// @dev caller must have network operator role access.
+    /// @dev by default the caller must have operator authorization.
+    /// Child implementations should employ authorization logic that is appropriate for the given use case.
     /// @param member address of member to pause terms for.
-    function pausePeriodOf(address member) external onlyIssuer {
+    function pausePeriodOf(address member) external onlyOperator {
         creditPeriods[member].paused = true;
         emit CreditTermsPaused(member);
     }
 
     /// @notice enables network operators to unpause a given member's credit period.
-    /// @dev caller must have network operator role access.
+    /// @dev by default the caller must have operator authorization.
+    /// Child implementations should employ authorization logic that is appropriate for the given use case.
     /// @param member address of member to unpause period for.
-    function unpausePeriodOf(address member) external onlyIssuer {
+    function unpausePeriodOf(address member) external onlyOperator {
         creditPeriods[member].paused = false;
         emit CreditTermsUnpaused(member);
     }
 
     /// @notice called by network operators to set the credit period length.
-    /// @dev only callable by network operators.
+    /// @dev by default the caller must have operator authorization.
+    /// Child implementations should employ authorization logic that is appropriate for the given use case.
     /// @param member address of member to set period expiration for.
     /// @param periodExpiration expiration timestamp of credit period.
-    function setPeriodExpirationOf(address member, uint256 periodExpiration) public onlyIssuer {
+    function setPeriodExpirationOf(address member, uint256 periodExpiration) public onlyOperator {
         creditPeriods[member].expiration = periodExpiration;
     }
 
     /// @notice called by network operators to set the grace period length.
-    /// @dev only callable by network operators.
+    /// @dev by default the caller must have operator authorization.
+    /// Child implementations should employ authorization logic that is appropriate for the given use case.
     /// @param member address of member to set grace period for.
     /// @param graceLength length of grace period.
-    function setGraceLengthOf(address member, uint256 graceLength) public onlyIssuer {
+    function setGraceLengthOf(address member, uint256 graceLength) public onlyOperator {
         creditPeriods[member].graceLength = graceLength;
         emit GraceLengthUpdated(member, graceLength);
     }
@@ -275,15 +282,15 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyIssuer() {
-        require(stableCredit.access().isIssuer(_msgSender()), "CreditIssuer: Unauthorized caller");
+    modifier onlyOperator() {
+        require(stableCredit.access().isOperator(_msgSender()), "CreditIssuer: Unauthorized caller");
         _;
     }
 
     modifier canIssueCreditTo(address member) {
         // only allow member or credit issuer to call
         require(
-            _msgSender() == member || stableCredit.access().isIssuer(_msgSender()),
+            _msgSender() == member || stableCredit.access().isOperator(_msgSender()),
             "CreditIssuer: Unauthorized caller"
         );
         _;

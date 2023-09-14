@@ -36,16 +36,6 @@ contract AccessManagerTest is StableCreditBaseTest {
         assertTrue(!accessManager.isMember(address(10)));
     }
 
-    function testIssuerRoleAccess() public {
-        changePrank(deployer);
-        // grant issuer
-        accessManager.grantIssuer(address(10));
-        assertTrue(accessManager.isIssuer(address(10)));
-        // revoke member
-        accessManager.revokeIssuer(address(10));
-        assertTrue(!accessManager.isIssuer(address(10)));
-    }
-
     function testAdminRoleAccess() public {
         changePrank(deployer);
         // grant admin
