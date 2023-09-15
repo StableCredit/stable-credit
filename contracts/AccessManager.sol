@@ -5,11 +5,9 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "./interfaces/IAccessManager.sol";
 
 /// @title AccessManager
-/// @notice This contract is responsible for managing role based access control for the following roles:
-/// - Admin
-/// - Operator
-/// - Member
-/// @dev Addresses granted the Admin role should be as limited as possible as this role has root level
+/// @notice This contract is responsible for managing role based access control for the Admin,
+/// Operator, and Member roles.
+/// @dev NOTE: Addresses granted the Admin role should be as limited as possible as this role has root level
 /// access to the network and can cause irreversible damage to the network.
 contract AccessManager is AccessControlUpgradeable, IAccessManager {
     /* ========== INITIALIZER ========== */

@@ -11,15 +11,15 @@ contract MutualCredit is IMutualCredit, ERC20BurnableUpgradeable {
 
     /* ========== STATE VARIABLES ========== */
 
-    struct Member {
-        uint128 creditBalance;
-        uint128 creditLimit;
-    }
-
-    mapping(address => Member) internal members;
+    // member address => credit line
+    mapping(address => CreditLine) private creditLines;
 
     /* ========== INITIALIZER ========== */
 
+    /// @notice initializes ERC20 with the name and symbol provided.
+    /// @dev should be called directly after deployment (see OpenZeppelin upgradeable standards).
+    /// @param name_ name of the credit token.
+    /// @param symbol_ symbol of the credit token.
     function __MutualCredit_init(string memory name_, string memory symbol_)
         public
         virtual
@@ -30,61 +30,91 @@ contract MutualCredit is IMutualCredit, ERC20BurnableUpgradeable {
 
     /* ========== VIEWS ========== */
 
+    /// @notice returns the number of decimals used by the credit token.
+    /// @return number of decimals.
     function decimals() public view virtual override returns (uint8) {
         return 6;
     }
 
+    /// @notice returns the credit balance of a given member
+    /// @param member address of member to query
+    /// @return credit balance of member
     function creditBalanceOf(address member) public view override returns (uint256) {
-        return members[member].creditBalance;
+        return creditLines[member].creditBalance;
     }
 
+    /// @notice returns the credit limit of a given member
+    /// @param member address of member to query
+    /// @return credit limit of member
     function creditLimitOf(address member) public view override returns (uint256) {
-        return members[member].creditLimit;
+        return creditLines[member].creditLimit;
     }
 
+    /// @notice returns the credit limit left of a given member
+    /// @param member address of member to query
+    /// @return credit limit left of member
     function creditLimitLeftOf(address member) public view returns (uint256) {
-        Member memory _localMember = members[member];
-        if (_localMember.creditBalance >= _localMember.creditLimit) {
+        CreditLine memory _creditLine = creditLines[member];
+        if (_creditLine.creditBalance >= _creditLine.creditLimit) {
             return 0;
         }
-        return _localMember.creditLimit - _localMember.creditBalance;
+        return _creditLine.creditLimit - _creditLine.creditBalance;
     }
 
+    /* ========== PRIVATE FUNCTIONS ========== */
+
+    /// @notice transfers tokens from sender to recipient
+    /// @dev overrides ERC20 _transfer to include credit line logic
+    /// @param _from sender address
+    /// @param _to recipient address
+    /// @param _amount amount of tokens to transfer
     function _transfer(address _from, address _to, uint256 _amount) internal virtual override {
         _beforeTransfer(_from, _amount);
         super._transfer(_from, _to, _amount);
         _afterTransfer(_to, _amount);
     }
 
-    /* ========== PRIVATE FUNCTIONS ========== */
-
-    function setCreditLimit(address member, uint256 limit) internal virtual {
-        members[member].creditLimit = limit.toUInt128();
-        emit CreditLimitUpdate(member, limit);
-    }
-
+    /// @notice mints tokens to sender if sender has sufficient positive balance and
+    /// increments credit balance.
+    /// @dev will revert if sender does not have sufficient credit limit left.
+    /// @param _from sender address
+    /// @param _amount amount of tokens to mint
     function _beforeTransfer(address _from, uint256 _amount) private {
         uint256 _balanceFrom = balanceOf(_from);
+        // return if sender has sufficient balance
         if (_balanceFrom >= _amount) {
             return;
         }
-
-        Member memory _memberFrom = members[_from];
+        CreditLine memory _creditLine = creditLines[_from];
         uint256 _missingBalance = _amount - _balanceFrom;
         uint256 _creditLeft = creditLimitLeftOf(_from);
         require(_creditLeft >= _missingBalance, "MutualCredit: Insufficient credit");
-        members[_from].creditBalance = (_memberFrom.creditBalance + _missingBalance).toUInt128();
+        // increment credit balance
+        creditLines[_from].creditBalance = (_creditLine.creditBalance + _missingBalance).toUInt128();
         _mint(_from, _missingBalance);
     }
 
+    /// @notice decrements credit balance of recipient if recipient has a credit balance to repay.
+    /// @param _to recipient address
+    /// @param _amount amount of tokens to transfer
     function _afterTransfer(address _to, uint256 _amount) private {
-        Member memory _memberTo = members[_to];
-        uint256 _repay = Math.min(_memberTo.creditBalance, _amount);
+        CreditLine memory _creditLine = creditLines[_to];
+        uint256 _repay = Math.min(_creditLine.creditBalance, _amount);
+        // return if recipient has no credit balance to repay
         if (_repay == 0) {
             return;
         }
-        members[_to].creditBalance = (_memberTo.creditBalance - _repay).toUInt128();
+        // decrement credit balance
+        creditLines[_to].creditBalance = (_creditLine.creditBalance - _repay).toUInt128();
         _burn(_to, _repay);
+    }
+
+    /// @notice sets the credit limit of a given member
+    /// @param member address of member to update
+    /// @param limit new credit limit
+    function setCreditLimit(address member, uint256 limit) internal virtual {
+        creditLines[member].creditLimit = limit.toUInt128();
+        emit CreditLimitUpdate(member, limit);
     }
 }
 

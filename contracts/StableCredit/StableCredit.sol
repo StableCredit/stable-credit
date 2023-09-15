@@ -22,6 +22,11 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /* ========== INITIALIZER ========== */
 
+    /// @notice initializes network debt account with max limit and assigns access contract provided.
+    /// @dev should be called directly after deployment (see OpenZeppelin upgradeable standards).
+    /// @param name_ name of the credit token.
+    /// @param symbol_ symbol of the credit token.
+    /// @param access_ address of access manager contract.
     function __StableCredit_init(string memory name_, string memory symbol_, address access_)
         public
         virtual

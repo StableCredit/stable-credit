@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IStableCredit.sol";
 
 /// @title This contract is responsible for maintaining a list of stable credit networks for
 /// indexing purposes.
 /// @notice enables the contract owner to add and remove stable credit contracts from the registry.
-contract StableCreditRegistry is OwnableUpgradeable {
+contract StableCreditRegistry is Ownable {
     // address => network
     mapping(address => bool) public networks;
-
-    function initialize() external initializer {
-        __Ownable_init();
-    }
 
     /// @notice Allows owner address to add networks to the registry
     /// @dev The caller must be the owner of the contract

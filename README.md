@@ -30,20 +30,20 @@ Each **StableCredit** is outfitted with an **AssurancePool** that is responsible
 
 2. **Operator** - Capable of granting/revoking _member_ access as well as the following:
 
-   - initializing new credit lines
-   - updating existing credit terms
-   - pausing/unpausing credit periods
-   - pausing/unpausing fee collection
-   - updating base fee rate
-   - updating reserve token
-   - updating deposit token
-   - withdrawing/reallocating excess reserve balance
+   - initialize new credit lines
+   - update existing credit terms
+   - pause/unpause credit periods
+   - pause/unpause fee collection
+   - update base fee rate
+   - update reserve token
+   - update deposit token
+   - withdraw/reallocate excess reserve balance
 
 3. **Member** - Capable of the following:
-   - transferring stable credits
-   - utilizing an issued credit line to mint stable credits
-   - burning network debt using stable credits
-   - repaying credit balances of credits with reserve tokens
+   - transfer stable credits
+   - utilize an issued credit line to mint stable credits
+   - repay credit balances of credits with reserve tokens
+   - burn network debt using stable credits
 
 # 🏄‍♂️ Quick Start
 

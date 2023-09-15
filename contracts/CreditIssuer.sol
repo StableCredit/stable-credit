@@ -21,6 +21,9 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     /* ========== INITIALIZER ========== */
 
+    /// @notice initializes the stable credit address to issue credit for.
+    /// @dev should be called directly after deployment (see OpenZeppelin upgradeable standards).
+    /// @param _stableCredit address of stable credit contract to issue credit for.
     function __CreditIssuer_init(address _stableCredit) public virtual onlyInitializing {
         __Ownable_init();
         __Pausable_init();

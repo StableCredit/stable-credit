@@ -21,6 +21,9 @@ contract FeeManager is IFeeManager, PausableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
+    /// @notice initializes the stable credit address to collect fees for.
+    /// @dev should be called directly after deployment (see OpenZeppelin upgradeable standards).
+    /// @param _stableCredit address of stable credit contract to collect fees for.
     function __FeeManager_init(address _stableCredit) public virtual onlyInitializing {
         __Pausable_init();
         _pause();
