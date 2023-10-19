@@ -112,7 +112,11 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     ).wait()
 
     // send 200 from defaultingAccount to accountB
-    await (await reserveTokenDefault.transfer(accountB.address, parseStableCredits("200"))).wait()
+    await (
+      await stableCredit
+        .connect(defaultingAccount)
+        .transfer(accountB.address, parseStableCredits("200"))
+    ).wait()
 
     // increase time to cause default
 
@@ -148,13 +152,15 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     const stableCreditD = (await stableCredit.connect(accountD)) as Contract
 
     await (await stableCreditA.transfer(accountB.address, parseStableCredits("1400"))).wait()
-    await (await feeManager.depositFeesToAssurancePool()).wait()
     // send 2200 from C to D
     await (await stableCreditC.transfer(accountD.address, parseStableCredits("2200"))).wait()
     // send 1100 from B to A
     await (await stableCreditB.transfer(accountA.address, parseStableCredits("1100"))).wait()
     // send 2500 from D to E
     await (await stableCreditD.transfer(accountE.address, parseStableCredits("2500"))).wait()
+
+    // deposit fees to assurance pool
+    await (await feeManager.depositFeesToAssurancePool()).wait()
 
     // reset base fee to 5%
     await (await feeManager.setBaseFeeRate((5e16).toString())).wait()

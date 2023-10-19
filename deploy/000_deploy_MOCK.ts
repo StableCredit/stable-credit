@@ -20,7 +20,12 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // deploy StableCreditRegistry
   let stableCreditRegistryAddress = (await deployments.getOrNull("StableCreditRegistry"))?.address
   if (!stableCreditRegistryAddress) {
-    stableCreditRegistryAddress = await deployProxyAndSave("StableCreditRegistry", [], hardhat)
+    stableCreditRegistryAddress = (
+      await deployments.deploy("StableCreditRegistry", {
+        from: owner.address,
+        args: [],
+      })
+    ).address
   }
 
   // deploy access manager

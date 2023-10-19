@@ -14,6 +14,7 @@ import "@openzeppelin/hardhat-upgrades"
 import "@primitivefi/hardhat-dodoc"
 
 import "./tasks/demoSetup"
+import "./tasks/syncCreditPeriod"
 
 dotenvConfig({ path: resolve(__dirname, "./.env") })
 
