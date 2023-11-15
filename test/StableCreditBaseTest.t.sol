@@ -2,7 +2,6 @@
 pragma solidity ^0.8.12;
 
 import "forge-std/Test.sol";
-import "@uniswap/v3-periphery/contracts/lens/Quoter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./mock/MockERC20.sol";
 import "../contracts/AccessManager.sol";
