@@ -7,8 +7,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "./interfaces/IStableCredit.sol";
 import "./interfaces/IAssurancePool.sol";
 import "./interfaces/IAssuranceOracle.sol";
@@ -18,13 +16,12 @@ import "./interfaces/IAssuranceOracle.sol";
 /// configurations set by operator access granted addresses.
 contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+
     /* ========== STATE VARIABLES ========== */
 
     IStableCredit public stableCredit;
     IERC20Upgradeable public reserveToken;
-    IERC20Upgradeable public depositToken;
     IAssuranceOracle public assuranceOracle;
-    ISwapRouter public swapRouter;
     // reserve token address => Reserve data
     mapping(address => Reserve) public reserves;
 
@@ -35,20 +32,11 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     /// @dev should be called directly after deployment (see OpenZeppelin upgradeable standards).
     /// @param _stableCredit address of the stable credit contract to assure.
     /// @param _reserveToken address of the reserve token to use for assurance.
-    /// @param _depositToken address of the deposit token to use for assurance.
-    /// @param _swapRouter address of the UniSwap swap router.
-    function initialize(
-        address _stableCredit,
-        address _reserveToken,
-        address _depositToken,
-        address _swapRouter
-    ) public initializer {
+    function initialize(address _stableCredit, address _reserveToken) public initializer {
         __ReentrancyGuard_init();
         __Ownable_init();
         stableCredit = IStableCredit(_stableCredit);
         reserveToken = IERC20Upgradeable(_reserveToken);
-        depositToken = IERC20Upgradeable(_depositToken);
-        swapRouter = ISwapRouter(_swapRouter);
     }
 
     /* ========== VIEW FUNCTIONS ========== */
@@ -134,15 +122,6 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
             : ((reserveAmount / 10 ** (reserveDecimals - creditDecimals)));
     }
 
-    /// @notice converts the credit amount to the deposit token denomination.
-    /// @param creditAmount credit amount to convert to deposit token denomination.
-    /// @return credit currency conversion.
-    function convertCreditsToDepositToken(uint256 creditAmount) public view returns (uint256) {
-        uint256 reserveAmount = convertStableCreditToReserveToken(creditAmount);
-        if (depositToken == reserveToken) return reserveAmount;
-        return assuranceOracle.quote(address(depositToken), address(reserveToken), reserveAmount);
-    }
-
     /// @notice returns the amount of current reserve token's unallocated balance.
     function unallocatedBalance() public view returns (uint256) {
         return reserves[address(reserveToken)].unallocatedBalance;
@@ -199,14 +178,12 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
 
     /// @notice enables caller to deposit reserve tokens into the excess reserve.
     /// @param amount amount of deposit token to deposit.
-    function deposit(uint256 amount) public override {
+    function deposit(uint256 amount) public virtual override {
         // collect deposit tokens from caller
-        depositToken.safeTransferFrom(_msgSender(), address(this), amount);
-        if (depositToken == reserveToken) {
-            reserves[address(reserveToken)].unallocatedBalance += amount;
-            allocate();
-            return;
-        }
+        reserveToken.safeTransferFrom(_msgSender(), address(this), amount);
+        reserves[address(reserveToken)].unallocatedBalance += amount;
+        allocate();
+        return;
     }
 
     /// @notice enables caller to withdraw reserve tokens from the excess reserve.
@@ -284,37 +261,6 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
         return amount;
     }
 
-    /// @notice enables caller to swap collected deposit tokens for reserve tokens and allocate into the
-    /// necessary RTD dependant reserve.
-    /// @dev this requires the caller to provide the most efficient "pool fee" as well as the
-    /// most recently quoted "minimum amount out" in the context of the referenced liquidity pool.
-    /// @param tokenIn token to swap for reserve tokens.
-    /// @param poolFee pool fee to use for settlement swap.
-    /// @param amountOutMinimum minimum amount of reserve tokens to receive from tokenIn swap.
-    function convertDeposits(address tokenIn, uint24 poolFee, uint256 amountOutMinimum)
-        external
-        onlyOperator
-    {
-        require(tokenIn != address(reserveToken), "AssurancePool: Cannot convert reserve token");
-        uint256 tokenInAmount = IERC20Upgradeable(tokenIn).balanceOf(address(this));
-        // approve swap router to spend tokenIn
-        TransferHelper.safeApprove(tokenIn, address(swapRouter), tokenInAmount);
-        // Swap tokenIn for reserve tokens
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: tokenIn,
-            tokenOut: address(reserveToken),
-            fee: poolFee,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: tokenInAmount,
-            amountOutMinimum: amountOutMinimum,
-            sqrtPriceLimitX96: 0
-        });
-        reserves[address(reserveToken)].unallocatedBalance += swapRouter.exactInputSingle(params);
-        // allocate the new unallocated balance
-        allocate();
-    }
-
     /// @notice this function reallocates needed reserves from the excess reserve to the
     /// primary reserve to attempt to reach the target RTD.
     function reallocateExcessBalance() public onlyOperator {
@@ -335,14 +281,6 @@ contract AssurancePool is IAssurancePool, OwnableUpgradeable, ReentrancyGuardUpg
     function setReserveToken(address _reserveToken) external onlyOperator {
         reserveToken = IERC20Upgradeable(_reserveToken);
         emit ReserveTokenUpdated(_reserveToken);
-    }
-
-    /// @notice This function allows the risk manager to set the deposit token.
-    /// @param _depositToken address of the new deposit token.
-    /// @dev Setting the deposit token to 0x0 will allow the AssurancePool to accept ETH (native currency) deposits.
-    function setDepositToken(address _depositToken) external onlyOperator {
-        depositToken = IERC20Upgradeable(_depositToken);
-        emit ReserveTokenUpdated(_depositToken);
     }
 
     function setAssuranceOracle(address _assuranceOracle) external onlyAdmin {

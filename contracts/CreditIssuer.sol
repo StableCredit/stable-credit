@@ -117,7 +117,7 @@ contract CreditIssuer is ICreditIssuer, PausableUpgradeable, OwnableUpgradeable 
 
     /// @notice syncs the credit period state and returns validation status.
     /// @dev this function is intended to be called after credit expiration to ensure that defaulted debt
-    /// is written off to the network debt account.
+    /// is written off as lost debt.
     /// @param member address of member to sync credit line for.
     /// @return transaction validation result.
     function syncCreditPeriod(address member) external returns (bool) {

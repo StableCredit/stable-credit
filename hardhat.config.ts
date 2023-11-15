@@ -96,7 +96,6 @@ const config: HardhatUserConfig = {
       "lib/v3-periphery/contracts/libraries/TransferHelper.sol",
       "lib/v3-periphery/contracts/lens/Quoter.sol",
       "test/mock/CreditIssuerMock.sol",
-      "test/mock/FeeManagerMock.sol",
       "test/mock/MockERC20.sol",
       "test/mock/StableCreditMock.sol",
     ],
@@ -118,8 +117,8 @@ const config: HardhatUserConfig = {
   dodoc: {
     runOnCompile: true,
     debugMode: false,
-    include: ["StableCredit", "AccessManager", "Assurance", "CreditIssuer", "FeeManager"],
-    exclude: ["StableCreditMock", "CreditIssuerMock", "FeeManagerMock", "ExtraMath", "interfaces"],
+    include: ["StableCredit", "AccessManager", "Assurance", "CreditIssuer"],
+    exclude: ["StableCreditMock", "CreditIssuerMock", "ExtraMath", "interfaces"],
     outputDir: "./docs",
     freshOutput: true,
   },

@@ -15,17 +15,8 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     const creditIssuer = await ethers.getContractAt("CreditIssuer", creditIssuerAddress)
     const accessManagerAddress = await (await ethers.getContract("AccessManager")).getAddress()
     const accessManager = await ethers.getContractAt("AccessManager", accessManagerAddress)
-    const feeManagerAddress = await (await ethers.getContract("FeeManager")).getAddress()
-    const feeManager = await ethers.getContractAt("FeeManager", feeManagerAddress)
     const reserveTokenAddress = await (await ethers.getContract("MockERC20")).getAddress()
     const reserveToken = await ethers.getContractAt("MockERC20", reserveTokenAddress)
-
-    // Unpause fees if paused
-    const feesPaused = await feeManager.paused()
-    if (feesPaused) await (await feeManager.unpauseFees()).wait()
-
-    // set base fee to 20%
-    await (await feeManager.setBaseFeeRate((20e16).toString())).wait()
 
     const signers = await ethers.getSigners()
     const accountA = signers[1]
@@ -56,10 +47,6 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
 
       // send reserve tokens to account
       await (await reserveToken.transfer(signers[i].address, ethers.parseEther("2000"))).wait()
-
-      // approve reserve tokens for feeManager
-      const reserveTokenI = (await reserveToken.connect(signers[i])) as Contract
-      await (await reserveTokenI.approve(await feeManager.getAddress(), ethers.MaxUint256)).wait()
     }
 
     // ~~~~~~~~~~~~~~~~~~ initialize account 1 ~~~~~~~~~~~~~~~~~~
@@ -104,12 +91,6 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     // send reserve tokens to defaultingAccount
 
     await (await reserveToken.transfer(defaultingAccount.address, ethers.parseEther("2000"))).wait()
-
-    // approve feeManager to spend defaultingAccount's reserve tokens
-    const reserveTokenDefault = (await reserveToken.connect(defaultingAccount)) as Contract
-    await (
-      await reserveTokenDefault.approve(await feeManager.getAddress(), ethers.MaxUint256)
-    ).wait()
 
     // send 200 from defaultingAccount to accountB
     await (
@@ -158,12 +139,6 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     await (await stableCreditB.transfer(accountA.address, parseStableCredits("1100"))).wait()
     // send 2500 from D to E
     await (await stableCreditD.transfer(accountE.address, parseStableCredits("2500"))).wait()
-
-    // deposit fees to assurance pool
-    await (await feeManager.depositFeesToAssurancePool()).wait()
-
-    // reset base fee to 5%
-    await (await feeManager.setBaseFeeRate((5e16).toString())).wait()
 
     // grant operator to Request ERC20 Proxy
     const erc20Proxy = "0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4"

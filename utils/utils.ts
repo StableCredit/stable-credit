@@ -71,6 +71,5 @@ export const parseStableCredits = (value: string) => {
 export const getConfig = () => {
   let adminOwner = process.env.ADMIN_OWNER_ADDRESS
   let reserveTokenAddress = process.env.RESERVE_TOKEN_ADDRESS
-  let swapRouterAddress = process.env.SWAP_ROUTER_ADDRESS
-  return { adminOwner, reserveTokenAddress, swapRouterAddress }
+  return { adminOwner, reserveTokenAddress }
 }

@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types"
 import { deployProxyAndSave, deployProxyAndSaveAs, getConfig } from "../utils/utils"
 
 const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment) {
-  let { reserveTokenAddress, adminOwner, swapRouterAddress } = getConfig()
+  let { reserveTokenAddress, adminOwner } = getConfig()
   let { ethers, deployments } = hardhat
   const [owner] = await ethers.getSigners()
   // deploy mock reserve token
@@ -50,12 +50,7 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   // deploy assurance pool
   let assurancePoolAddress = (await deployments.getOrNull("AssurancePool"))?.address
   if (!assurancePoolAddress) {
-    const assurancePoolArgs = [
-      stableCreditAddress,
-      reserveTokenAddress,
-      reserveTokenAddress,
-      swapRouterAddress,
-    ]
+    const assurancePoolArgs = [stableCreditAddress, reserveTokenAddress]
     assurancePoolAddress = await deployProxyAndSave("AssurancePool", assurancePoolArgs, hardhat)
   }
 
@@ -69,18 +64,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
     assuranceOracleAddress = contractDeployment.address
     await deployments.save("AssuranceOracle", contractDeployment)
     console.log("🚀 assurance oracle deployed at", assuranceOracleAddress)
-  }
-
-  // deploy feeManager
-  let feeManagerAddress = (await deployments.getOrNull("FeeManagerMock"))?.address
-  if (!feeManagerAddress) {
-    const feeManagerArgs = [stableCreditAddress]
-    feeManagerAddress = await deployProxyAndSaveAs(
-      "FeeManagerMock",
-      "FeeManager",
-      feeManagerArgs,
-      hardhat
-    )
   }
 
   // deploy creditIssuer
@@ -100,7 +83,6 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   const stableCredit = await ethers.getContractAt("StableCredit", stableCreditAddress)
   const accessManager = await ethers.getContractAt("AccessManager", accessManagerAddress)
   const assurancePool = await ethers.getContractAt("AssurancePool", assurancePoolAddress)
-  const feeManager = await ethers.getContractAt("FeeManager", feeManagerAddress)
   const stableCreditRegistry = await ethers.getContractAt(
     "StableCreditRegistry",
     stableCreditRegistryAddress
@@ -112,20 +94,14 @@ const func: DeployFunction = async function (hardhat: HardhatRuntimeEnvironment)
   await (await accessManager.grantOperator(stableCreditAddress)).wait()
   // grant creditIssuer operator access
   await (await accessManager.grantOperator(creditIssuerAddress)).wait()
-  // grant feeManager operator access
-  await (await accessManager.grantOperator(feeManagerAddress)).wait()
   // set accessManager
   await (await stableCredit.setAccessManager(accessManagerAddress)).wait()
-  // set feeManager
-  await (await stableCredit.setFeeManager(feeManagerAddress)).wait()
   // set assuranceOracle
   await (await assurancePool.setAssuranceOracle(assuranceOracleAddress)).wait()
   // set creditIssuer
   await (await stableCredit.setCreditIssuer(creditIssuerAddress)).wait()
   // set assurancePool
   await (await stableCredit.setAssurancePool(assurancePoolAddress)).wait()
-  // set base fee rate to 5%
-  await (await feeManager.setBaseFeeRate((5e16).toString())).wait()
   // set add network to registry
   await (await stableCreditRegistry.addNetworkToRegistry(stableCreditAddress)).wait()
 }

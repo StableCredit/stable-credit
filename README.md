@@ -15,7 +15,6 @@ Each **StableCredit** is outfitted with an **AssurancePool** that is responsible
 # 📃 Contracts:
 
 - **`StableCredit.sol`**: An extension of the base `MutualCredit.sol` and `ERC20.sol` contracts responsible for managing positive and negative balances of network members.
-- **`FeeManager.sol`**: Responsible for collecting and distributing fees collected from **Stable Credit** transactions.
 - **`AccessManager.sol`**: Responsible for role based access control of **Stable Credit** networks.
 - **`CreditIssuer.sol`**: Responsible for issuing credit lines to network members and storing/managing credit periods
 - **`AssurancePool.sol`**: Responsible for _assuring_ the value of each stable credit by maintaining network reserve funds according to the analyzed risk of the network.
@@ -43,7 +42,7 @@ Each **StableCredit** is outfitted with an **AssurancePool** that is responsible
    - transfer stable credits
    - utilize an issued credit line to mint stable credits
    - repay credit balances of credits with reserve tokens
-   - burn network debt using stable credits
+   - burn lost debt using stable credits
 
 # 🏄‍♂️ Quick Start
 
@@ -129,6 +128,5 @@ In order to reduce the cost of gas for network participants, some state synchron
 |Function &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Contract|Details|Suggested Interval|
 |-----------|-----------|-----------|-----------|
 |`syncCreditPeriod(address member)`|**CreditIssuer.sol**|Should be called at the end of the provided member's credit period in order to prompt renewal or credit default.|EO Credit period|
-|`depositFeesToAssurancePool()`|**FeeManager.sol**|Distributes collected fees to the network reserve. Should at least be called daily.|daily|
 |`allocate()`|**AssurancePool.sol**|Enables caller to allocate unallocated reserve tokens into the needed reserve balance.|daily|
 |`convertDeposits()`|**AssurancePool.sol**|Enables caller to swap collected deposit tokens for reserve tokens and allocate into the necessary RTD dependant reserve. (only necessary if deposit token differs from reserve token)|daily|

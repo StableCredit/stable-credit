@@ -47,18 +47,9 @@ interface IAssurancePool {
         view
         returns (uint256);
 
-    /// @notice converts the credit amount to the deposit token denomination.
-    /// @param creditAmount credit amount to convert to deposit token denomination.
-    /// @return credit currency conversion.
-    function convertCreditsToDepositToken(uint256 creditAmount) external view returns (uint256);
-
     /// @notice Exposes the ERC20 interface of the reserve token.
     /// @return reserve token of the reserve pool.
     function reserveToken() external view returns (IERC20Upgradeable);
-
-    /// @notice Exposes the ERC20 interface of the deposit token.
-    /// @return deposit token of the reserve pool.
-    function depositToken() external view returns (IERC20Upgradeable);
 
     /// @notice returns the amount of current reserve token's excess balance.
     /// @return excess reserve balance.

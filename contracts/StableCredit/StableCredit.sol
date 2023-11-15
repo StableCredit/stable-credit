@@ -9,7 +9,7 @@ import "./MutualCredit.sol";
 /// @title StableCredit contract
 /// @notice Extends the ERC20 standard to include mutual credit functionality where users
 /// can mint tokens into existence by utilizing their lines of credit. Credit defaults result
-/// in the transfer of the outstanding credit balance to the network debt balance.
+/// in the transfer of the outstanding credit balance to the lost debt balance.
 /// @dev Restricted functions are only callable by network operators.
 
 contract StableCredit is MutualCredit, IStableCredit {
@@ -17,12 +17,11 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     IAccessManager public access;
     IAssurancePool public assurancePool;
-    IFeeManager public feeManager;
     ICreditIssuer public creditIssuer;
 
     /* ========== INITIALIZER ========== */
 
-    /// @notice initializes network debt account with max limit and assigns access contract provided.
+    /// @notice initializes lost debt account with max limit and assigns access contract provided.
     /// @dev should be called directly after deployment (see OpenZeppelin upgradeable standards).
     /// @param name_ name of the credit token.
     /// @param symbol_ symbol of the credit token.
@@ -33,36 +32,36 @@ contract StableCredit is MutualCredit, IStableCredit {
         onlyInitializing
     {
         __MutualCredit_init(name_, symbol_);
-        // assign "network debt account" credit line
+        // assign "lost debt account" credit line
         setCreditLimit(address(this), type(uint128).max - 1);
         access = IAccessManager(access_);
     }
 
     /* ========== VIEWS ========== */
 
-    /// @notice Network account that manages the rectification of defaulted debt accounts.
-    /// @return amount of debt owned by the network.
-    function networkDebt() public view override returns (uint256) {
+    /// @notice Shared account that manages the rectification of lost debt.
+    /// @return amount of lost debt shared by network participants.
+    function lostDebt() public view override returns (uint256) {
         return creditBalanceOf(address(this));
     }
 
     /* ========== PUBLIC FUNCTIONS ========== */
 
-    /// @notice Reduces network debt in exchange for reserve reimbursement.
-    /// @dev Must have sufficient network debt or pool debt to service.
-    /// @return reimbursement amount from reserve pool
-    function burnNetworkDebt(address member, uint256 amount)
+    /// @notice Reduces lost debt in exchange for assurance reimbursement.
+    /// @dev Must have sufficient lost debt to service.
+    /// @return reimbursement amount from assurance pool
+    function burnLostDebt(address member, uint256 amount)
         public
         virtual
         override
         returns (uint256)
     {
         require(balanceOf(member) >= amount, "StableCredit: Insufficient balance");
-        require(amount <= networkDebt(), "StableCredit: Insufficient network debt");
+        require(amount <= lostDebt(), "StableCredit: Insufficient lost debt");
         _transfer(member, address(this), amount);
         uint256 reimbursement =
             assurancePool.reimburse(member, assurancePool.convertStableCreditToReserveToken(amount));
-        emit NetworkDebtBurned(member, amount);
+        emit LostDebtBurned(member, amount);
         return reimbursement;
     }
 
@@ -85,7 +84,7 @@ contract StableCredit is MutualCredit, IStableCredit {
     /// @dev If the member address is not a current member, then the address is granted membership
     /// @param member address of line holder
     /// @param limit credit limit of new line
-    /// @param initialBalance positive balance to initialize member with (will increment network debt)
+    /// @param initialBalance positive balance to initialize member with (will increment lost debt)
     function createCreditLine(address member, uint256 limit, uint256 initialBalance)
         public
         virtual
@@ -109,7 +108,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit CreditLimitUpdated(member, creditLimit);
     }
 
-    /// @notice transfer a given member's debt to the network debt account
+    /// @notice transfer a given member's debt to the lost debt account
     /// @param member address of member to write off
     function writeOffCreditLine(address member) public virtual onlyCreditIssuer {
         uint256 creditBalance = creditBalanceOf(member);
@@ -131,13 +130,6 @@ contract StableCredit is MutualCredit, IStableCredit {
         emit AssurancePoolUpdated(_assurancePool);
     }
 
-    /// @notice enables network admin to set the fee manager address
-    /// @param _feeManager address of fee manager contract
-    function setFeeManager(address _feeManager) external onlyAdmin {
-        feeManager = IFeeManager(_feeManager);
-        emit FeeManagerUpdated(_feeManager);
-    }
-
     /// @notice enables network admin to set the credit issuer address
     /// @param _creditIssuer address of credit issuer contract
     function setCreditIssuer(address _creditIssuer) external onlyAdmin {
@@ -147,7 +139,6 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     /* ========== PRIVATE FUNCTIONS ========== */
 
-    /// @notice Caller must approve feeManager to spend reserve tokens for transfer of credits.
     /// @dev Validates the caller's credit line and synchronizes demurrage balance.
     function _transfer(address _from, address _to, uint256 _amount)
         internal
@@ -155,9 +146,6 @@ contract StableCredit is MutualCredit, IStableCredit {
         override
         senderIsMember(_from)
     {
-        if (address(feeManager) != address(0)) {
-            feeManager.collectCreditTransactionFee(_from, _to, _amount);
-        }
         if (!creditIssuer.validateCreditTransaction(_from, _to, _amount)) return;
         super._transfer(_from, _to, _amount);
         emit ComplianceUpdated(

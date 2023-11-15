@@ -21,8 +21,7 @@ contract StableCreditRegistry is Ownable {
             network,
             address(IStableCredit(network).access()),
             address(IStableCredit(network).creditIssuer()),
-            address(IStableCredit(network).assurancePool()),
-            address(IStableCredit(network).feeManager())
+            address(IStableCredit(network).assurancePool())
             );
     }
 
@@ -36,11 +35,7 @@ contract StableCreditRegistry is Ownable {
     }
 
     event NetworkAdded(
-        address network,
-        address accessManager,
-        address creditIssuer,
-        address assurancePool,
-        address feeManager
+        address network, address accessManager, address creditIssuer, address assurancePool
     );
     event NetworkRemoved(address network);
 }

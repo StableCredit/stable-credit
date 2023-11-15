@@ -14,8 +14,8 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.createCreditLine(bob, 1000e6, 100e6);
         // check that bob's balance is +100 credits
         assertEq(stableCredit.balanceOf(bob), 100e6);
-        // check network debt is 100
-        assertEq(stableCredit.networkDebt(), 100e6);
+        // check lost debt is 100
+        assertEq(stableCredit.lostDebt(), 100e6);
     }
 
     function testUpdateCreditLimit() public {
@@ -57,13 +57,13 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100e6);
+        assurancePool.reserveToken().transfer(alice, 100e18);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100e6);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e18);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
-        assertEq(assurancePool.peripheralBalance(), 100e6);
+        assertEq(assurancePool.peripheralBalance(), 100e18);
     }
 
     function testReserveCurrencyPaymentCreditBalance() public {
@@ -72,49 +72,49 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100e6);
+        assurancePool.reserveToken().transfer(alice, 100e18);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100e6);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e18);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
         assertEq(stableCredit.creditBalanceOf(alice), 0);
     }
 
-    function testReserveCurrencyPaymentNetworkDebt() public {
+    function testReserveCurrencyPaymentLostDebt() public {
         // create credit balance for alice
         changePrank(alice);
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.reserveToken().transfer(alice, 100e6);
+        assurancePool.reserveToken().transfer(alice, 100e18);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.reserveToken().approve(address(stableCredit), 100e6);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e18);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
-        assertEq(stableCredit.networkDebt(), 100e6);
+        assertEq(stableCredit.lostDebt(), 100e6);
     }
 
-    function testBurnNetworkDebt() public {
+    function testBurnLostDebt() public {
         // create credit balance for alice
         changePrank(alice);
         stableCredit.transfer(bob, 100e6);
         // give tokens for repayment
         changePrank(deployer);
-        assurancePool.depositToken().transfer(alice, 100e6);
+        assurancePool.reserveToken().transfer(alice, 100e18);
         changePrank(alice);
         // approve reserve tokens
-        assurancePool.depositToken().approve(address(stableCredit), 100e6);
+        assurancePool.reserveToken().approve(address(stableCredit), 100e18);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
-        assertEq(stableCredit.networkDebt(), 100e6);
+        assertEq(stableCredit.lostDebt(), 100e6);
         changePrank(deployer);
         accessManager.grantOperator(bob);
         changePrank(bob);
-        // burn network debt
-        stableCredit.burnNetworkDebt(bob, 100e6);
-        assertEq(stableCredit.networkDebt(), 0);
+        // burn lost debt
+        stableCredit.burnLostDebt(bob, 100e6);
+        assertEq(stableCredit.lostDebt(), 0);
     }
 
     function testSetAccessManager() public {
@@ -129,13 +129,6 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.setAssurancePool(address(10));
         // verify reserve pool is set
         assertEq(address(stableCredit.assurancePool()), address(10));
-    }
-
-    function testSetFeeManager() public {
-        changePrank(deployer);
-        stableCredit.setFeeManager(address(10));
-        // verify fee manager is set
-        assertEq(address(stableCredit.feeManager()), address(10));
     }
 
     function testSetCreditIssuer() public {

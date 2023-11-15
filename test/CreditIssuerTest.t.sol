@@ -87,8 +87,8 @@ contract CreditIssuerTest is StableCreditBaseTest {
         assertTrue(creditIssuer.inDefault(alice));
         // synchronize alice's credit line
         creditIssuer.syncCreditPeriod(alice);
-        // check network debt
-        assertEq(stableCredit.networkDebt(), 20e6);
+        // check lost debt
+        assertEq(stableCredit.lostDebt(), 20e6);
         // check alice credit limit is 0
         assertEq(stableCredit.creditLimitOf(alice), 0);
     }
@@ -101,7 +101,7 @@ contract CreditIssuerTest is StableCreditBaseTest {
         vm.warp(block.timestamp + 120 days + 1);
         // check compliance
         assertTrue(!creditIssuer.inCompliance(alice));
-        // check network debt
+        // check alice in default
         assertTrue(creditIssuer.inDefault(alice));
     }
 
@@ -197,7 +197,7 @@ contract CreditIssuerTest is StableCreditBaseTest {
         // check alice has defaulted
         assertEq(stableCredit.creditLimitOf(alice), 0);
         assertEq(stableCredit.creditBalanceOf(alice), 0);
-        assertEq(stableCredit.networkDebt(), 20e6);
+        assertEq(stableCredit.lostDebt(), 20e6);
     }
 
     function testTxValidationExpiredButNotUsingCredit() public {
