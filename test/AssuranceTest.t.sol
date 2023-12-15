@@ -23,17 +23,17 @@ contract AssuranceTest is StableCreditBaseTest {
         // check primary reserve
         assertEq(assurancePool.primaryBalance(), amount);
     }
-    // deposit into peripheral reserve updates total reserve and peripheral reserve
+    // deposit into buffer reserve updates total reserve and buffer reserve
 
-    function testDepositIntoPeripheralReserve() public {
+    function testDepositIntoBufferReserve() public {
         changePrank(deployer);
         uint256 amount = 100;
-        // deposit into peripheral reserve
-        assurancePool.depositIntoPeripheralReserve(amount);
+        // deposit into buffer reserve
+        assurancePool.depositIntoBufferReserve(amount);
         // check total reserve
         assertEq(assurancePool.reserveBalance(), amount);
-        // check peripheral reserve
-        assertEq(assurancePool.peripheralBalance(), amount);
+        // check buffer reserve
+        assertEq(assurancePool.bufferBalance(), amount);
     }
 
     // deposit needed reserves updates excess pool when RTD is above target
@@ -41,7 +41,6 @@ contract AssuranceTest is StableCreditBaseTest {
         changePrank(deployer);
         assertEq(assurancePool.excessBalance(), 0);
         assurancePool.deposit(100e6);
-        assurancePool.allocate();
         // check excess reserve
         assertEq(assurancePool.excessBalance(), 100e6);
     }
@@ -82,16 +81,16 @@ contract AssuranceTest is StableCreditBaseTest {
         assertEq(reserveToken.balanceOf(bob), 110e6);
     }
 
-    function testReimburseAccountWithPrimaryAndPeripheralReserve() public {
+    function testReimburseAccountWithPrimaryAndBufferReserve() public {
         changePrank(deployer);
         // deposit into primary reserve
         assurancePool.depositIntoPrimaryReserve(100e6);
-        // deposit into peripheral reserve
-        assurancePool.depositIntoPeripheralReserve(100e6);
+        // deposit into buffer reserve
+        assurancePool.depositIntoBufferReserve(100e6);
         changePrank(address(stableCredit));
         assurancePool.reimburse(bob, 10e6);
         assertEq(assurancePool.primaryBalance(), 100e6);
-        assertEq(assurancePool.peripheralBalance(), 90e6);
+        assertEq(assurancePool.bufferBalance(), 90e6);
         assertEq(reserveToken.balanceOf(bob), 110e6);
     }
 
@@ -137,13 +136,13 @@ contract AssuranceTest is StableCreditBaseTest {
         changePrank(deployer);
         // deposit into primary reserve
         assurancePool.depositIntoPrimaryReserve(25e6);
-        // deposit into peripheral reserve
-        assurancePool.depositIntoPeripheralReserve(25e6);
+        // deposit into buffer reserve
+        assurancePool.depositIntoBufferReserve(25e6);
         changePrank(address(stableCredit));
         assertEq(reserveToken.balanceOf(bob), 100e6);
         assurancePool.reimburse(bob, 60e6);
         assertEq(assurancePool.primaryBalance(), 0);
-        assertEq(assurancePool.peripheralBalance(), 0);
+        assertEq(assurancePool.bufferBalance(), 0);
         assertEq(reserveToken.balanceOf(bob), 150e6);
     }
 

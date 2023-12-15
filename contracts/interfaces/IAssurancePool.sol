@@ -4,19 +4,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IAssurancePool {
-    struct Reserve {
-        uint256 unallocatedBalance;
-        uint256 primaryBalance;
-        uint256 peripheralBalance;
-        uint256 excessBalance;
-    }
-
     /// @notice enables caller to deposit reserve tokens into the excess reserve.
     /// @param amount amount of deposit token to deposit.
     function deposit(uint256 amount) external;
 
     /// @notice Called by the stable credit implementation to reimburse an account from the credit token's
-    /// reserves. If the amount is covered by the peripheral reserve, the peripheral reserve is depleted first,
+    /// reserves. If the amount is covered by the buffer reserve, the buffer reserve is depleted first,
     /// followed by the primary reserve.
     /// @dev The stable credit implementation should not expose this function to the public as it could be
     /// exploited to drain the stable credit's reserves.
@@ -26,9 +19,9 @@ interface IAssurancePool {
     function reimburse(address account, uint256 amount) external returns (uint256);
 
     /// @notice enables caller to deposit a given reserve token into a stable credit's
-    /// peripheral reserve.
+    /// buffer reserve.
     /// @param amount amount of reserve token to deposit.
-    function depositIntoPeripheralReserve(uint256 amount) external;
+    function depositIntoBufferReserve(uint256 amount) external;
 
     /// @notice this function reallocates needed reserves from the excess reserve to the
     /// primary reserve to attempt to reach the target RTD.
@@ -59,7 +52,7 @@ interface IAssurancePool {
 
     event ExcessReallocated(uint256 excessReserve, uint256 primaryReserve);
     event PrimaryReserveDeposited(uint256 amount);
-    event PeripheralReserveDeposited(uint256 amount);
+    event BufferReserveDeposited(uint256 amount);
     event ExcessReserveDeposited(uint256 amount);
     event ExcessReserveWithdrawn(uint256 amount);
     event AccountReimbursed(address account, uint256 amount);

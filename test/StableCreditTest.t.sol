@@ -51,7 +51,7 @@ contract StableCreditTest is StableCreditBaseTest {
         stableCredit.repayCreditBalance(alice, uint128(101e6));
     }
 
-    function testReserveCurrencyToPeripheralReserve() public {
+    function testReserveCurrencyToBufferReserve() public {
         // create credit balance for alice
         changePrank(alice);
         stableCredit.transfer(bob, 100e6);
@@ -63,7 +63,7 @@ contract StableCreditTest is StableCreditBaseTest {
         assurancePool.reserveToken().approve(address(stableCredit), 100e18);
         // repay full credit balance
         stableCredit.repayCreditBalance(alice, uint128(100e6));
-        assertEq(assurancePool.peripheralBalance(), 100e18);
+        assertEq(assurancePool.bufferBalance(), 100e18);
     }
 
     function testReserveCurrencyPaymentCreditBalance() public {

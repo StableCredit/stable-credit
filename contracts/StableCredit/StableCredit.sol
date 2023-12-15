@@ -73,7 +73,7 @@ contract StableCredit is MutualCredit, IStableCredit {
         uint256 reserveTokenAmount = assurancePool.convertStableCreditToReserveToken(amount);
         assurancePool.reserveToken().transferFrom(_msgSender(), address(this), reserveTokenAmount);
         assurancePool.reserveToken().approve(address(assurancePool), reserveTokenAmount);
-        assurancePool.depositIntoPeripheralReserve(reserveTokenAmount);
+        assurancePool.depositIntoBufferReserve(reserveTokenAmount);
         _transfer(address(this), member, amount);
         emit CreditBalanceRepaid(member, amount);
     }
@@ -157,11 +157,6 @@ contract StableCredit is MutualCredit, IStableCredit {
 
     modifier onlyAdmin() {
         require(access.isAdmin(_msgSender()), "StableCredit: Unauthorized caller");
-        _;
-    }
-
-    modifier onlyOperator() {
-        require(access.isOperator(_msgSender()), "StableCredit: Unauthorized caller");
         _;
     }
 

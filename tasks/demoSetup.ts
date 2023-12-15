@@ -141,9 +141,10 @@ task(DEMO_SETUP, "Configure a referenced network with demo tx's").setAction(
     await (await stableCreditD.transfer(accountE.address, parseStableCredits("2500"))).wait()
 
     // grant operator to Request ERC20 Proxy
-    const erc20Proxy = "0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4"
+    // const erc20Proxy = "0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4"
 
-    await (await accessManager.grantOperator(erc20Proxy)).wait()
+    // await (await accessManager.grantOperator(erc20Proxy)).wait()
+    await (await accessManager.grantOperator("0x358937c5674Fc7D3972Fa99AA7Ccdb8151EF1805")).wait()
 
     console.log("🚀 demo configured")
   }
