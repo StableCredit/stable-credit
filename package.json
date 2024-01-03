@@ -11,12 +11,6 @@
     "typechain": "yarn hardhat typechain",
     "deploy": "yarn hardhat deploy --write true",
     "demo": "yarn deploy --network ganache && yarn hardhat demoSetup --network ganache",
-    "watch": "yarn node scripts/watch.js",
-    "accounts": "yarn hardhat accounts",
-    "balance": "yarn hardhat balance",
-    "send": "yarn hardhat send",
-    "generate": "yarn hardhat generate",
-    "account": "yarn hardhat account",
     "clean-local-deployments": "rm -rf deployments/localhost/*",
     "clean": "yarn hardhat clean"
   },
